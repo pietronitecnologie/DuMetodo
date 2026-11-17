@@ -43,7 +43,9 @@
   };
 
   // ---- Tabelle -> testo separato da tabulazioni (si incolla in Excel con le colonne giuste).
-  const pulisci = (cella) => (cella.innerText || "").replace(/[\t\r\n]+/g, " ").trim();
+  // Intestazioni: textContent, perché innerText restituirebbe il MAIUSCOLO dovuto solo allo stile.
+  const pulisci = (cella) =>
+    ((cella.tagName === "TH" ? cella.textContent : cella.innerText) || "").replace(/\s+/g, " ").trim();
   const righeVisibili = (tabella) =>
     Array.from(tabella.rows).filter((r) => r.offsetParent !== null && r.closest("table") === tabella);
   // Indice "visivo" della colonna, contando le celle unite (colspan).
@@ -58,7 +60,32 @@
     return null;
   };
   const tsv = (righe) => righe.map((r) => r.join("\t")).join("\r\n");
-  const copiaTesto = (t) => { if (t) invia({ tipo: "copia", testo: t }); };
+  // Copia negli appunti: prima dalla pagina (funziona con qualunque versione del client), poi tramite il
+  // client (che riesce anche dove il browser non dà accesso agli appunti, es. server in http).
+  const copiaNellaPagina = (t) => {
+    const area = document.createElement("textarea");
+    area.value = t;
+    area.setAttribute("readonly", "");
+    area.style.cssText = "position:fixed;top:-1000px;left:-1000px;opacity:0";
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    area.remove();
+    return ok;
+  };
+  const avviso = (testo) => { if (window.__duMetodoAvviso) window.__duMetodoAvviso(testo); };
+  const copiaTesto = (t) => {
+    if (!t) { avviso("Niente da copiare"); return; }
+    const righe = t.split("\r\n").length;
+    const fatto = () => avviso(righe > 1 ? `Copiate ${righe} righe` : "Copiato");
+    if (copiaNellaPagina(t)) { fatto(); return; }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(t).then(fatto, () => invia({ tipo: "copia", testo: t }));
+      return;
+    }
+    invia({ tipo: "copia", testo: t });
+  };
 
   const contesto = { cella: null, selezione: "" };
 
@@ -80,7 +107,17 @@
       if (c) copiaTesto(tsv([Array.from(c.parentElement.cells).map(pulisci)]));
     },
     copia_selezione: () => copiaTesto(contesto.selezione),
-    incolla: () => invia({ tipo: "incolla" }),
+    incolla: () => {
+      // Il client nuovo legge gli appunti e chiama DuMetodoClient.incolla; in alternativa il browser.
+      if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
+        const campo = campoIncolla;
+        navigator.clipboard.readText().then(
+          (t) => { campoIncolla = campo; window.DuMetodoClient.incolla(t); },
+          () => invia({ tipo: "incolla" }));
+      } else {
+        invia({ tipo: "incolla" });
+      }
+    },
     naviga: (v, d) => { window.location.href = riempi(v.url, d, true); },
     post: (v, d) => {
       if (v.conferma && !window.confirm(riempi(v.conferma, d, false))) return;
