@@ -291,15 +291,32 @@ def sincronizza_permessi(**kwargs: Any) -> None:
     ct = ContentType.objects.get_for_model(Funzionalita, for_concrete_model=False)
     dichiarati = {f.codice: f.etichetta[:255] for f in FUNZIONI}
     esistenti = {p.codename: p for p in Permission.objects.filter(content_type=ct)}
+    # Chi ha TUTTE le funzioni esistenti (amministratore completo) riceverà anche quelle nuove:
+    # altrimenti ogni aggiornamento che aggiunge una funzione la renderebbe inaccessibile a tutti.
+    amministratori = _utenti_con_tutti(esistenti.values()) if esistenti else []
+    nuovi = []
     for codice, nome in dichiarati.items():
         p = esistenti.get(codice)
         if p is None:
-            Permission.objects.create(content_type=ct, codename=codice, name=nome)
+            nuovi.append(Permission.objects.create(content_type=ct, codename=codice, name=nome))
         elif p.name != nome:
             p.name = nome
             p.save(update_fields=["name"])
     Permission.objects.filter(content_type=ct).exclude(codename__in=dichiarati).delete()
+    if nuovi:
+        for u in amministratori:
+            u.user_permissions.add(*nuovi)
     _converti_gruppi_ruolo()
+
+
+def _utenti_con_tutti(permessi: Iterable[Any]) -> list[Any]:
+    from django.contrib.auth.models import User
+    from django.db.models import Count, Q
+
+    ids = [p.pk for p in permessi]
+    return list(
+        User.objects.annotate(n=Count("user_permissions", filter=Q(user_permissions__in=ids))).filter(n=len(ids))
+    )
 
 
 def _converti_gruppi_ruolo() -> None:

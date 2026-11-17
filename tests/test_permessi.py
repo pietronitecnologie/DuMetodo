@@ -84,3 +84,22 @@ def test_pagina_iniziale_secondo_i_permessi(client, db):
     assert client.get("/")["Location"] == "/report/"
     u.user_permissions.add(*permessi_di([F.ORDINI_VEDERE]))
     assert client.get("/")["Location"] == "/ordini/"
+
+
+def test_nuove_funzioni_agli_amministratori_completi(db):
+    from dumetodo.core import permessi
+    from dumetodo.core.permessi import Funzione, Sezione, sincronizza_permessi
+
+    admin = User.objects.create_user("a")
+    applica_profilo(admin, "Amministratore")
+    operatore = User.objects.create_user("o")
+    applica_profilo(operatore, "Operatore")
+    nuova = Funzione("funzione_di_prova", Sezione.UTILITA, "Prova")
+    permessi.FUNZIONI.append(nuova)
+    try:
+        sincronizza_permessi()
+        assert ha_permesso(User.objects.get(pk=admin.pk), "funzione_di_prova")
+        assert not ha_permesso(User.objects.get(pk=operatore.pk), "funzione_di_prova")
+    finally:
+        permessi.FUNZIONI.remove(nuova)
+        sincronizza_permessi()
