@@ -25,11 +25,11 @@
 {% include "_icone.html" %}
 {% if user.is_authenticated %}
 <header class="dm-testata">
+  {% if logo_azienda %}<a class="dm-logo-azienda" href="{% url 'home' %}" title="{{ nome_fornitore }}">
+    <img src="{% url 'configurazione:logo' %}?v={{ logo_azienda }}" alt="{{ nome_fornitore }}"></a>{% endif %}
   <a class="dm-marchio" href="{% url 'home' %}" title="DuMetodo">
     <span class="dm-marchio-testo"><b>DuMetodo</b><small>{{ nome_fornitore }}</small></span>
   </a>
-  {% if logo_azienda %}<a class="dm-logo-azienda" href="{% url 'home' %}" title="{{ nome_fornitore }}">
-    <img src="{% url 'configurazione:logo' %}?v={{ logo_azienda }}" alt="{{ nome_fornitore }}"></a>{% endif %}
   <button type="button" class="dm-pulsante-icona dm-solo-piccolo" data-dm-apri-menu aria-controls="dm-menu" title="Menu">
     <svg class="dm-icona"><use href="#i-menu"/></svg></button>
   <nav class="dm-menu" id="dm-menu" aria-label="Menu principale">
