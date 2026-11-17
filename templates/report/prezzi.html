@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titolo %}Controllo prezzi{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Controllo prezzi</h1>
+<ul class="nav nav-tabs mb-2">
+  <li class="nav-item"><a class="nav-link {% if filtri.origine == 'bolle' %}active{% endif %}" href="?origine=bolle">Su bolle (consegnato)</a></li>
+  <li class="nav-item"><a class="nav-link {% if filtri.origine == 'lavorazione' %}active{% endif %}" href="?origine=lavorazione">Ordini in lavorazione</a></li>
+</ul>
+<p class="small text-muted">Confronto tra il prezzo della riga d'ordine e il prezzo di riferimento in anagrafica articoli.
+{% if filtri.origine == 'lavorazione' %}Righe non ancora in bolla di ordini aperti: correggi prima di consegnare.{% else %}Righe consegnate nel periodo (data di consegna).{% endif %}</p>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3"><input type="hidden" name="origine" value="{{ filtri.origine }}">
+  <div><label class="form-label small mb-0">{% if filtri.origine == 'bolle' %}Consegnate dal{% else %}Scadenza dal{% endif %}</label><input type="date" name="dal" class="form-control form-control-sm" value="{{ filtri.dal|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small mb-0">al</label><input type="date" name="al" class="form-control form-control-sm" value="{{ filtri.al|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small mb-0">Articolo</label><input name="articolo" class="form-control form-control-sm" value="{{ filtri.articolo }}"></div>
+  {% if filtri.origine == 'bolle' %}<div><label class="form-label small mb-0">N. DDT</label><input name="ddt" class="form-control form-control-sm" style="width:7rem" value="{{ filtri.numero_ddt }}"></div>{% endif %}
+  <div class="form-check"><input class="form-check-input" type="checkbox" name="tutte" value="1" id="tutte" {% if not filtri.solo_differenze %}checked{% endif %}><label for="tutte" class="form-check-label small">Anche righe senza differenze</label></div>
+  <div class="form-check"><input class="form-check-input" type="checkbox" name="senza_rif" value="1" id="senza_rif" {% if filtri.senza_riferimento %}checked{% endif %}><label for="senza_rif" class="form-check-label small">Solo articoli senza prezzo di riferimento</label></div>
+  <button class="btn btn-sm btn-primary">Cerca</button>
+  <a class="btn btn-sm btn-outline-primary" href="?{{ request.GET.urlencode }}&formato=xlsx">Excel</a>
+</form>
+<p>{{ pagina.paginator.count }} righe — differenza complessiva <strong class="{% if totale > 0 %}text-success{% elif totale < 0 %}text-danger{% endif %}">{{ totale|floatformat:2 }} €</strong></p>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle small">
+  <thead><tr><th>Ordine</th><th>Riga</th><th>Articolo</th><th>Var.</th><th class="text-end">Qtà</th><th class="text-end">Prezzo riga</th><th class="text-end">Prezzo anagrafica</th><th class="text-end">Diff. unit.</th><th class="text-end">Diff. totale</th>{% if filtri.origine == 'bolle' %}<th>DDT</th><th>Consegna</th>{% else %}<th>Stato</th><th>Scadenza</th>{% endif %}</tr></thead>
+  <tbody>{% for r in pagina %}<tr>
+    <td><a href="{{ r.ordine.get_absolute_url }}">{{ r.ordine.codice_breve }}</a></td><td>{{ r.n_riga }}</td><td>{{ r.articolo }}</td><td>{{ r.variante }}</td>
+    <td class="text-end">{{ r.qta|floatformat:"-3" }}</td><td class="text-end">{{ r.prezzo_unitario|default_if_none:"—" }}</td><td class="text-end">{{ r.prezzo_rif|default_if_none:"—" }}</td>
+    <td class="text-end {% if r.differenza < 0 %}text-danger{% elif r.differenza > 0 %}text-success{% endif %}">{{ r.differenza|default_if_none:"" }}</td>
+    <td class="text-end">{{ r.differenza_totale|default_if_none:""|floatformat:2 }}</td>
+    {% if filtri.origine == 'bolle' %}<td>{% if r.ddt_numero %}{{ r.ddt_numero }}/{{ r.ddt_anno }}{% endif %}</td><td>{{ r.data_consegna|date:"d/m/Y" }}</td>
+    {% else %}<td>{{ r.ordine.get_stato_display }}</td><td>{{ r.data_scadenza|date:"d/m/Y" }}</td>{% endif %}</tr>
+  {% empty %}<tr><td colspan="11" class="text-muted text-center">Nessuna riga.</td></tr>{% endfor %}</tbody></table></div>
+{% include "_paginazione.html" %}
+{% endblock %}

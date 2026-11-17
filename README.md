@@ -23,6 +23,8 @@ L'analisi funzionale del codice originale, che fa da specifica per la riscrittur
 | Magazzino, distinte base, richieste materiali, DDT in ingresso | ⏳ fase 4 |
 | Tracciabilità, controllo qualità, reclami, annunci | ⏳ fase 5 |
 | **Migrazione dei dati da Metodo** | ✅ fase 2 |
+| **Report**: dashboard, analisi produttività, materiale per reparto/settimana, controllo prezzi (bolle e ordini in lavorazione) | ✅ |
+| **Permessi granulari** per funzione, pagina Utenti e permessi | 🔄 in corso |
 | **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ⏳ fase finale |
 
 ## Regole di progetto
