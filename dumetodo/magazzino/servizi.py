@@ -18,7 +18,7 @@ from typing import Any
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Exists, F, Max, OuterRef, Q, QuerySet, Sum
+from django.db.models import Count, Exists, F, Max, OuterRef, Q, QuerySet, Subquery, Sum
 from django.template.loader import render_to_string
 from django.utils import timezone
 
@@ -253,7 +253,9 @@ def ultimi_conteggi(testo: str = "") -> QuerySet[ConteggioInventario]:
     qs = ConteggioInventario.objects.select_related("componente", "utente")
     if testo:
         qs = qs.filter(componente__in=cerca_componenti(testo))
-    ultimi = qs.order_by("componente_id", "-data", "-id").distinct("componente_id").values("pk")
+    # Portabile (PostgreSQL e SQLite): per ogni componente il conteggio più recente.
+    piu_recente = ConteggioInventario.objects.filter(componente_id=OuterRef("componente_id")).order_by("-data", "-id")
+    ultimi = qs.annotate(ultimo=Subquery(piu_recente.values("pk")[:1])).filter(pk=F("ultimo")).values("pk")
     return (
         ConteggioInventario.objects.filter(pk__in=ultimi)
         .select_related("componente", "utente")

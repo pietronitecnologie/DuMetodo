@@ -83,6 +83,10 @@ TEMPLATES = [
 DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["ATOMIC_REQUESTS"] = False
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+if DATABASES["default"]["ENGINE"].endswith("sqlite3"):
+    # Installazione semplice senza PostgreSQL (un solo PC): attese invece di "database is locked".
+    DATABASES["default"]["CONN_MAX_AGE"] = 0
+    DATABASES["default"]["OPTIONS"] = {"timeout": 20, "transaction_mode": "IMMEDIATE"}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CACHES = {

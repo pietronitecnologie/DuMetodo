@@ -1,4 +1,4 @@
-# Avvia DuMetodo su questo PC Windows con Docker Desktop.
+﻿# Avvia DuMetodo su questo PC Windows con Docker Desktop.
 # Uso (PowerShell, nella cartella di DuMetodo):  powershell -ExecutionPolicy Bypass -File .\avvia-dumetodo.ps1
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot

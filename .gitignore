@@ -10,3 +10,4 @@ media/
 *.sqlite3
 .claude/
 client/target/
+/dati/

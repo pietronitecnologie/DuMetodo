@@ -13,6 +13,7 @@ import email
 import email.policy
 import email.utils
 import logging
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -42,8 +43,20 @@ class EsitoLetturaCasella:
     motivo: str = ""
 
 
+_LOCK_LOCALE = threading.Lock()
+
+
 @contextmanager
 def _lock_esclusivo() -> Iterator[bool]:
+    if connection.vendor != "postgresql":
+        # Installazione semplice (SQLite): un solo processo, basta un lock locale.
+        ottenuto = _LOCK_LOCALE.acquire(blocking=False)
+        try:
+            yield ottenuto
+        finally:
+            if ottenuto:
+                _LOCK_LOCALE.release()
+        return
     with connection.cursor() as cur:
         cur.execute("SELECT pg_try_advisory_lock(%s)", [_LOCK_ID])
         ottenuto = bool(cur.fetchone()[0])

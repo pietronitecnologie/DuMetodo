@@ -262,6 +262,25 @@ pytest                        # test (richiede PostgreSQL)
 ruff check . && ruff format --check .
 ```
 
+## Avvio rapido su un PC senza Docker (Windows)
+
+Serve solo Python 3.12 o più recente (`winget install Python.Python.3.12`).
+
+```powershell
+git clone https://github.com/pietronitecnologie/dumetodo.git
+cd dumetodo
+powershell -ExecutionPolicy Bypass -File .\avvia-dumetodo-semplice.ps1
+```
+
+Lo script crea l'ambiente Python, genera `.env` con segreti casuali, usa un database **SQLite** in `dati\`,
+crea l'utente `admin` (password stampata una sola volta) e avvia il server (waitress) su
+`http://localhost:8000`: la finestra resta aperta finché DuMetodo è attivo. Per riavviarlo, rilancia lo script.
+
+Limiti rispetto all'installazione Docker: niente lavori periodici (lettura automatica della casella
+ordini e nuovi tentativi automatici delle email non riuscite; la casella si legge col pulsante in Importazione),
+e un solo PC fa da server.
+Per l'uso in produzione con più utenti preferisci Docker/PostgreSQL. Per fare il backup basta copiare `dati\`.
+
 ## Avvio rapido su un PC (Docker)
 
 Serve solo [Docker Desktop](https://www.docker.com/products/docker-desktop/) avviato.
