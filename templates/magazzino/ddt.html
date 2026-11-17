@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titolo %}{{ ddt }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">{{ ddt }}</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'magazzino:ddt_lista' %}">Tutti i DDT</a></div>
+<p class="small text-muted">{{ ddt.get_origine_display }} — registrato il {{ ddt.creato_il|date:"d/m/Y H:i" }}{% if ddt.creato_da %} da {{ ddt.creato_da }}{% endif %}</p>
+{% if richieste %}<div class="alert alert-info">
+  <strong>Richieste materiali aperte per i codici di questo DDT:</strong>
+  <ul class="mb-0">{% for r in richieste %}<li>{{ r.codice_completo }} — {{ r.reparto.nome }}, richiesto {{ r.numero_richieste }} volt{{ r.numero_richieste|pluralize:"a,e" }}
+    {% if perms.core.magazzino_richieste_gestione %}<form method="post" action="{% url 'magazzino:richiesta_ricevi' r.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-success py-0">Segna ricevuto</button></form>{% endif %}</li>{% endfor %}</ul>
+</div>{% endif %}
+<form method="post" action="{% url 'magazzino:ddt_materiale_aggiungi' ddt.pk %}" class="card card-body mb-3">{% csrf_token %}
+  <strong class="mb-2">Aggiungi materiale</strong>
+  <div class="row g-2 align-items-end">
+    <div class="col-md-2"><label class="form-label small mb-0">Codice *</label>{% include "magazzino/_campo_codice.html" with id="ddt" %}</div>
+    <div class="col-md-1"><label class="form-label small mb-0">Variante</label><input class="form-control form-control-sm" name="variante" maxlength="20"></div>
+    <div class="col-md-3"><label class="form-label small mb-0">Descrizione</label><input class="form-control form-control-sm" name="descrizione" maxlength="200"></div>
+    <div class="col-md-1"><label class="form-label small mb-0">Quantità *</label><input class="form-control form-control-sm" name="quantita" required inputmode="decimal"></div>
+    <div class="col-md-1"><label class="form-label small mb-0">UM</label><input class="form-control form-control-sm" name="unita_misura" value="EA" maxlength="10"></div>
+    <div class="col-md-1"><label class="form-label small mb-0">Prezzo</label><input class="form-control form-control-sm" name="prezzo_unitario" inputmode="decimal"></div>
+    <div class="col-md-2"><label class="form-label small mb-0">Data ingresso</label><input type="date" class="form-control form-control-sm" name="data_ingresso" value="{{ oggi|date:'Y-m-d' }}"></div>
+    <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">Aggiungi</button></div>
+    <div class="col-12"><input class="form-control form-control-sm" name="note" placeholder="Note"></div>
+  </div>
+</form>
+<form id="verifica" method="post" action="{% url 'magazzino:ddt_verifica' ddt.pk %}">{% csrf_token %}</form>
+<div class="d-flex gap-2 mb-2">
+  <button form="verifica" name="verificato" value="1" class="btn btn-sm btn-outline-success">Segna verificate le selezionate</button>
+  <button form="verifica" name="verificato" value="0" class="btn btn-sm btn-outline-secondary">Segna da verificare</button>
+  <form method="post" action="{% url 'magazzino:ddt_verifica' ddt.pk %}">{% csrf_token %}<input type="hidden" name="tutto" value="1"><button class="btn btn-sm btn-success" name="verificato" value="1">Verifica tutto il DDT</button></form>
+</div>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle">
+  <thead><tr><th></th><th>Riga</th><th>Codice</th><th>Descrizione</th><th class="text-end">Quantità</th><th>UM</th><th class="text-end">Prezzo</th><th>Data ingresso</th><th>Stato</th><th>Note</th>{% if perms.core.magazzino_ddt_elimina %}<th></th>{% endif %}</tr></thead>
+  <tbody>{% for m in materiali %}<tr>
+    <td><input type="checkbox" class="form-check-input" form="verifica" name="id" value="{{ m.pk }}"></td>
+    <td class="small text-muted">{{ m.riga_documento|default_if_none:"" }}</td><td class="fw-semibold">{{ m.componente.codice_completo }}</td><td>{{ m.descrizione }}</td>
+    <td class="text-end">{{ m.quantita|floatformat:"-3" }}</td><td>{{ m.unita_misura }}</td>
+    <td class="text-end">{% if m.prezzo_unitario is not None %}€ {{ m.prezzo_unitario|floatformat:"-4" }}{% endif %}</td><td>{{ m.data_ingresso|date:"d/m/Y" }}</td>
+    <td>{% if m.verificato %}<span class="badge text-bg-success">Verificato</span>{% else %}<span class="badge text-bg-warning">Da verificare</span>{% endif %}</td>
+    <td class="small">{{ m.note }}</td>
+    {% if perms.core.magazzino_ddt_elimina %}<td class="text-end"><form method="post" action="{% url 'magazzino:ddt_materiale_elimina' m.pk %}" onsubmit="return confirm('Eliminare la riga?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger py-0">Elimina</button></form></td>{% endif %}
+  </tr>{% empty %}<tr><td colspan="11" class="text-muted text-center py-4">Nessun materiale ancora inserito in questo DDT.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

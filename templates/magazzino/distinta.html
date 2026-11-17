@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block titolo %}{{ distinta }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">{{ distinta }}</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'magazzino:distinte' %}">Tutte le distinte</a></div>
+<div class="row g-3">
+<div class="col-lg-4">
+  {% if perms.core.magazzino_distinte_modifica %}
+  <form method="post" action="{% url 'magazzino:distinta_modifica' distinta.pk %}" class="card mb-3">{% csrf_token %}
+    <div class="card-header"><strong>Intestazione</strong></div>
+    <div class="card-body">
+      <div class="row g-2">
+        <div class="col-8"><label class="form-label small mb-0">Articolo *</label><input class="form-control form-control-sm" name="articolo" value="{{ distinta.articolo.codice }}" required maxlength="50"></div>
+        <div class="col-4"><label class="form-label small mb-0">Variante</label><input class="form-control form-control-sm" name="variante" value="{{ distinta.variante }}" maxlength="20"></div>
+        <div class="col-12"><label class="form-label small mb-0">Descrizione</label><textarea class="form-control form-control-sm" name="descrizione" rows="2">{{ distinta.descrizione }}</textarea></div>
+        <div class="col-12"><label class="form-label small mb-0">Note</label><textarea class="form-control form-control-sm" name="note" rows="2">{{ distinta.note }}</textarea></div>
+      </div>
+    </div>
+    <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Aggiorna</button></div>
+  </form>
+  <form method="post" action="{% url 'magazzino:distinta_elimina' distinta.pk %}" onsubmit="return confirm('Eliminare la distinta?')" class="mb-3">{% csrf_token %}
+    <button class="btn btn-sm btn-outline-danger w-100">Elimina distinta</button></form>
+  {% else %}
+  <div class="card mb-3"><div class="card-body">
+    <div class="small text-muted">Articolo</div><div class="fw-semibold">{{ distinta.codice_completo }}</div>
+    {% if distinta.articolo.descrizione %}<div class="small">{{ distinta.articolo.descrizione }}</div>{% endif %}
+    <div class="mt-2" style="white-space:pre-wrap">{{ distinta.descrizione }}</div>
+    {% if distinta.note %}<div class="small text-muted mt-2" style="white-space:pre-wrap">{{ distinta.note }}</div>{% endif %}
+  </div></div>
+  {% endif %}
+  <div class="small text-muted">Creata il {{ distinta.creato_il|date:"d/m/Y H:i" }}{% if distinta.creata_da %} da {{ distinta.creata_da }}{% endif %}<br>
+    Modificata il {{ distinta.aggiornato_il|date:"d/m/Y H:i" }}{% if distinta.modificata_da %} da {{ distinta.modificata_da }}{% endif %}</div>
+</div>
+<div class="col-lg-8">
+  <div class="table-responsive"><table class="table table-sm bg-white align-middle">
+    <thead><tr><th>#</th><th>Componente</th><th>Descrizione</th><th>Quantità</th><th>UM</th><th>Note</th>{% if perms.core.magazzino_distinte_modifica %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for c in componenti %}<tr>
+      <td>{{ forloop.counter }}</td><td class="fw-semibold">{{ c.componente.codice_completo }}</td><td class="small">{{ c.componente.descrizione|truncatewords:10 }}</td>
+      {% if perms.core.magazzino_distinte_modifica %}
+      <td><form id="riga-{{ c.pk }}" method="post" action="{% url 'magazzino:riga_distinta_modifica' c.pk %}">{% csrf_token %}</form>
+        <input form="riga-{{ c.pk }}" class="form-control form-control-sm" style="width:7em" name="quantita" value="{{ c.quantita|floatformat:'-4' }}" inputmode="decimal"></td>
+      <td><select form="riga-{{ c.pk }}" class="form-select form-select-sm" name="um">{% for v, l in unita %}<option value="{{ v }}" {% if v == c.um %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></td>
+      <td><input form="riga-{{ c.pk }}" class="form-control form-control-sm" name="note" value="{{ c.note }}"></td>
+      <td class="text-end text-nowrap">
+        <button form="riga-{{ c.pk }}" class="btn btn-sm btn-success py-0">Salva</button>
+        <form method="post" action="{% url 'magazzino:riga_distinta_sposta' c.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="direzione" value="su"><button class="btn btn-sm btn-outline-secondary py-0" {% if forloop.first %}disabled{% endif %} title="Sposta su">↑</button></form>
+        <form method="post" action="{% url 'magazzino:riga_distinta_sposta' c.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="direzione" value="giu"><button class="btn btn-sm btn-outline-secondary py-0" {% if forloop.last %}disabled{% endif %} title="Sposta giù">↓</button></form>
+        <form method="post" action="{% url 'magazzino:riga_distinta_elimina' c.pk %}" class="d-inline" onsubmit="return confirm('Eliminare il componente dalla distinta?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger py-0">Elimina</button></form>
+      </td>
+      {% else %}
+      <td>{{ c.quantita|floatformat:"-4" }}</td><td>{{ c.get_um_display }}</td><td class="small">{{ c.note }}</td>
+      {% endif %}
+    </tr>{% empty %}<tr><td colspan="7" class="text-muted text-center py-4">Nessun componente.</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% if perms.core.magazzino_distinte_modifica %}
+  <form method="post" action="{% url 'magazzino:distinta_componente_aggiungi' distinta.pk %}" class="card card-body">{% csrf_token %}
+    <strong class="mb-2">Aggiungi componente</strong>
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3"><label class="form-label small mb-0">Codice *</label>{% include "magazzino/_campo_codice.html" with id="db" %}</div>
+      <div class="col-md-2"><label class="form-label small mb-0">Variante</label><input class="form-control form-control-sm" name="variante" maxlength="20"></div>
+      <div class="col-md-2"><label class="form-label small mb-0">Quantità *</label><input class="form-control form-control-sm" name="quantita" value="1" required inputmode="decimal"></div>
+      <div class="col-md-2"><label class="form-label small mb-0">UM</label><select class="form-select form-select-sm" name="um">{% for v, l in unita %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+      <div class="col-md-2"><label class="form-label small mb-0">Note</label><input class="form-control form-control-sm" name="note"></div>
+      <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">Aggiungi</button></div>
+    </div>
+  </form>
+  {% endif %}
+</div>
+</div>
+{% endblock %}

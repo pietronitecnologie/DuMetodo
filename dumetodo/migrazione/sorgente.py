@@ -66,8 +66,59 @@ TABELLE: dict[str, tuple[set[str], set[str]]] = {  # tabella -> (colonne obbliga
         {"id", "rif_ordine", "anno", "serie", "appendice", "articolo", "qta", "n_riga"},
         {"no_ddt", "data_ddt", "variante", "inviato", "data_inserimento"},
     ),
+    # --- Magazzino (tutte facoltative)
+    "Prod_codicecomponente": (
+        {"id", "codice"},
+        {"variante", "descrizione", "um", "prezzo_medio", "fornitore", "note", "attivo", "data_creazione"},
+    ),
+    "Prod_inventario": ({"id", "qta"}, {"componente_id", "articolo", "variante", "data"}),
+    "Prod_richiestemateriali": (
+        {"id", "codice", "reparto_id"},
+        {
+            "variante",
+            "data_richiesta",
+            "data_ricezione",
+            "numero_richieste",
+            "mail_inviata_1",
+            "mail_inviata_2",
+            "mail_inviata_3",
+            "materiale_ricevuto",
+            "materiale_urgente",
+        },
+    ),
+    "Prod_ddtingresso": ({"id"}, {"numero_ddt", "data_ddt", "fornitore", "data_elaborazione", "utente_id"}),
+    "Prod_materialeingresso": (
+        {"id", "ddt_id", "codice", "quantita"},
+        {"variante", "descrizione", "unita_misura", "prezzo_unitario", "data_ingresso", "verificato", "note"},
+    ),
+    "Prod_distintabase": (
+        {"id", "codice_padre"},
+        {
+            "variante",
+            "descrizione",
+            "data_creazione",
+            "data_modifica",
+            "utente_creazione_id",
+            "utente_modifica_id",
+            "attiva",
+            "note",
+        },
+    ),
+    "Prod_componentedistinta": (
+        {"id", "distinta_id", "quantita"},
+        {"componente_id", "codice_componente", "variante", "um", "posizione", "note"},
+    ),
 }
 FACOLTATIVE = {"Prod_anagrafica", "Plan_location", "Plan_locpath", "Prod_storicoscadenza", "Prod_documentitrasporto"}
+FACOLTATIVE |= {
+    "Prod_codicecomponente",
+    "Prod_inventario",
+    "Prod_richiestemateriali",
+    "Prod_ddtingresso",
+    "Prod_materialeingresso",
+    "Prod_distintabase",
+    "Prod_componentedistinta",
+}
 
 
 class SchemaNonCompatibile(Exception):

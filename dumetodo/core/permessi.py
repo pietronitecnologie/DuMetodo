@@ -68,6 +68,14 @@ class F:
     PIANIFICAZIONE = "pianificazione"
     PIANIFICAZIONE_CAPACITA = "pianificazione_capacita"
     PIANIFICAZIONE_REPORT_LIBERO = "pianificazione_report_libero"
+    MAGAZZINO_ANAGRAFICHE = "magazzino_anagrafiche"
+    MAGAZZINO_INVENTARIO = "magazzino_inventario"
+    MAGAZZINO_RICHIESTE = "magazzino_richieste"
+    MAGAZZINO_RICHIESTE_GESTIONE = "magazzino_richieste_gestione"
+    MAGAZZINO_DISTINTE = "magazzino_distinte"
+    MAGAZZINO_DISTINTE_MODIFICA = "magazzino_distinte_modifica"
+    MAGAZZINO_DDT = "magazzino_ddt"
+    MAGAZZINO_DDT_ELIMINA = "magazzino_ddt_elimina"
     REPORT_DASHBOARD = "report_dashboard"
     REPORT_PRODUTTIVITA = "report_produttivita"
     REPORT_MATERIALE = "report_materiale"
@@ -109,6 +117,19 @@ FUNZIONI: list[Funzione] = [
     Funzione(
         F.PIANIFICAZIONE_REPORT_LIBERO, Sezione.PRODUZIONE, "Inviare il report di pianificazione a indirizzi liberi"
     ),
+    Funzione(F.MAGAZZINO_ANAGRAFICHE, Sezione.MAGAZZINO, "Anagrafiche componenti e articoli finiti"),
+    Funzione(F.MAGAZZINO_INVENTARIO, Sezione.MAGAZZINO, "Inventario"),
+    Funzione(F.MAGAZZINO_RICHIESTE, Sezione.MAGAZZINO, "Richiedere materiali"),
+    Funzione(
+        F.MAGAZZINO_RICHIESTE_GESTIONE,
+        Sezione.MAGAZZINO,
+        "Gestire le richieste materiali",
+        "Inviare le email, segnare ricevuto/urgente, eliminare.",
+    ),
+    Funzione(F.MAGAZZINO_DISTINTE, Sezione.MAGAZZINO, "Vedere le distinte base"),
+    Funzione(F.MAGAZZINO_DISTINTE_MODIFICA, Sezione.MAGAZZINO, "Modificare le distinte base"),
+    Funzione(F.MAGAZZINO_DDT, Sezione.MAGAZZINO, "DDT in ingresso", "Inserimento, importazione, verifica, ricerca."),
+    Funzione(F.MAGAZZINO_DDT_ELIMINA, Sezione.MAGAZZINO, "Eliminare righe dei DDT in ingresso"),
     Funzione(F.REPORT_DASHBOARD, Sezione.REPORT, "Dashboard"),
     Funzione(F.REPORT_PRODUTTIVITA, Sezione.REPORT, "Analisi produttività"),
     Funzione(F.REPORT_MATERIALE, Sezione.REPORT, "Materiale per reparto e settimana"),
@@ -141,6 +162,11 @@ _OPERATORE = {
     F.UTILITA_ERRORI_IMPORTAZIONE,
     F.UTILITA_RISTAMPA_ETICHETTE,
     F.UTILITA_ANNUNCI,
+    F.MAGAZZINO_ANAGRAFICHE,
+    F.MAGAZZINO_INVENTARIO,
+    F.MAGAZZINO_RICHIESTE,
+    F.MAGAZZINO_DISTINTE,
+    F.MAGAZZINO_DDT,
 }
 _CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA}
 PROFILI: dict[str, set[str]] = {

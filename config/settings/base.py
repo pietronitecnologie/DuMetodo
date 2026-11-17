@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "dumetodo.pianificazione",
     "dumetodo.report",
     "dumetodo.utilita",
+    "dumetodo.magazzino",
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titolo %}Anteprima email richiesta materiali{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Anteprima email — {{ reparto.nome }}</h1>
+<div class="card mb-3" style="max-width:900px">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-2">Da</dt><dd class="col-sm-10">{{ messaggio.mittente }}</dd>
+      <dt class="col-sm-2">A</dt><dd class="col-sm-10">{% if messaggio.destinatari %}{{ messaggio.destinatari|join:", " }}{% else %}<span class="text-danger">nessun destinatario configurato (Configurazione → Magazzino cliente): l'email non può partire</span>{% endif %}</dd>
+      <dt class="col-sm-2">Rispondi a</dt><dd class="col-sm-10">{{ messaggio.rispondi_a|join:", "|default:"—" }}</dd>
+      <dt class="col-sm-2">Oggetto</dt><dd class="col-sm-10">{{ messaggio.oggetto }}</dd>
+    </dl>
+    <hr>
+    {# Corpo mostrato come testo: nessun HTML scritto dagli utenti viene interpretato (in Metodo: XSS). #}
+    <pre class="mb-0" style="white-space:pre-wrap">{{ messaggio.corpo_testo }}</pre>
+  </div>
+  <div class="card-footer">
+    <form method="post" action="{% url 'magazzino:richieste_invia' reparto.codice %}" class="d-flex align-items-center gap-2">{% csrf_token %}
+      <input type="hidden" name="tipo" value="{{ messaggio.tipo }}">
+      {% if tutte %}<input type="hidden" name="tutte" value="1">{% else %}{% for r in messaggio.richieste %}<input type="hidden" name="id" value="{{ r.pk }}">{% endfor %}{% endif %}
+      <span class="me-auto small">Stai per inviare la comunicazione "{{ messaggio.tipo.label }}" per {{ messaggio.richieste|length }} articol{{ messaggio.richieste|length|pluralize:"o,i" }}.</span>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'magazzino:richieste_reparto' reparto.codice %}">Annulla</a>
+      <button class="btn btn-sm btn-primary" {% if not messaggio.destinatari %}disabled{% endif %}>Conferma e invia</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

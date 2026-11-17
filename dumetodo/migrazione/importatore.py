@@ -138,6 +138,7 @@ class Importatore:
             self._note()
             self._storico()
             self._documenti_trasporto()
+        self._magazzino()
         return self.r
 
     # ------------------------------------------------------------------ utenti e gruppi
@@ -411,6 +412,12 @@ class Importatore:
                 creato_il=_aware(s.get("data_modifica")) or timezone.now(),
             )
             self.r.conteggi["storico scadenze"] += 1
+
+    # ------------------------------------------------------------------ magazzino
+    def _magazzino(self) -> None:
+        from .magazzino import ImportatoreMagazzino
+
+        ImportatoreMagazzino(self).esegui()
 
     # ------------------------------------------------------------------ righe consegnate e DDT
     def _documenti_trasporto(self) -> None:

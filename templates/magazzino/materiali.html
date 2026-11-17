@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titolo %}Ricerca materiali in ingresso{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Ricerca materiali in ingresso</h1>
+<form method="get" class="card card-body py-2 mb-2">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3"><label class="form-label small mb-0">Codice o variante</label><input type="search" class="form-control form-control-sm" name="codice" value="{{ f.codice|default:'' }}"></div>
+    <div class="col-md-3"><label class="form-label small mb-0">Fornitore</label><input type="search" class="form-control form-control-sm" name="fornitore" value="{{ f.fornitore|default:'' }}"></div>
+    <div class="col-md-2"><label class="form-label small mb-0">Dal</label><input type="date" class="form-control form-control-sm" name="data_da" value="{{ f.data_da|default:'' }}"></div>
+    <div class="col-md-2"><label class="form-label small mb-0">Al</label><input type="date" class="form-control form-control-sm" name="data_a" value="{{ f.data_a|default:'' }}"></div>
+    <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="da_verificare" value="1" id="dv" {% if f.da_verificare == "1" %}checked{% endif %}><label class="form-check-label small" for="dv">Solo da verificare</label></div></div>
+  </div>
+  <div class="mt-2"><button class="btn btn-sm btn-primary">Cerca</button>
+    <button class="btn btn-sm btn-outline-success" name="esporta" value="1">Esporta Excel</button></div>
+</form>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Codice</th><th>Descrizione</th><th class="text-end">Quantità</th><th>UM</th><th>Data ingresso</th><th>DDT</th><th>Fornitore</th><th>Stato</th></tr></thead>
+  <tbody>{% for m in pagina %}<tr>
+    <td class="fw-semibold">{{ m.componente.codice_completo }}</td><td>{{ m.descrizione }}</td><td class="text-end">{{ m.quantita|floatformat:"-3" }}</td><td>{{ m.unita_misura }}</td>
+    <td>{{ m.data_ingresso|date:"d/m/Y" }}</td><td><a href="{{ m.ddt.get_absolute_url }}">{{ m.ddt.numero }}</a> del {{ m.ddt.data|date:"d/m/Y" }}</td><td>{{ m.ddt.fornitore }}</td>
+    <td>{% if m.verificato %}<span class="badge text-bg-success">Verificato</span>{% else %}<span class="badge text-bg-warning">Da verificare</span>{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="8" class="text-muted text-center py-4">Nessun materiale.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% include "magazzino/_paginazione.html" %}
+{% endblock %}

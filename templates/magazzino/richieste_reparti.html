@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titolo %}Richiesta materiali{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Richiesta materiali</h1>
+<div class="row g-3">
+  {% for r, aperte in reparti %}<div class="col-md-4 col-lg-3"><a class="card text-decoration-none h-100" href="{% url 'magazzino:richieste_reparto' r.codice %}">
+    <div class="card-body"><div class="h5 mb-1">{{ r.nome }}</div><div class="small text-muted">{{ r.codice }}</div>
+      <div class="mt-2"><span class="badge text-bg-{% if aperte %}warning{% else %}light{% endif %}">{{ aperte }} richieste aperte</span></div></div></a></div>
+  {% empty %}<div class="col-12 text-muted">Nessun reparto configurato (Configurazione → Magazzino).</div>{% endfor %}
+</div>
+<form method="get" class="mt-4 row g-2 align-items-end" onsubmit="if(this.reparto.value){location.href=this.reparto.value;}return false;">
+  <div class="col-md-4"><label class="form-label small mb-0">Altro reparto</label>
+    <select class="form-select form-select-sm" name="reparto"><option value="">—</option>{% for r in tutti %}<option value="{% url 'magazzino:richieste_reparto' r.codice %}">{{ r.nome }} ({{ r.codice }})</option>{% endfor %}</select></div>
+  <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Apri</button></div>
+</form>
+{% endblock %}

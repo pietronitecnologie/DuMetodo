@@ -47,6 +47,7 @@ class Gruppo(StrEnum):
     TRACCIABILITA = "Tracciabilità"
     CONSEGNA = "Consegna e file per il gestionale"
     PIANIFICAZIONE = "Pianificazione e tabulati"
+    MAGAZZINO = "Magazzino"
 
 
 @dataclass(frozen=True)
@@ -460,6 +461,34 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Prefisso codice cavi",
         "Prefisso dei codici generati per i cavi.",
         legacy=("ITEM_CODE_CAVI",),
+    ),
+    # --- Magazzino ----------------------------------------------------------------------
+    Parametro(
+        "magazzino.reparti_richieste",
+        Tipo.TESTO,
+        Gruppo.MAGAZZINO,
+        "Reparti con richiesta materiali",
+        "Codici dei reparti proposti nella pagina Richiesta materiali, separati da virgola "
+        "(in Metodo erano fissi: Pulsanti GK01-PLS ed Elettronica GK01-ETT).",
+        default="GK01-PLS, GK01-ETT",
+    ),
+    Parametro(
+        "magazzino.dimensione_massima_file_ddt_mb",
+        Tipo.INTERO,
+        Gruppo.MAGAZZINO,
+        "Dimensione massima file DDT (MB)",
+        "I file CSV/TXT/XML dei DDT in ingresso più grandi vengono rifiutati.",
+        default=5,
+        minimo=1,
+    ),
+    Parametro(
+        "magazzino.xml_tipi_documento",
+        Tipo.TESTO,
+        Gruppo.MAGAZZINO,
+        "Tipi documento XML accettati",
+        "Valori di <DocType> importati come DDT in ingresso, separati da virgola (es. 5). "
+        "Vuoto = tutti i documenti, come in Metodo.",
+        default="",
     ),
 )
 

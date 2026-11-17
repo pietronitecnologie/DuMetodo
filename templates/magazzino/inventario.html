@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titolo %}Inventario{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Inventario</h1>
+<div class="row g-3">
+<div class="col-lg-3">
+  <form method="post" action="{% url 'magazzino:inventario_aggiungi' %}" class="card mb-3">{% csrf_token %}
+    <input type="hidden" name="torna" value="{{ request.get_full_path }}">
+    <div class="card-header"><strong>Registra conteggio</strong></div>
+    <div class="card-body">
+      <label class="form-label small mb-0">Codice *</label>{% include "magazzino/_campo_codice.html" with id="inv" %}
+      <label class="form-label small mb-0 mt-2">Variante</label><input class="form-control form-control-sm" name="variante" maxlength="20">
+      <label class="form-label small mb-0 mt-2">Quantità contata *</label><input class="form-control form-control-sm" name="qta" required inputmode="decimal">
+      <div class="form-text">Un codice non in anagrafica viene aggiunto ai componenti.</div>
+    </div>
+    <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Registra</button></div>
+  </form>
+  <div class="card"><div class="card-header"><strong>Esportazioni (xlsx)</strong></div>
+    <div class="list-group list-group-flush small">
+      <a class="list-group-item list-group-item-action" href="{% url 'magazzino:inventario_esporta' %}?tipo=ultimi">Giacenze (ultimo conteggio)</a>
+      <a class="list-group-item list-group-item-action" href="{% url 'magazzino:inventario_esporta' %}?tipo=somma">Somma di tutti i conteggi</a>
+      <a class="list-group-item list-group-item-action" href="{% url 'magazzino:inventario_esporta' %}?tipo=tutti">Tutti i conteggi</a>
+      {% for a in anni %}<a class="list-group-item list-group-item-action" href="{% url 'magazzino:inventario_esporta' %}?tipo=tutti&amp;anno={{ a }}">Conteggi {{ a }}</a>{% endfor %}
+    </div></div>
+</div>
+<div class="col-lg-9">
+  <ul class="nav nav-tabs mb-2">
+    <li class="nav-item"><a class="nav-link {% if vista == 'ultimi' %}active{% endif %}" href="?vista=ultimi&amp;q={{ q|urlencode }}">Ultimo conteggio per componente</a></li>
+    <li class="nav-item"><a class="nav-link {% if vista == 'storico' %}active{% endif %}" href="?vista=storico&amp;q={{ q|urlencode }}">Storico conteggi</a></li>
+  </ul>
+  <form method="get" class="row g-2 mb-2 align-items-end"><input type="hidden" name="vista" value="{{ vista }}">
+    <div class="col-md-5"><input type="search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Cerca codice, variante, descrizione"></div>
+    {% if vista == "storico" %}<div class="col-md-2"><select class="form-select form-select-sm" name="anno"><option value="">Tutti gli anni</option>{% for a in anni %}<option value="{{ a }}" {% if a == anno %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></div>{% endif %}
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Filtra</button></div>
+  </form>
+  <div class="table-responsive"><table class="table table-sm bg-white align-middle">
+    <thead><tr><th>Componente</th><th>Descrizione</th><th class="text-end">Quantità</th><th>Data</th><th>Utente</th></tr></thead>
+    <tbody>
+    {% for c in pagina %}<tr><td class="fw-semibold">{{ c.componente.codice_completo }}</td><td>{{ c.componente.descrizione|truncatewords:10 }}</td>
+      <td class="text-end"><span class="badge text-bg-primary">{{ c.qta|floatformat:"-3" }}</span></td><td>{{ c.data|date:"d/m/Y H:i" }}</td><td class="small">{{ c.utente|default:"" }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="text-muted text-center py-4">Nessun conteggio.</td></tr>{% endfor %}
+    </tbody></table></div>
+  {% include "magazzino/_paginazione.html" %}
+</div>
+</div>
+{% endblock %}
