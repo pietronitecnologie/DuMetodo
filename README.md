@@ -1,6 +1,7 @@
 # DuMetodo
 
-Gestione della **Produzione** di Geko: ordini (commesse), importazione ordini dal cliente,
+Gestione della **Produzione** del **Fornitore** (l'azienda che possiede DuMetodo): ordini (commesse),
+importazione degli ordini inviati dal **Cliente**,
 comunicazione con il cliente tramite note. È la riscrittura completa dell'app `Prod` di
 [Metodo](https://github.com/pietronitecnologie/Metodo) (branch `Metodo`), con Django 5.2 LTS.
 
@@ -83,9 +84,9 @@ Le password non vengono importate: il comando dice in quale variabile d'ambiente
 ## Note e comunicazione con il cliente
 
 * Una nota **condivisa** avvisa la controparte via email:
-  * se la scrive Geko, l'email va al cliente;
-  * se la scrive il cliente, va a Geko.
-* Una nota **interna** è visibile solo a Geko.
+  * se la scrive il Fornitore, l'email va al Cliente;
+  * se la scrive il Cliente, va al Fornitore.
+* Una nota **interna** è visibile solo al Fornitore.
 * Le email passano da una coda (`EmailInUscita`), salvata nella stessa transazione della nota e
   inviata in background con tentativi ripetuti. Se l'SMTP non risponde, la nota non si perde e
   l'utente non vede errori.
@@ -94,8 +95,9 @@ Le password non vengono importate: il comando dice in quale variabile d'ambiente
 
 ## Ruoli
 
-I gruppi hanno gli stessi nomi di Metodo, ora con una gerarchia:
-**Geko Admin** ⊃ **GekoCapRep** ⊃ **Geko** (operatore), e **Customer** (cliente).
+Personale del Fornitore, con gerarchia: **Amministratore** ⊃ **Caporeparto** ⊃ **Operatore**.
+Utenti del Cliente: **Cliente**. I gruppi di Metodo (`Geko Admin`, `GekoCapRep`, `Geko`, `Customer`)
+vengono rinominati automaticamente dalla migrazione `core/0002`.
 
 ## Sviluppo
 

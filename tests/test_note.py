@@ -10,23 +10,23 @@ from dumetodo.comunicazioni.models import EmailInUscita, Lato, Nota, StatoEmail,
 from dumetodo.ordini.models import Ordine
 
 
-def test_nota_geko_avvisa_il_cliente(ordine, operatore, configura_email, django_capture_on_commit_callbacks):
+def test_nota_fornitore_avvisa_il_cliente(ordine, operatore, configura_email, django_capture_on_commit_callbacks):
     with django_capture_on_commit_callbacks(execute=True):
         nota = servizi.aggiungi_nota(ordine, operatore, "Consegna <b>anticipata</b>")
-    assert nota.lato == Lato.GEKO
+    assert nota.lato == Lato.FORNITORE
     assert len(mail.outbox) == 1
     m = mail.outbox[0]
-    assert m.to == ["cliente1@example.com", "cliente2@example.com"] and m.reply_to == ["geko@example.com"]
+    assert m.to == ["cliente1@example.com", "cliente2@example.com"] and m.reply_to == ["fornitore@example.com"]
     html = m.alternatives[0][0]
     assert "&lt;b&gt;anticipata&lt;/b&gt;" in html  # niente HTML iniettato nelle email
     assert EmailInUscita.objects.get().stato == StatoEmail.INVIATA
 
 
-def test_nota_cliente_avvisa_geko(ordine, cliente, configura_email, django_capture_on_commit_callbacks):
+def test_nota_cliente_avvisa_fornitore(ordine, cliente, configura_email, django_capture_on_commit_callbacks):
     with django_capture_on_commit_callbacks(execute=True):
         nota = servizi.aggiungi_nota(ordine, cliente, "Quando arriva?", visibilita=Visibilita.INTERNA)
     assert nota.lato == Lato.CLIENTE and nota.visibilita == Visibilita.CONDIVISA  # il cliente non scrive note interne
-    assert mail.outbox[0].to == ["geko@example.com"]
+    assert mail.outbox[0].to == ["fornitore@example.com"]
 
 
 def test_nota_interna_non_inviata_ne_visibile_al_cliente(ordine, operatore, cliente, configura_email):
@@ -81,8 +81,8 @@ def test_note_non_lette(ordine, operatore, cliente):
 
 def test_viste_note(client, ordine, cliente, operatore):
     client.force_login(cliente)
-    r = client.post(f"/note/ordine/{ordine.pk}/aggiungi/", {"testo": "Ciao Geko"})
-    assert r.status_code == 200 and b"Ciao Geko" in r.content
+    r = client.post(f"/note/ordine/{ordine.pk}/aggiungi/", {"testo": "Ciao Fornitore"})
+    assert r.status_code == 200 and b"Ciao Fornitore" in r.content
     nota_interna = servizi.aggiungi_nota(ordine, operatore, "segreto", visibilita=Visibilita.INTERNA)
     assert b"segreto" not in client.get(f"/note/ordine/{ordine.pk}/").content
     assert client.post(f"/note/{nota_interna.pk}/elimina/").status_code == 404

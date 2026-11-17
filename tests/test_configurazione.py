@@ -86,7 +86,7 @@ def test_import_configurazione_legacy(tmp_path, capsys):
     call_command("importa_configurazione_metodo", str(f), "--applica")
     config.invalida_cache()
     assert config.leggi("produzione.prezzo_resa_oraria") == Decimal("45.50")
-    assert config.leggi("email.magazzino_fornitore") == ["m1@example.com", "m2@example.com"]
+    assert config.leggi("email.magazzino_cliente") == ["m1@example.com", "m2@example.com"]
     assert Reparto.objects.get(nome="Pulsanti").soglia_ore_settimanali == Decimal("120.5")
     assert "segreta" not in json.dumps(list(ValoreParametro.objects.values_list("valore", flat=True)))
     assert "EMAIL_HOST_PASSWORD" in capsys.readouterr().out
@@ -103,3 +103,12 @@ def test_pagina_configurazione_solo_admin(client, operatore, amministratore):
     config.invalida_cache()
     assert config.leggi("produzione.prezzo_resa_oraria") == Decimal("48.2")
     assert ValoreParametro.objects.get().aggiornato_da == amministratore
+
+
+def test_mappatura_gruppi_metodo_coerente_con_la_migrazione():
+    import importlib
+
+    from dumetodo.core.ruoli import GRUPPI_METODO
+
+    migrazione = importlib.import_module("dumetodo.core.migrations.0002_rinomina_gruppi_metodo")
+    assert {vecchio: ruolo.value for vecchio, ruolo in GRUPPI_METODO.items()} == migrazione.RINOMINE

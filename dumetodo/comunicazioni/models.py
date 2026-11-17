@@ -20,22 +20,22 @@ from django.utils import timezone
 
 
 class Lato(models.TextChoices):
-    GEKO = "GEKO", "Geko"
+    FORNITORE = "FOR", "Fornitore"
     CLIENTE = "CLI", "Cliente"
 
 
 class Visibilita(models.TextChoices):
     CONDIVISA = "CON", "Condivisa con il cliente"
-    INTERNA = "INT", "Solo interna (Geko)"
+    INTERNA = "INT", "Solo interna (Fornitore)"
 
 
 class NotaQuerySet(models.QuerySet["Nota"]):
     def visibili(self) -> NotaQuerySet:
         return self.filter(eliminata_il__isnull=True)
 
-    def per_utente(self, interno: bool) -> NotaQuerySet:
+    def per_utente(self, fornitore: bool) -> NotaQuerySet:
         qs = self.visibili()
-        return qs if interno else qs.filter(visibilita=Visibilita.CONDIVISA)
+        return qs if fornitore else qs.filter(visibilita=Visibilita.CONDIVISA)
 
 
 class Nota(models.Model):

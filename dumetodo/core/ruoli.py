@@ -1,9 +1,11 @@
 """Ruoli applicativi e controlli di accesso.
 
-In Metodo i permessi erano controllati con copie sparse di ``isGeko``/``isCustomer`` e
-molti controlli erano solo nei template. Qui c'è un'unica fonte di verità, con gerarchia
-esplicita: un Amministratore è anche Operatore. I nomi dei gruppi restano quelli di
-Metodo per semplificare la migrazione degli utenti.
+Il "Fornitore" è l'azienda che possiede DuMetodo e produce; il "Cliente" è chi invia gli ordini.
+
+In Metodo i permessi erano controllati con copie sparse di funzioni per gruppo e molti
+controlli erano solo nei template. Qui c'è un'unica fonte di verità, con gerarchia
+esplicita: un Amministratore è anche Caporeparto e Operatore. I vecchi gruppi di Metodo
+vengono rinominati automaticamente (vedi ``GRUPPI_METODO`` e la migrazione core 0002).
 """
 
 from __future__ import annotations
@@ -19,10 +21,19 @@ from django.http import HttpRequest, HttpResponse
 
 
 class Ruolo(StrEnum):
-    OPERATORE = "Geko"
-    AMMINISTRATORE = "Geko Admin"
-    CAPOREPARTO = "GekoCapRep"
-    CLIENTE = "Customer"
+    OPERATORE = "Operatore"
+    CAPOREPARTO = "Caporeparto"
+    AMMINISTRATORE = "Amministratore"
+    CLIENTE = "Cliente"
+
+
+# Nome del gruppo in Metodo -> ruolo in DuMetodo (usato dalla migrazione degli utenti).
+GRUPPI_METODO: dict[str, Ruolo] = {
+    "Geko": Ruolo.OPERATORE,
+    "GekoCapRep": Ruolo.CAPOREPARTO,
+    "Geko Admin": Ruolo.AMMINISTRATORE,
+    "Customer": Ruolo.CLIENTE,
+}
 
 
 # Ruoli impliciti: chi ha la chiave ha anche i ruoli elencati.
@@ -54,8 +65,8 @@ def ha_ruolo(user: Any, *ruoli: Ruolo) -> bool:
     return bool(ruoli_utente(user) & set(ruoli))
 
 
-def is_interno(user: Any) -> bool:
-    """Personale Geko (operatore, caporeparto o amministratore)."""
+def is_fornitore(user: Any) -> bool:
+    """Personale del Fornitore (operatore, caporeparto o amministratore)."""
     return ha_ruolo(user, Ruolo.OPERATORE)
 
 

@@ -1,4 +1,4 @@
-"""Lettura del file ordini TXT esportato dal gestionale del cliente (DMG / Gekosas).
+"""Lettura del file ordini TXT esportato dal gestionale del Cliente.
 
 Formato (dalla documentazione di Metodo, vedi docs/analisi-metodo/02-ordini.md §3.1):
 - separatore ``@``, prima riga = intestazione, campi riempiti con spazi;

@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from dumetodo.configurazione import servizi as config
-from dumetodo.core.ruoli import Ruolo, ha_ruolo, is_interno
+from dumetodo.core.ruoli import Ruolo, ha_ruolo, is_fornitore
 from dumetodo.ordini.models import Ordine
 
 from . import email
@@ -24,15 +24,15 @@ class NotaNonValida(Exception):
 
 
 def _lato(utente: Any) -> str:
-    if is_interno(utente):
-        return Lato.GEKO
+    if is_fornitore(utente):
+        return Lato.FORNITORE
     if ha_ruolo(utente, Ruolo.CLIENTE):
         return Lato.CLIENTE
     raise NotaNonValida("Non hai i permessi per scrivere note.")
 
 
 def note_visibili(ordine: Ordine, utente: Any) -> QuerySet[Nota]:
-    return ordine.note.per_utente(is_interno(utente)).select_related("autore")
+    return ordine.note.per_utente(is_fornitore(utente)).select_related("autore")
 
 
 @transaction.atomic
@@ -60,9 +60,9 @@ def aggiungi_nota(ordine: Ordine, utente: Any, testo: str, visibilita: str = Vis
 
 
 def _accoda_notifica(nota: Nota) -> None:
-    """Geko scrive -> avvisa il cliente; il cliente scrive -> avvisa Geko. Rispondi-a = chi ha scritto."""
-    geko, cliente = config.leggi("email.geko"), config.leggi("email.cliente")
-    destinatari, rispondi_a = (cliente, geko) if nota.lato == Lato.GEKO else (geko, cliente)
+    """Il Fornitore scrive -> avvisa il Cliente e viceversa. Rispondi-a = il lato di chi ha scritto."""
+    fornitore, cliente = config.leggi("email.fornitore"), config.leggi("email.cliente")
+    destinatari, rispondi_a = (cliente, fornitore) if nota.lato == Lato.FORNITORE else (fornitore, cliente)
     mittente = config.leggi("email.mittente") or settings.DEFAULT_FROM_EMAIL
     contesto = {"nota": nota, "ordine": nota.ordine, "url": settings.SITE_URL + nota.ordine.get_absolute_url()}
     email.accoda(
@@ -97,7 +97,7 @@ def segna_lette(ordine: Ordine, utente: Any) -> int:
 
 def annota_non_lette(ordini: QuerySet[Ordine], utente: Any) -> QuerySet[Ordine]:
     """Aggiunge ``note_non_lette`` a ogni ordine della lista con una subquery (niente N+1)."""
-    note = Nota.objects.per_utente(is_interno(utente)).filter(ordine=OuterRef("pk"))
+    note = Nota.objects.per_utente(is_fornitore(utente)).filter(ordine=OuterRef("pk"))
     note = note.exclude(Exists(LetturaNota.objects.filter(nota=OuterRef("pk"), utente=utente)))
     conteggio = note.order_by().values("ordine").annotate(n=Count("pk")).values("n")
     return ordini.annotate(note_non_lette=Coalesce(Subquery(conteggio, output_field=IntegerField()), 0))

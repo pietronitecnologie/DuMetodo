@@ -2,7 +2,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET, require_POST
 
-from dumetodo.core.ruoli import Ruolo, is_interno, richiede_ruolo
+from dumetodo.core.ruoli import Ruolo, is_fornitore, richiede_ruolo
 from dumetodo.ordini.models import Ordine
 
 from . import servizi
@@ -47,7 +47,7 @@ def aggiungi(request: HttpRequest, ordine_id: int) -> HttpResponse:
 @richiede_ruolo(*TUTTI)
 def elimina(request: HttpRequest, nota_id: int) -> HttpResponse:
     qs = Nota.objects.select_related("ordine")
-    if not is_interno(request.user):
+    if not is_fornitore(request.user):
         qs = qs.filter(visibilita=Visibilita.CONDIVISA)
     nota = get_object_or_404(qs, pk=nota_id)
     errore = ""

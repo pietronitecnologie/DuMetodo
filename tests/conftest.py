@@ -56,7 +56,7 @@ def configura_email(db):
     config.scrivi_molti(
         {
             "email.mittente": "metodo@example.com",
-            "email.geko": "geko@example.com",
+            "email.fornitore": "fornitore@example.com",
             "email.cliente": "cliente1@example.com, cliente2@example.com",
         }
     )
