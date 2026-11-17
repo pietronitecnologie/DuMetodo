@@ -17,6 +17,9 @@ directories = "6"
 open = "5"
 url = "2"
 
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
+
 [profile.release]
 opt-level = "s"
 lto = true

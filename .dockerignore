@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+.claude
+client/target
+staticfiles
+media
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache

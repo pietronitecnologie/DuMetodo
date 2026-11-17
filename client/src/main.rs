@@ -6,11 +6,14 @@
 
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
+mod avvio;
 mod configurazione;
 mod ponte;
 mod sicurezza;
 
-use std::path::PathBuf;
+use std::cell::RefCell;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::Mutex;
 
 use muda::{ContextMenu, Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
@@ -28,11 +31,21 @@ const VERSIONE: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]
 enum Evento {
-    DallaPagina(String),
+    /// Messaggio dalla pagina: `dal_server` è true solo se la pagina è del server configurato.
+    DallaPagina {
+        testo: String,
+        dal_server: bool,
+    },
     VoceMenu(MenuId),
     Naviga(String),
-    DownloadCompletato { percorso: Option<PathBuf>, riuscito: bool },
+    DownloadCompletato {
+        percorso: Option<PathBuf>,
+        riuscito: bool,
+    },
 }
+
+/// Server attualmente collegato (None finché l'utente non ne indica uno raggiungibile).
+type Origine = Rc<RefCell<Option<Url>>>;
 
 fn argomento(nome: &str) -> Option<String> {
     let mut args = std::env::args().skip(1);
@@ -47,19 +60,44 @@ fn argomento(nome: &str) -> Option<String> {
     None
 }
 
-fn pagina_errore(titolo: &str, dettaglio: &str, percorso: &str) -> String {
-    let esc = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
-    format!(
-        "<!doctype html><meta charset=utf-8><title>DuMetodo</title>\
-         <body style=\"font-family:system-ui,sans-serif;max-width:640px;margin:60px auto;line-height:1.5\">\
-         <h1 style=\"font-size:22px\">{}</h1><p>{}</p>\
-         <p>File di configurazione:<br><code>{}</code></p>\
-         <p>Imposta <code>url</code> con l'indirizzo del server DuMetodo e riavvia il programma, oppure avvialo con \
-         <code>--url https://...</code>.</p></body>",
-        esc(titolo),
-        esc(dettaglio),
-        esc(percorso)
-    )
+/// Registro degli errori accanto alla configurazione (in release su Windows non c'è console).
+fn registra(percorso_conf: &Path, messaggio: &str) {
+    use std::io::Write;
+    if let Some(cartella) = percorso_conf.parent()
+        && let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(cartella.join("client.log"))
+    {
+        let _ = writeln!(f, "{messaggio}");
+    }
+}
+
+/// Errore che impedisce l'avvio: messaggio visibile all'utente (su Windows una finestra di dialogo).
+fn errore_fatale(percorso_conf: &Path, messaggio: &str) -> ! {
+    registra(percorso_conf, messaggio);
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
+        let testo: Vec<u16> = messaggio.encode_utf16().chain(std::iter::once(0)).collect();
+        let titolo: Vec<u16> = "DuMetodo".encode_utf16().chain(std::iter::once(0)).collect();
+        unsafe {
+            MessageBoxW(std::ptr::null_mut(), testo.as_ptr(), titolo.as_ptr(), MB_OK | MB_ICONERROR);
+        }
+    }
+    eprintln!("{messaggio}");
+    std::process::exit(1)
+}
+
+/// Prova a collegarsi a `url`: se raggiungibile carica DuMetodo, altrimenti mostra una pagina che lo spiega.
+fn collega(webview: &WebView, origine: &Origine, url: &Url) {
+    match avvio::raggiungibile(url) {
+        Ok(()) => {
+            *origine.borrow_mut() = Some(url.clone());
+            let _ = webview.load_url(url.as_str());
+        }
+        Err(e) => {
+            *origine.borrow_mut() = None;
+            let _ = webview.load_html(&avvio::pagina_non_raggiungibile(url.as_str(), &e));
+        }
+    }
 }
 
 fn main() {
@@ -74,16 +112,19 @@ fn main() {
     if let Some(u) = argomento("--url") {
         conf.url = u;
     }
-    let origine = Url::parse(conf.url.trim()).ok().filter(|u| matches!(u.scheme(), "http" | "https"));
+    let mut url_corrente = avvio::normalizza(&conf.url).ok();
 
     let event_loop: EventLoop<Evento> = EventLoopBuilder::with_user_event().build();
     let proxy = event_loop.create_proxy();
-    let window = WindowBuilder::new()
+    let window = match WindowBuilder::new()
         .with_title("DuMetodo")
         .with_inner_size(tao::dpi::LogicalSize::new(1366.0, 860.0))
         .with_maximized(true)
         .build(&event_loop)
-        .expect("impossibile creare la finestra");
+    {
+        Ok(w) => w,
+        Err(e) => errore_fatale(&percorso_conf, &format!("Impossibile creare la finestra: {e}")),
+    };
     if conf.schermo_intero {
         window.set_fullscreen(Some(Fullscreen::Borderless(None)));
     }
@@ -96,9 +137,29 @@ fn main() {
         }
     }));
 
-    let webview = costruisci_webview(&window, &conf, origine.as_ref(), errore_conf, &percorso_conf, proxy);
+    let origine: Origine = Rc::new(RefCell::new(None));
+    let pagina_iniziale = match (&errore_conf, &url_corrente) {
+        (Some(e), _) => avvio::pagina_indirizzo(&conf.url, e, &percorso_conf),
+        (None, None) => avvio::pagina_indirizzo(&conf.url, "", &percorso_conf),
+        (None, Some(_)) => "<!doctype html><meta charset=utf-8><title>DuMetodo</title><body>".to_string(),
+    };
+    let webview = match costruisci_webview(&window, &conf, origine.clone(), &pagina_iniziale, proxy) {
+        Ok(w) => w,
+        Err(e) => errore_fatale(
+            &percorso_conf,
+            &format!(
+                "Impossibile avviare il motore delle pagine web: {e}\n\nSu Windows serve Microsoft Edge WebView2 \
+                 Runtime (https://developer.microsoft.com/microsoft-edge/webview2/)."
+            ),
+        ),
+    };
     if let Some(z) = conf.zoom {
         let _ = webview.zoom(z.clamp(0.3, 3.0));
+    }
+    if errore_conf.is_none()
+        && let Some(u) = &url_corrente
+    {
+        collega(&webview, &origine, u);
     }
 
     // Il menu nativo deve restare in vita finché è aperto (su Linux la scelta arriva in modo asincrono).
@@ -110,8 +171,31 @@ fn main() {
         *control_flow = ControlFlow::Wait;
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *control_flow = ControlFlow::Exit,
-            Event::UserEvent(Evento::DallaPagina(testo)) => match ponte::interpreta(&testo) {
-                Some(Messaggio::Menu { voci }) => {
+            Event::UserEvent(Evento::DallaPagina { testo, dal_server }) => match ponte::interpreta(&testo) {
+                // Pagine locali del client (primo avvio, server non raggiungibile).
+                Some(Messaggio::ImpostaServer { url }) if !dal_server => match avvio::normalizza(&url) {
+                    Ok(u) => {
+                        if let Err(e) = avvio::salva_url(&percorso_conf, u.as_str()) {
+                            registra(&percorso_conf, &format!("Salvataggio indirizzo non riuscito: {e}"));
+                        }
+                        url_corrente = Some(u.clone());
+                        collega(&webview, &origine, &u);
+                    }
+                    Err(e) => {
+                        let _ = webview.load_html(&avvio::pagina_indirizzo(&url, &e, &percorso_conf));
+                    }
+                },
+                Some(Messaggio::Riprova) if !dal_server => {
+                    if let Some(u) = &url_corrente {
+                        collega(&webview, &origine, u);
+                    }
+                }
+                Some(Messaggio::CambiaServer) if !dal_server => {
+                    let attuale = url_corrente.as_ref().map(|u| u.to_string()).unwrap_or_default();
+                    let _ = webview.load_html(&avvio::pagina_indirizzo(&attuale, "", &percorso_conf));
+                }
+                // Pagine del server.
+                Some(Messaggio::Menu { voci }) if dal_server => {
                     let menu = Menu::new();
                     for v in voci.iter().take(ponte::MASSIMO_VOCI) {
                         if v.separatore {
@@ -125,7 +209,7 @@ fn main() {
                     mostra_menu(&window, &menu);
                     menu_aperto.replace(menu);
                 }
-                Some(Messaggio::Stampa) => {
+                Some(Messaggio::Stampa) if dal_server => {
                     let _ = webview.print();
                 }
                 Some(Messaggio::SchermoIntero) if !chiosco => {
@@ -169,90 +253,87 @@ fn main() {
 fn costruisci_webview(
     window: &Window,
     conf: &Configurazione,
-    origine: Option<&Url>,
-    errore_conf: Option<String>,
-    percorso_conf: &std::path::Path,
+    origine: Origine,
+    pagina_iniziale: &str,
     proxy: EventLoopProxy<Evento>,
-) -> WebView {
-    let mut builder = WebViewBuilder::new()
+) -> wry::Result<WebView> {
+    let origine_nav = origine.clone();
+    let origine_fin = origine.clone();
+    let origine_ipc = origine;
+    let proxy_ipc = proxy.clone();
+    let proxy_fin = proxy.clone();
+    let proxy_dl = proxy;
+    let regole_dl = conf.download.clone();
+
+    let builder = WebViewBuilder::new()
         .with_user_agent(format!(
             "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 DuMetodoClient/{VERSIONE}"
         ))
         .with_devtools(conf.strumenti_sviluppatore && !conf.schermo_intero)
-        .with_clipboard(true);
-
-    match origine {
-        None => {
-            let (titolo, dettaglio) = match errore_conf {
-                Some(e) => ("Configurazione non valida", e),
-                None => ("Indirizzo del server non configurato", String::new()),
+        .with_clipboard(true)
+        .with_html(pagina_iniziale)
+        .with_initialization_script(ponte::SCRIPT_INIZIALE)
+        .with_navigation_handler(move |indirizzo| {
+            let Some(o) = origine_nav.borrow().clone() else {
+                // Nessun server collegato: solo le pagine locali del client.
+                return indirizzo.starts_with("about:") || indirizzo.starts_with("data:");
             };
-            builder = builder.with_html(pagina_errore(titolo, &dettaglio, &percorso_conf.display().to_string()));
-        }
-        Some(origine) => {
-            let origine_nav = origine.clone();
-            let origine_finestre = origine.clone();
-            let origine_ipc = origine.clone();
-            let proxy_ipc = proxy.clone();
-            let proxy_fin = proxy.clone();
-            let proxy_dl = proxy;
-            let regole_dl = conf.download.clone();
-            builder = builder
-                .with_url(origine.as_str())
-                .with_initialization_script(ponte::SCRIPT_INIZIALE)
-                .with_navigation_handler(move |indirizzo| match sicurezza::classifica(&origine_nav, &indirizzo) {
-                    Destinazione::Interna => true,
+            match sicurezza::classifica(&o, &indirizzo) {
+                Destinazione::Interna => true,
+                Destinazione::Esterna => {
+                    let _ = open::that_detached(&indirizzo);
+                    false
+                }
+                Destinazione::Bloccata => false,
+            }
+        })
+        .with_new_window_req_handler(move |indirizzo, _| {
+            if let Some(o) = origine_fin.borrow().clone() {
+                match sicurezza::classifica(&o, &indirizzo) {
+                    // Un solo "browser": le pagine del server si aprono nella stessa finestra.
+                    Destinazione::Interna => {
+                        let _ = proxy_fin.send_event(Evento::Naviga(indirizzo));
+                    }
                     Destinazione::Esterna => {
                         let _ = open::that_detached(&indirizzo);
-                        false
                     }
-                    Destinazione::Bloccata => false,
-                })
-                .with_new_window_req_handler(move |indirizzo, _| {
-                    match sicurezza::classifica(&origine_finestre, &indirizzo) {
-                        // Un solo "browser": le pagine del server si aprono nella stessa finestra.
-                        Destinazione::Interna => {
-                            let _ = proxy_fin.send_event(Evento::Naviga(indirizzo));
-                        }
-                        Destinazione::Esterna => {
-                            let _ = open::that_detached(&indirizzo);
-                        }
-                        Destinazione::Bloccata => {}
-                    }
-                    NewWindowResponse::Deny
-                })
-                .with_ipc_handler(move |richiesta| {
-                    // Si accettano messaggi solo dalle pagine del server configurato.
-                    let da = richiesta.uri().to_string();
-                    if matches!(sicurezza::classifica(&origine_ipc, &da), Destinazione::Interna) {
-                        let _ = proxy_ipc.send_event(Evento::DallaPagina(richiesta.body().clone()));
-                    }
-                })
-                .with_download_started_handler(move |indirizzo, percorso| {
-                    // Le regole sono locali a questo PC: il server non può scegliere dove scrivere.
-                    if let Some(cartella) = regole_dl.cartella_per(&indirizzo)
-                        && std::fs::create_dir_all(&cartella).is_ok()
-                    {
-                        let nome = percorso.file_name().map(|n| n.to_owned()).unwrap_or_else(|| "download".into());
-                        *percorso = cartella.join(nome);
-                    }
-                    true
-                })
-                .with_download_completed_handler(move |_, percorso, riuscito| {
-                    let _ = proxy_dl.send_event(Evento::DownloadCompletato { percorso, riuscito });
-                });
-        }
-    }
+                    Destinazione::Bloccata => {}
+                }
+            }
+            NewWindowResponse::Deny
+        })
+        .with_ipc_handler(move |richiesta| {
+            let da = richiesta.uri().to_string();
+            let dal_server = origine_ipc.borrow().as_ref().is_some_and(|o| {
+                matches!(sicurezza::classifica(o, &da), Destinazione::Interna) && da.starts_with("http")
+            });
+            let _ = proxy_ipc.send_event(Evento::DallaPagina { testo: richiesta.body().clone(), dal_server });
+        })
+        .with_download_started_handler(move |indirizzo, percorso| {
+            // Le regole sono locali a questo PC: il server non può scegliere dove scrivere.
+            if let Some(cartella) = regole_dl.cartella_per(&indirizzo)
+                && std::fs::create_dir_all(&cartella).is_ok()
+            {
+                let nome = percorso.file_name().map(|n| n.to_owned()).unwrap_or_else(|| "download".into());
+                *percorso = cartella.join(nome);
+            }
+            true
+        })
+        .with_download_completed_handler(move |_, percorso, riuscito| {
+            let _ = proxy_dl.send_event(Evento::DownloadCompletato { percorso, riuscito });
+        });
 
     #[cfg(any(target_os = "windows", target_os = "macos"))]
-    let webview = builder.build(window);
+    return builder.build(window);
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    let webview = {
+    {
         use tao::platform::unix::WindowExtUnix;
         use wry::WebViewBuilderExtUnix;
-        builder.build_gtk(window.default_vbox().expect("vbox della finestra"))
-    };
-    webview.expect("impossibile creare la webview")
+        match window.default_vbox() {
+            Some(vbox) => builder.build_gtk(vbox),
+            None => Err(wry::Error::MessageSender),
+        }
+    }
 }
 
 fn mostra_menu(window: &Window, menu: &Menu) {

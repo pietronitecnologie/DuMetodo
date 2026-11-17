@@ -449,6 +449,7 @@ dependencies = [
  "tao",
  "toml 1.2.1+spec-1.1.0",
  "url",
+ "windows-sys 0.61.2",
  "wry",
 ]
 

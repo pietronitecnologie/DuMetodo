@@ -1,6 +1,8 @@
-# Avvio: cp .env.example .env (e compilalo), poi: docker compose up -d --build
+# Avvio rapido: ./avvia-dumetodo.sh (Linux/macOS) o avvia-dumetodo.ps1 (Windows).
+# Manuale: cp .env.example .env (e compilalo), poi: docker compose up -d --build
 x-app: &app
   build: .
+  image: dumetodo:locale
   env_file: .env
   restart: unless-stopped
   depends_on:
@@ -33,17 +35,24 @@ services:
   web:
     <<: *app
     ports: ["8000:8000"]
+    volumes: [media:/app/media]
     depends_on:
       migrate: {condition: service_completed_successfully}
 
   worker:
     <<: *app
+    volumes: [media:/app/media]
     command: celery -A config worker --loglevel=INFO --concurrency=2
+    depends_on:
+      migrate: {condition: service_completed_successfully}
 
   beat:
     <<: *app
     # UN SOLO processo beat: è lui che decide quando partono i lavori periodici.
     command: celery -A config beat --loglevel=INFO
+    depends_on:
+      migrate: {condition: service_completed_successfully}
 
 volumes:
   pgdata:
+  media:

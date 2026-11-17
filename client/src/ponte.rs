@@ -14,6 +14,12 @@ pub enum Messaggio {
     Zoom {
         passo: f64,
     },
+    /// Solo dalle pagine locali del client: indirizzo del server scritto dall'utente.
+    ImpostaServer {
+        url: String,
+    },
+    Riprova,
+    CambiaServer,
 }
 
 #[derive(Debug, Deserialize)]

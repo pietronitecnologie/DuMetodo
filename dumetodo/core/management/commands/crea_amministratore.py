@@ -1,0 +1,27 @@
+"""Crea il primo amministratore (idempotente): password casuale, mostrata una sola volta."""
+
+import secrets
+from typing import Any
+
+from django.contrib.auth.models import User
+from django.core.management.base import BaseCommand
+
+from dumetodo.core.permessi import applica_profilo
+
+
+class Command(BaseCommand):
+    help = "Crea l'utente amministratore iniziale se non esiste."
+
+    def add_arguments(self, parser: Any) -> None:
+        parser.add_argument("--username", default="admin")
+
+    def handle(self, *args: Any, **opts: Any) -> None:
+        nome = opts["username"]
+        if User.objects.filter(username=nome).exists():
+            self.stdout.write(f"L'utente '{nome}' esiste già: password invariata.")
+            return
+        password = secrets.token_urlsafe(12)
+        u = User.objects.create_user(nome, password=password, is_staff=True, is_superuser=True)
+        applica_profilo(u, "Amministratore")
+        self.stdout.write(self.style.SUCCESS(f"Creato l'amministratore '{nome}' con password: {password}"))
+        self.stdout.write("Annotala e cambiala dopo il primo accesso (Amministrazione > Utenti e permessi).")

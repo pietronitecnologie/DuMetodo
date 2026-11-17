@@ -262,10 +262,30 @@ pytest                        # test (richiede PostgreSQL)
 ruff check . && ruff format --check .
 ```
 
+## Avvio rapido su un PC (Docker)
+
+Serve solo [Docker Desktop](https://www.docker.com/products/docker-desktop/) avviato.
+
+```powershell
+git clone https://github.com/pietronitecnologie/dumetodo.git
+cd dumetodo
+powershell -ExecutionPolicy Bypass -File .\avvia-dumetodo.ps1
+```
+
+Su Linux/macOS: `./avvia-dumetodo.sh`. Lo script:
+
+1. crea `.env` con chiavi e password casuali (solo la prima volta; uso in rete locale via http);
+2. avvia database, Redis, web, worker e beat (`docker compose up -d --build`) e applica le migrazioni;
+3. crea l'utente `admin` con una password casuale e la stampa **una sola volta**;
+4. collega il client desktop a `http://localhost:8000` e lo apre (o apre il browser).
+
+Gli altri PC della rete raggiungono DuMetodo su `http://<nome-del-pc>:8000`.
+Fermare: `docker compose down` (i dati restano nei volumi). Riavviare: rilanciare lo script.
+
 ## Produzione (Docker)
 
 ```bash
 cp .env.example .env          # compila tutti i valori
 docker compose up -d --build  # web (gunicorn), worker Celery, beat, PostgreSQL, Redis
-docker compose run --rm web python manage.py createsuperuser
+docker compose exec web python manage.py crea_amministratore
 ```

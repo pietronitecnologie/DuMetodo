@@ -103,3 +103,23 @@ def test_nuove_funzioni_agli_amministratori_completi(db):
     finally:
         permessi.FUNZIONI.remove(nuova)
         sincronizza_permessi()
+
+
+@pytest.mark.django_db
+def test_crea_amministratore_idempotente():
+    from io import StringIO
+
+    from django.contrib.auth.models import User
+    from django.core.management import call_command
+
+    out = StringIO()
+    call_command("crea_amministratore", stdout=out)
+    password = out.getvalue().split("password: ")[1].split()[0]
+    admin = User.objects.get(username="admin")
+    assert admin.is_superuser and admin.check_password(password)
+
+    out = StringIO()
+    call_command("crea_amministratore", stdout=out)
+    assert "esiste già" in out.getvalue()
+    admin.refresh_from_db()
+    assert admin.check_password(password)
