@@ -11,3 +11,5 @@ media/
 .claude/
 client/target/
 /dati/
+/dumetodo.egg-info/
+/build/
