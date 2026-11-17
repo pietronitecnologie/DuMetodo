@@ -42,7 +42,7 @@
         <tbody>
         {% for r in righe %}
         <tr class="{% if not r.is_attiva %}riga-chiusa{% elif r.bolla_emessa %}riga-bolla{% elif r.in_evasione %}riga-evasione{% elif r.bloccata %}riga-bloccata{% endif %}{% if r.scorporata %} riga-scorporata{% endif %}">
-          <td>{{ r.n_riga }}</td><td class="articolo" style="color: {{ r.colore }}">{{ r.articolo }}</td><td>{{ r.variante }}</td>
+          <td>{{ r.n_riga }}</td><td class="articolo" style="color: {{ r.colore }}" title="{{ r.descrizione|default:'Nessuna descrizione in anagrafica' }}">{{ r.articolo }}</td><td>{{ r.variante }}</td>
           <td class="text-end">{{ r.qta|floatformat:"-3" }}</td>
           {% if is_amministratore %}<td class="text-end">{{ r.prezzo_unitario|default:"" }}</td>{% endif %}
           <td>{{ r.data_scadenza|date:"d/m/Y" }}</td>

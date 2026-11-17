@@ -146,4 +146,5 @@ def test_dettaglio_mostra_i_colori_degli_articoli(client, ordine, operatore):
 
     client.force_login(operatore)
     html = client.get(f"/ordini/{ordine.pk}/").content.decode()
-    assert f'style="color: {P[0]}">ART-A' in html and f'style="color: {P[1]}">ART-B' in html
+    assert f'style="color: {P[0]}" title="Nessuna descrizione in anagrafica">ART-A' in html
+    assert f'style="color: {P[1]}"' in html

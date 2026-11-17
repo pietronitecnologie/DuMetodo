@@ -223,3 +223,17 @@ def test_zip_corrotto_e_altri_allegati():
     with pytest.raises(AllegatoNonValido):
         estrai_file_ordine("a.zip", b"non zip", max_byte=1000)
     assert estrai_file_ordine("foto.jpg", b"x", max_byte=1000) == []
+
+
+@pytest.mark.django_db
+def test_importazione_registra_i_nuovi_articoli_in_anagrafica():
+    from dumetodo.anagrafica.models import Articolo
+    from dumetodo.core.models import Reparto
+
+    Reparto.objects.create(codice="GK01-UDEF", nome="Non definito")
+    Articolo.objects.create(codice="ESISTENTE", descrizione="già curato", reparto=None, nuovo=False)
+    importa(file_txt(riga(art="NUOVO"), riga(n="0000002", art="ESISTENTE")))
+    nuovo = Articolo.objects.get(codice="NUOVO")
+    assert nuovo.nuovo and nuovo.reparto.codice == "GK01-UDEF"
+    esistente = Articolo.objects.get(codice="ESISTENTE")
+    assert esistente.descrizione == "già curato" and not esistente.nuovo  # mai sovrascritto

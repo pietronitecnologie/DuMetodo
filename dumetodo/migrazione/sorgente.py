@@ -20,6 +20,19 @@ TABELLE: dict[str, tuple[set[str], set[str]]] = {  # tabella -> (colonne obbliga
     "auth_user_groups": ({"user_id", "group_id"}, set()),
     "Plan_location": ({"id", "area"}, {"path_id"}),
     "Plan_locpath": ({"id", "code"}, set()),
+    "Prod_anagrafica": (
+        {"id", "articolo"},
+        {
+            "location_id",
+            "um",
+            "prezzo",
+            "description",
+            "tabulato",
+            "prezzo_ricalcolato",
+            "data_prezzo",
+            "nuovo_articolo",
+        },
+    ),
     "Prod_ordine": (
         {"id", "rif_ordine", "anno", "serie", "appendice", "stato"},
         {"data_consegna", "data_inserimento", "data_scadenza", "urgenza", "tipo", "location_id"},
@@ -54,7 +67,7 @@ TABELLE: dict[str, tuple[set[str], set[str]]] = {  # tabella -> (colonne obbliga
         {"no_ddt", "data_ddt", "variante", "inviato", "data_inserimento"},
     ),
 }
-FACOLTATIVE = {"Plan_location", "Plan_locpath", "Prod_storicoscadenza", "Prod_documentitrasporto"}
+FACOLTATIVE = {"Prod_anagrafica", "Plan_location", "Plan_locpath", "Prod_storicoscadenza", "Prod_documentitrasporto"}
 
 
 class SchemaNonCompatibile(Exception):

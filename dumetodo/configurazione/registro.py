@@ -190,6 +190,15 @@ PARAMETRI: tuple[Parametro, ...] = (
         default=60,
         minimo=1,
     ),
+    Parametro(
+        "anagrafica.reparto_nuovi_articoli",
+        Tipo.TESTO,
+        Gruppo.ORDINI,
+        "Reparto dei nuovi articoli",
+        "Codice del reparto assegnato agli articoli registrati automaticamente dall'importazione "
+        "(in Metodo: GK01-UDEF, 'non definito').",
+        default="GK01-UDEF",
+    ),
     # --- Importazione -------------------------------------------------------------------
     Parametro(
         "importazione.lettura_mail_attiva",

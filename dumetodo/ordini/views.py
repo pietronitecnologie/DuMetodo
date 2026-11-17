@@ -5,6 +5,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
+from dumetodo.anagrafica.servizi import descrizione_subquery
 from dumetodo.comunicazioni import servizi as note
 from dumetodo.core.ruoli import Ruolo, ha_ruolo, richiede_ruolo
 
@@ -49,7 +50,9 @@ def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
         "ordini/dettaglio.html",
         {
             "ordine": ordine,
-            "righe": colora_cambi_articolo(righe.select_related("riga_origine")),
+            "righe": colora_cambi_articolo(
+                righe.select_related("riga_origine").annotate(descrizione=descrizione_subquery())
+            ),
             "mostra_tutte": mostra_tutte,
             "transizioni": transizioni,
             "storico": ordine.storico_scadenze.select_related("riga", "utente")[:50],

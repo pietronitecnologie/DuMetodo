@@ -24,6 +24,8 @@ CREATE TABLE auth_group (id int PRIMARY KEY, name varchar);
 CREATE TABLE auth_user_groups (id serial, user_id int, group_id int);
 CREATE TABLE "Plan_locpath" (id int PRIMARY KEY, code varchar);
 CREATE TABLE "Plan_location" (id int PRIMARY KEY, area varchar, path_id int, site_id int);
+CREATE TABLE "Prod_anagrafica" (id int PRIMARY KEY, articolo varchar, location_id int, um varchar, prezzo float,
+  description text, tabulato varchar, prezzo_ricalcolato float, data_prezzo date, nuovo_articolo bool);
 CREATE TABLE "Prod_ordine" (id int PRIMARY KEY, data_consegna date, data_inserimento timestamptz, data_scadenza date,
   stato varchar, urgenza varchar, tipo varchar, location_id int, rif_ordine varchar, anno varchar, serie varchar,
   appendice varchar);
@@ -48,6 +50,8 @@ INSERT INTO auth_group VALUES (1,'Geko'),(2,'Customer'),(3,'Altro');
 INSERT INTO auth_user_groups (user_id, group_id) VALUES (1,1),(2,2),(2,3);
 INSERT INTO "Plan_locpath" VALUES (1,'GK01-PLS');
 INSERT INTO "Plan_location" VALUES (1,'Pulsanti',1,1);
+INSERT INTO "Prod_anagrafica" VALUES (1,'ART-A',null,'EA',0.26,'',  '0',null,null,true),
+  (2,'ART-A',1,'EA',0.26,'Pulsante rosso','2',null,null,false),(3,'ART-C',null,'M',null,null,'x',null,null,null);
 -- ordine 4300 duplicato (appendice '0' e NULL sono la stessa chiave); 4301 con anno a 2 cifre
 INSERT INTO "Prod_ordine" VALUES
   (10,null,'2024-03-01','2024-04-02','ANN','NRM','ASM',null,'0004300','2024','00040','0'),
@@ -140,6 +144,12 @@ def test_migrazione_completa(metodo_db):
 
     s = StoricoScadenza.objects.get()
     assert (s.ordine, s.nuova, s.motivo, s.utente) == (o4301, dt.date(2024, 4, 5), "ritardo fornitore", mario)
+
+    from dumetodo.anagrafica.models import Articolo
+
+    a = Articolo.objects.get(codice="ART-A")
+    assert (a.descrizione, a.reparto.codice, a.tabulato, a.nuovo) == ("Pulsante rosso", "GK01-PLS", 2, False)
+    assert Articolo.objects.get(codice="ART-C").um == "M"
 
     # DDT
     rc = RigaConsegnata.objects.get()

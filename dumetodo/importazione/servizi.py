@@ -134,6 +134,9 @@ def importa(file: FileImportato, *, forza: bool = False) -> FileImportato:
                 )
             )
 
+    from dumetodo.anagrafica.servizi import registra_articoli
+
+    registra_articoli(r.articolo for r in lettura.righe)
     if any(p.livello == Livello.ERRORE for p in c.problemi):
         stato = StatoFile.CON_ERRORI
     elif c.problemi:

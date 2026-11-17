@@ -26,6 +26,7 @@ from typing import Any
 from django.contrib.auth.models import Group, User
 from django.utils import timezone
 
+from dumetodo.anagrafica.models import Articolo, Tabulato, UnitaMisura
 from dumetodo.comunicazioni.models import Lato, LetturaNota, Nota, Visibilita
 from dumetodo.consegne.models import DDT, Consegna, RigaConsegnata
 from dumetodo.core.models import Reparto
@@ -131,6 +132,7 @@ class Importatore:
         ):
             self._utenti()
             self._reparti()
+            self._anagrafica()
             self._ordini()
             self._righe()
             self._note()
@@ -185,6 +187,36 @@ class Importatore:
             reparto, _ = Reparto.objects.get_or_create(codice=codice[:30], defaults={"nome": nome[:80]})
             self.reparti[loc["id"]] = reparto
             self.r.conteggi["reparti"] += 1
+
+    # ------------------------------------------------------------------ anagrafica articoli
+    def _anagrafica(self) -> None:
+        per_codice: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for a in self.m.righe("Prod_anagrafica"):
+            codice = _testo(a.get("articolo"))[:50]
+            if codice:
+                per_codice[codice].append(a)
+        for codice, gruppo in per_codice.items():
+            # Doppioni: si tiene il record più completo (in Metodo un job ne cancellava uno a caso).
+            gruppo.sort(key=lambda a: (bool(_testo(a.get("description"))), a.get("location_id") is not None, a["id"]))
+            a = gruppo[-1]
+            if len(gruppo) > 1:
+                self.r.avviso("anagrafica", f"{codice}: {len(gruppo)} record in Metodo, tenuto id {a['id']}")
+            try:
+                tabulato = int(_testo(a.get("tabulato")) or 0)
+            except ValueError:
+                tabulato = 0
+            Articolo.objects.create(
+                codice=codice,
+                descrizione=_testo(a.get("description")),
+                reparto=self.reparti.get(a.get("location_id")),
+                um=a.get("um") if a.get("um") in UnitaMisura.values else UnitaMisura.PEZZI,
+                prezzo_riferimento=_decimale(a.get("prezzo")),
+                prezzo_ricalcolato=_decimale(a.get("prezzo_ricalcolato")),
+                data_prezzo=a.get("data_prezzo"),
+                tabulato=tabulato if tabulato in Tabulato.values else 0,
+                nuovo=bool(a.get("nuovo_articolo")) if a.get("nuovo_articolo") is not None else True,
+            )
+            self.r.conteggi["articoli"] += 1
 
     # ------------------------------------------------------------------ ordini
     def _chiave(self, riga: dict[str, Any], categoria: str, rif: str) -> Chiave | None:
