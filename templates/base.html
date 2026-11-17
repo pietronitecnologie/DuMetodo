@@ -26,7 +26,6 @@
 {% if user.is_authenticated %}
 <header class="dm-testata">
   <a class="dm-marchio" href="{% url 'home' %}" title="DuMetodo">
-    <img class="dm-marchio-logo" src="{% static 'img/dumetodo.svg' %}" alt="" width="30" height="30">
     <span class="dm-marchio-testo"><b>DuMetodo</b><small>{{ nome_fornitore }}</small></span>
   </a>
   {% if logo_azienda %}<a class="dm-logo-azienda" href="{% url 'home' %}" title="{{ nome_fornitore }}">

@@ -47,7 +47,7 @@ a:hover { text-decoration: underline; }
 .dm-marchio:hover { text-decoration: none; color: #fff; }
 .dm-marchio-logo { width: 30px; height: 30px; flex: 0 0 30px; display: block; }
 .dm-marchio-testo { display: flex; flex-direction: column; line-height: 1.1; }
-.dm-marchio-testo b { font-size: 14px; letter-spacing: .2px; }
+.dm-marchio-testo b { font-size: 15px; letter-spacing: .2px; }
 .dm-logo-azienda { display: flex; align-items: center; height: 32px; padding: 3px 8px; margin-right: 10px; flex: 0 0 auto;
   background: #fff; border-radius: 7px; }
 .dm-logo-azienda img { display: block; max-height: 26px; max-width: 120px; object-fit: contain; }
@@ -85,7 +85,12 @@ html.dm-modo-reparto .dm-pulsante-icona[data-dm-reparto] { background: var(--dm-
 .dm-piede { padding: 6px 16px 10px; color: #8a94a3; font-size: 12px; }
 
 /* Schermi stretti: prima solo icone nel menu, poi menu a tendina */
-@media (max-width: 1499.98px) { .dm-marchio-testo { display: none; } .dm-marchio { margin-right: 4px; } .dm-vai { width: 200px; } }
+@media (max-width: 1499.98px) {
+  .dm-marchio-testo small { display: none; }
+  .dm-marchio, .dm-logo-azienda { margin-right: 4px; }
+  .dm-vai { width: 180px; }
+  .dm-menu-voce { padding: 0 7px; gap: 5px; font-size: 13px; }
+}
 @media (max-width: 1199.98px) {
   .dm-menu-voce span { display: none; }
   .dm-menu-voce { padding: 0 8px; }

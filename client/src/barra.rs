@@ -39,17 +39,26 @@ pub fn script_aggiorna(voci: &[VoceScheda<'_>]) -> String {
     format!("window.aggiorna && window.aggiorna({json})")
 }
 
-pub const PAGINA: &str = r#"<!doctype html>
+/// Pagina della barra con l'icona di DuMetodo (PNG 32 px incorporato).
+pub fn pagina() -> String {
+    use base64::Engine;
+    let icona = base64::engine::general_purpose::STANDARD.encode(include_bytes!("../../static/img/dumetodo-32.png"));
+    MODELLO.replace("{ICONA}", &icona)
+}
+
+const MODELLO: &str = r##"<!doctype html>
 <html lang="it"><head><meta charset="utf-8"><title>Schede</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #08111e; user-select: none;
     font: 13px "Segoe UI", system-ui, sans-serif; }
+  #icona { width: 20px; height: 20px; margin: 0 6px 6px 4px; flex: 0 0 20px; align-self: center; }
   #schede { display: flex; align-items: flex-end; height: 100%; padding: 4px 6px 0; gap: 2px; }
   .scheda { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 220px; height: 30px;
-    padding: 0 6px 0 12px; border-radius: 8px 8px 0 0; color: #93a1b8; background: #0c1828; cursor: default; }
+    padding: 0 6px 0 12px; border-radius: 8px 8px 0 0; color: #93a1b8; background: #0c1828; cursor: default;
+    border: 1px solid #263955; border-bottom: 0; }
   .scheda:hover { background: #13223a; color: #dbe3ef; }
-  .scheda.attiva { background: #0f1b2d; color: #fff; }
+  .scheda.attiva { background: #0f1b2d; color: #fff; border-color: #3d5a85; box-shadow: inset 0 2px 0 #2f80ff; }
   .titolo { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chiudi { width: 20px; height: 20px; flex: 0 0 20px; border: 0; border-radius: 5px; background: none; color: inherit;
     font-size: 15px; line-height: 1; opacity: .65; }
@@ -58,41 +67,59 @@ pub const PAGINA: &str = r#"<!doctype html>
     font-size: 20px; line-height: 1; }
   #nuova:hover { background: #13223a; color: #fff; }
 </style></head>
-<body><div id="schede"></div>
+<body><div id="schede"><img id="icona" alt="" src="data:image/png;base64,{ICONA}"></div>
 <script>
 (() => {
   const invia = (m) => window.ipc.postMessage(JSON.stringify(m));
   const contenitore = document.getElementById("schede");
+  let ultimo = "";
+  // Ridisegna solo se qualcosa è cambiato: ridisegnare durante un clic farebbe perdere il clic.
   window.aggiorna = (schede) => {
-    contenitore.textContent = "";
+    const firma = JSON.stringify(schede);
+    if (firma === ultimo) return;
+    ultimo = firma;
+    contenitore.querySelectorAll(".scheda, #nuova").forEach((el) => el.remove());
     for (const s of schede) {
       const d = document.createElement("div");
       d.className = "scheda" + (s.attiva ? " attiva" : "");
+      d.dataset.id = s.id;
       d.title = s.titolo;
       const t = document.createElement("span");
       t.className = "titolo";
       t.textContent = s.titolo || "Nuova scheda";
       const x = document.createElement("button");
       x.className = "chiudi";
+      x.type = "button";
       x.textContent = "×";
       x.title = "Chiudi scheda (Ctrl+W)";
-      x.addEventListener("click", (e) => { e.stopPropagation(); invia({ tipo: "chiudi", id: s.id }); });
-      d.addEventListener("mousedown", (e) => { if (e.button === 0) invia({ tipo: "attiva", id: s.id }); });
-      d.addEventListener("auxclick", (e) => { if (e.button === 1) invia({ tipo: "chiudi", id: s.id }); });
       d.append(t, x);
       contenitore.append(d);
     }
     const n = document.createElement("button");
     n.id = "nuova";
+    n.type = "button";
     n.textContent = "+";
     n.title = "Nuova scheda (Ctrl+T)";
-    n.addEventListener("click", () => invia({ tipo: "nuova" }));
     contenitore.append(n);
   };
+  // Un solo gestore per tutta la barra, sul clic completo (premi e rilascia).
+  contenitore.addEventListener("click", (e) => {
+    if (e.target.closest("#nuova")) { invia({ tipo: "nuova" }); return; }
+    const scheda = e.target.closest(".scheda");
+    if (!scheda) return;
+    const id = Number(scheda.dataset.id);
+    if (e.target.closest(".chiudi")) invia({ tipo: "chiudi", id });
+    else if (!scheda.classList.contains("attiva")) invia({ tipo: "attiva", id });
+  });
+  contenitore.addEventListener("auxclick", (e) => {
+    const scheda = e.target.closest(".scheda");
+    if (scheda && e.button === 1) invia({ tipo: "chiudi", id: Number(scheda.dataset.id) });
+  });
+  contenitore.addEventListener("mousedown", (e) => { if (e.button === 1) e.preventDefault(); });
   document.addEventListener("contextmenu", (e) => e.preventDefault());
   document.addEventListener("dblclick", (e) => { if (e.target === contenitore) invia({ tipo: "nuova" }); });
 })();
-</script></body></html>"#;
+</script></body></html>"##;
 
 #[cfg(test)]
 mod test {

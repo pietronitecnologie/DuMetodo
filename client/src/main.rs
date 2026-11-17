@@ -227,7 +227,11 @@ fn main() {
                 disponi(&window, &barra, &schede);
             }
             Event::UserEvent(Evento::DallaBarra(testo)) => match barra::interpreta(&testo) {
-                Some(barra::Comando::Attiva { id }) => attiva_id = Some(id),
+                // Clic sulla scheda già attiva: niente da fare (e niente ridisegno della barra).
+                Some(barra::Comando::Attiva { id }) if schede.get(attiva).is_some_and(|s| s.id != id) => {
+                    attiva_id = Some(id)
+                }
+                Some(barra::Comando::Attiva { .. }) => {}
                 Some(barra::Comando::Chiudi { id }) => chiudi = Some(id),
                 Some(barra::Comando::Nuova) => apri = Some(None),
                 None => {}
@@ -523,7 +527,7 @@ fn costruisci_barra(contenitore: &Contenitore, window: &Window, proxy: EventLoop
     let (b, _) = aree(window);
     let builder = WebViewBuilder::new()
         .with_bounds(b)
-        .with_html(barra::PAGINA)
+        .with_html(barra::pagina())
         .with_devtools(false)
         // La barra non naviga mai altrove.
         .with_navigation_handler(|indirizzo| indirizzo.starts_with("about:") || indirizzo.starts_with("data:"))
