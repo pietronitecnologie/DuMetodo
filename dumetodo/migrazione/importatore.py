@@ -44,6 +44,7 @@ from dumetodo.ordini.models import (
 )
 
 from .sorgente import Metodo
+from .tracciabilita import ImportaTracciabilita
 
 Chiave = tuple[str, str, str, int]
 STATI_LEGACY = {"Lav": StatoOrdine.IN_LAVORAZIONE, "BLC": StatoOrdine.INSERITO}
@@ -139,6 +140,7 @@ class Importatore:
             self._storico()
             self._documenti_trasporto()
         self._magazzino()
+        ImportaTracciabilita(self).esegui()
         return self.r
 
     # ------------------------------------------------------------------ utenti e gruppi

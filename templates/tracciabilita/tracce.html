@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load tracciabilita %}
+{% block titolo %}Tracce{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-2 gap-2">
+  <h1 class="h4 me-auto mb-0">Tracce</h1>
+  <a class="btn btn-sm btn-primary" href="{% url 'tracciabilita:traccia_nuova' %}">Nuova traccia</a>
+</div>
+{% filtri form "codice ordine chiave reparto postazione dal al inserita_dal inserita_al" %}
+<div class="table-responsive">
+<table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Codice</th><th>Ordine</th><th>Inserita</th><th>Data</th><th>Chiave</th><th>Valore</th><th>Reparto</th><th>Postazione</th><th></th></tr></thead>
+  <tbody>
+  {% for t in pagina %}
+  <tr>
+    <td><a href="{{ t.get_absolute_url }}">{{ t.elemento.codice|default:"—" }}</a></td>
+    <td>{% if t.ordine %}<a href="{{ t.ordine.get_absolute_url }}">{{ t.ordine.codice_breve }}</a>{% endif %}</td>
+    <td>{{ t.inserita_il|date:"d/m/Y H:i" }}</td>
+    <td>{{ t.data|date:"d/m/Y H:i" }}</td>
+    <td>{{ t.chiave_leggibile }}</td>
+    <td>{{ t.valore }}</td>
+    <td>{{ t.reparto|default:"" }}</td>
+    <td>{{ t.postazione.codice|default:"" }}</td>
+    <td>{% if t.elemento %}<a class="btn btn-sm btn-outline-primary py-0" href="{% url 'tracciabilita:traccia_nuova' %}?codice={{ t.elemento.codice|urlencode }}">Aggiungi evento</a>{% endif %}</td>
+  </tr>
+  {% empty %}<tr><td colspan="9" class="text-muted text-center">Nessuna traccia nel periodo.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "tracciabilita/_paginazione.html" %}
+{% endblock %}

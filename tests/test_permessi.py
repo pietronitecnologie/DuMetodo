@@ -72,3 +72,15 @@ def test_senza_permesso_403(client, db):
     u = User.objects.create_user("x")
     client.force_login(u)
     assert client.get("/utenti/").status_code == 403
+
+
+def test_pagina_iniziale_secondo_i_permessi(client, db):
+    from dumetodo.core.permessi import permessi_di
+
+    u = User.objects.create_user("x")
+    client.force_login(u)
+    assert client.get("/").status_code == 403
+    u.user_permissions.set(permessi_di([F.REPORT_PREZZI, F.REPORT_DASHBOARD]))
+    assert client.get("/")["Location"] == "/report/"
+    u.user_permissions.add(*permessi_di([F.ORDINI_VEDERE]))
+    assert client.get("/")["Location"] == "/ordini/"

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titolo %}Work order batterie{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center mb-2 gap-2">
+  <h1 class="h4 me-auto mb-0">Work order batterie</h1>
+  <span class="small text-muted">Batterie senza eventi da più di {{ giorni }} giorni. Una ricarica chiude il work order.</span>
+  {% if perms.core.tracciabilita_work_order %}<form method="post" action="{% url 'tracciabilita:work_order_genera' %}">{% csrf_token %}
+    <button class="btn btn-sm btn-outline-primary">Controlla ora</button></form>{% endif %}
+</div>
+<ul class="nav nav-tabs mb-2">
+  <li class="nav-item"><a class="nav-link {% if stato == 'OPN' %}active{% endif %}" href="?stato=OPN">Aperti</a></li>
+  <li class="nav-item"><a class="nav-link {% if stato == 'CLS' %}active{% endif %}" href="?stato=CLS">Chiusi</a></li>
+  <li class="nav-item"><a class="nav-link {% if stato == 'tutti' %}active{% endif %}" href="?stato=tutti">Tutti</a></li>
+</ul>
+<table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Batteria</th><th>Ultimo evento</th><th>Reparto</th><th>Aperto il</th><th>Stato</th><th></th></tr></thead>
+  <tbody>
+  {% for wo in pagina %}
+  <tr>
+    <td>{% if wo.ultima_traccia %}<a href="{{ wo.ultima_traccia.get_absolute_url }}">{{ wo.elemento }}</a>{% else %}{{ wo.elemento }}{% endif %}</td>
+    <td>{{ wo.ultima_traccia.data|date:"d/m/Y"|default:"" }}</td>
+    <td>{{ wo.ultima_traccia.reparto|default:"" }}</td>
+    <td>{{ wo.aperto_il|date:"d/m/Y" }}</td>
+    <td>{{ wo.get_stato_display }}{% if wo.chiuso_il %} <span class="small text-muted">{{ wo.chiuso_il|date:"d/m/Y" }}{% if wo.chiuso_da %} · {{ wo.chiuso_da }}{% endif %}</span>{% endif %}</td>
+    <td class="text-nowrap">{% if wo.stato == 'OPN' %}
+      <a class="btn btn-sm btn-outline-primary py-0" href="{% url 'tracciabilita:batteria_nuova' %}?codice={{ wo.elemento.codice|urlencode }}">Ricarica</a>
+      <form method="post" action="{% url 'tracciabilita:work_order_chiudi' wo.pk %}" class="d-inline">{% csrf_token %}
+        <button class="btn btn-sm btn-outline-secondary py-0">Chiudi</button></form>{% endif %}</td>
+  </tr>
+  {% empty %}<tr><td colspan="6" class="text-muted text-center">Nessun work order.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% include "tracciabilita/_paginazione.html" %}
+{% endblock %}

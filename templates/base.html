@@ -12,7 +12,7 @@
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
   <div class="container-fluid">
-    <a class="navbar-brand" href="{% url 'ordini:lista' %}">DuMetodo <small class="text-secondary fs-6">{{ nome_fornitore }}</small></a>
+    <a class="navbar-brand" href="{% url 'home' %}">DuMetodo <small class="text-secondary fs-6">{{ nome_fornitore }}</small></a>
     {% if user.is_authenticated %}
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="menu">
@@ -48,6 +48,38 @@
             <li><a class="dropdown-item" href="{% url 'magazzino:componenti' %}">Anagrafica componenti</a></li>
             <li><a class="dropdown-item" href="{% url 'magazzino:articoli' %}">Anagrafica articoli finiti</a></li>{% endif %}
           </ul></li>{% endif %}
+        {% if perms.core.tracciabilita_consulta or perms.core.tracciabilita_registra %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Tracciabilità e qualità</a>
+          <ul class="dropdown-menu">
+            {% if perms.core.tracciabilita_registra %}
+            <li><h6 class="dropdown-header">Registra</h6></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:batteria_nuova' %}">Batteria</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:traccia_nuova' %}">Traccia generica</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:qualita_nuovo' %}">Controllo qualità</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:reclamo_nuovo' %}">Reclamo</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:display_nuovo' %}">Test display</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:file_carica' %}">Foto per ordine</a></li>
+            <li><hr class="dropdown-divider"></li>
+            {% endif %}
+            <li><h6 class="dropdown-header">Consulta</h6></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:batterie' %}">Batterie</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:cavi' %}">Cavi</a></li>
+            {% if perms.core.tracciabilita_registra %}
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:tracce' %}">Tutte le tracce</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:work_order' %}">Work order batterie</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:file_lista' %}">Foto e file</a></li>
+            {% endif %}
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:qualita' %}">Controlli qualità</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:reclami' %}">Reclami</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:display' %}">Test display</a></li>
+            {% if perms.core.tracciabilita_postazioni %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:postazioni' %}">Postazioni e token</a></li>
+            {% endif %}
+          </ul>
+        </li>
+        {% endif %}
         {% if perms.core.report_dashboard or perms.core.report_produttivita or perms.core.report_materiale or perms.core.report_prezzi %}
         <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Report</a>
           <ul class="dropdown-menu">

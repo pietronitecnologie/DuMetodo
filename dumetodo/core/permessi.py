@@ -76,6 +76,11 @@ class F:
     MAGAZZINO_DISTINTE_MODIFICA = "magazzino_distinte_modifica"
     MAGAZZINO_DDT = "magazzino_ddt"
     MAGAZZINO_DDT_ELIMINA = "magazzino_ddt_elimina"
+    TRACCIABILITA_CONSULTA = "tracciabilita_consulta"
+    TRACCIABILITA_REGISTRA = "tracciabilita_registra"
+    TRACCIABILITA_WORK_ORDER = "tracciabilita_work_order"
+    TRACCIABILITA_POSTAZIONI = "tracciabilita_postazioni"
+    TRACCIABILITA_FILE_ELIMINA_TUTTI = "tracciabilita_file_elimina_tutti"
     REPORT_DASHBOARD = "report_dashboard"
     REPORT_PRODUTTIVITA = "report_produttivita"
     REPORT_MATERIALE = "report_materiale"
@@ -130,6 +135,21 @@ FUNZIONI: list[Funzione] = [
     Funzione(F.MAGAZZINO_DISTINTE_MODIFICA, Sezione.MAGAZZINO, "Modificare le distinte base"),
     Funzione(F.MAGAZZINO_DDT, Sezione.MAGAZZINO, "DDT in ingresso", "Inserimento, importazione, verifica, ricerca."),
     Funzione(F.MAGAZZINO_DDT_ELIMINA, Sezione.MAGAZZINO, "Eliminare righe dei DDT in ingresso"),
+    Funzione(
+        F.TRACCIABILITA_CONSULTA,
+        Sezione.QUALITA,
+        "Consultare tracciabilità e qualità",
+        "Batterie, cavi, tracce dell'ordine, controlli qualità, reclami, test display, foto.",
+    ),
+    Funzione(
+        F.TRACCIABILITA_REGISTRA,
+        Sezione.QUALITA,
+        "Registrare tracce e controlli",
+        "Batterie, tracce, lotti/buste, controlli qualità, reclami, test display, foto; work order batterie.",
+    ),
+    Funzione(F.TRACCIABILITA_WORK_ORDER, Sezione.QUALITA, "Generare i work order delle batterie"),
+    Funzione(F.TRACCIABILITA_POSTAZIONI, Sezione.QUALITA, "Gestire postazioni e token dei banchi di collaudo"),
+    Funzione(F.TRACCIABILITA_FILE_ELIMINA_TUTTI, Sezione.QUALITA, "Eliminare foto e file caricati da altri"),
     Funzione(F.REPORT_DASHBOARD, Sezione.REPORT, "Dashboard"),
     Funzione(F.REPORT_PRODUTTIVITA, Sezione.REPORT, "Analisi produttività"),
     Funzione(F.REPORT_MATERIALE, Sezione.REPORT, "Materiale per reparto e settimana"),
@@ -167,13 +187,15 @@ _OPERATORE = {
     F.MAGAZZINO_RICHIESTE,
     F.MAGAZZINO_DISTINTE,
     F.MAGAZZINO_DDT,
+    F.TRACCIABILITA_CONSULTA,
+    F.TRACCIABILITA_REGISTRA,
 }
-_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA}
+_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.TRACCIABILITA_WORK_ORDER}
 PROFILI: dict[str, set[str]] = {
     "Operatore": _OPERATORE,
     "Caporeparto": _CAPOREPARTO,
     "Amministratore": {"*"},  # tutte le funzioni
-    "Cliente": {F.ORDINI_VEDERE, F.NOTE_SCRIVERE, F.AGENDA},
+    "Cliente": {F.ORDINI_VEDERE, F.NOTE_SCRIVERE, F.AGENDA, F.TRACCIABILITA_CONSULTA},
 }
 
 

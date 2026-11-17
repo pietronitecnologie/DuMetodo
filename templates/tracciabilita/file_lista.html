@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load tracciabilita %}
+{% block titolo %}File degli ordini{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-2 gap-2">
+  <h1 class="h4 me-auto mb-0">Foto e file degli ordini</h1>
+  <a class="btn btn-sm btn-primary" href="{% url 'tracciabilita:file_carica' %}">Carica foto</a>
+</div>
+{% filtri form "ordine anno dal al" %}
+<div class="table-responsive">
+<table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Ordine</th><th>Caricato</th><th>Da</th><th>File</th><th class="text-end">KB</th></tr></thead>
+  <tbody>
+  {% for f in pagina %}
+  <tr>
+    <td><a href="{{ f.ordine.get_absolute_url }}">{{ f.ordine.codice_breve }}</a></td>
+    <td>{{ f.caricato_il|date:"d/m/Y H:i" }}</td>
+    <td>{{ f.caricato_da|default:"" }}</td>
+    <td><a href="{{ f.get_absolute_url }}" target="_blank" rel="noopener">{{ f.nome_originale }}</a></td>
+    <td class="text-end">{% widthratio f.dimensione 1024 1 %}</td>
+  </tr>
+  {% empty %}<tr><td colspan="5" class="text-muted text-center">Nessun file nel periodo.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "tracciabilita/_paginazione.html" %}
+{% endblock %}

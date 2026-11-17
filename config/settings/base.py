@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "dumetodo.report",
     "dumetodo.utilita",
     "dumetodo.magazzino",
+    "dumetodo.tracciabilita",
 ]
 
 MIDDLEWARE = [
@@ -108,7 +109,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "ordini:lista"
+LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
 
 # --- Email in uscita (SMTP). Le credenziali NON stanno più nel database. ---

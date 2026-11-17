@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titolo %}Postazioni{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-2 gap-2">
+  <h1 class="h4 me-auto mb-0">Postazioni e banchi di prova</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin:tracciabilita_postazione_add' %}">Nuova postazione</a>
+</div>
+
+{% if nuovo_token %}
+<div class="alert alert-warning">
+  <strong>Nuovo token per {{ postazione_token.codice }}</strong> — copialo ora: non verrà più mostrato.
+  <pre class="bg-white border rounded p-2 my-2 user-select-all">{{ nuovo_token }}</pre>
+  <div class="small">Il banco lo invia nell'intestazione <code>X-Postazione-Token</code> (o, solo se non può farlo,
+    nel parametro <code>token</code>) a <code>{{ url_api }}</code>. Il token precedente non funziona più.</div>
+</div>
+{% endif %}
+
+<table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Codice</th><th>Nome</th><th>Reparto</th><th>Attiva</th><th>Token</th><th></th></tr></thead>
+  <tbody>
+  {% for p in postazioni %}
+  <tr>
+    <td><a href="{% url 'admin:tracciabilita_postazione_change' p.pk %}">{{ p.codice }}</a></td>
+    <td>{{ p.nome }}</td><td>{{ p.reparto|default:"" }}</td>
+    <td>{% if p.attiva %}Sì{% else %}<span class="text-danger">No</span>{% endif %}</td>
+    <td>{% if p.ha_token %}generato il {{ p.token_generato_il|date:"d/m/Y H:i" }}{% else %}<span class="text-muted">nessuno</span>{% endif %}</td>
+    <td class="text-nowrap">
+      <form method="post" action="{% url 'tracciabilita:postazione_token' p.pk %}" class="d-inline"
+            onsubmit="return confirm('Generare un nuovo token? Quello attuale smetterà di funzionare.')">{% csrf_token %}
+        <button class="btn btn-sm btn-outline-primary py-0">{% if p.ha_token %}Rigenera token{% else %}Genera token{% endif %}</button></form>
+      {% if p.ha_token %}<form method="post" action="{% url 'tracciabilita:postazione_revoca' p.pk %}" class="d-inline">{% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger py-0">Revoca</button></form>{% endif %}
+    </td>
+  </tr>
+  {% empty %}<tr><td colspan="6" class="text-muted text-center">Nessuna postazione: creale dall'amministrazione.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

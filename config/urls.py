@@ -1,10 +1,11 @@
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
-from django.views.generic import RedirectView
+
+from dumetodo.core import views as core_views
 
 urlpatterns = [
-    path("", RedirectView.as_view(pattern_name="ordini:lista", permanent=False)),
+    path("", core_views.home, name="home"),
     path("accesso/", auth_views.LoginView.as_view(), name="login"),
     path("uscita/", auth_views.LogoutView.as_view(), name="logout"),
     path("ordini/", include("dumetodo.ordini.urls")),
@@ -17,5 +18,6 @@ urlpatterns = [
     path("magazzino/", include("dumetodo.magazzino.urls")),
     path("configurazione/", include("dumetodo.configurazione.urls")),
     path("utenti/", include("dumetodo.core.urls_utenti")),
+    path("tracciabilita/", include("dumetodo.tracciabilita.urls")),
     path("admin/", admin.site.urls),
 ]

@@ -1,0 +1,17 @@
+<form class="card card-body mb-3 py-2" method="get">
+  <div class="row g-2 align-items-end">
+    {% for campo in campi %}
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-0" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+      {{ campo }}
+    </div>
+    {% endfor %}
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button class="btn btn-sm btn-primary">Filtra</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ request.path }}?">Azzera</a>
+      <a class="btn btn-sm btn-outline-success" href="{% querystring formato='xlsx' pagina=None %}">Esporta xlsx</a>
+    </div>
+  </div>
+  {% for e in form.non_field_errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+  {% for campo in campi %}{% for e in campo.errors %}<div class="text-danger small mt-1">{{ campo.label }}: {{ e }}</div>{% endfor %}{% endfor %}
+</form>
