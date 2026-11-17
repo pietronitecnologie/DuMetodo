@@ -9,7 +9,7 @@ from dumetodo.anagrafica.servizi import descrizione_subquery
 from dumetodo.comunicazioni import servizi as note
 from dumetodo.core.permessi import F, ha_permesso, richiede_permesso
 
-from . import servizi, stati
+from . import selezione, servizi, stati
 from .aiuti_visivi import colora_cambi_articolo
 from .forms import CambiaScadenzaForm, DividiRigaForm, FiltriOrdiniForm
 from .models import Ordine, RigaOrdine, StatoRiga
@@ -114,3 +114,13 @@ def cambia_scadenza(request: HttpRequest, pk: int) -> HttpResponse:
         except servizi.OperazioneNonConsentita as exc:
             messages.error(request, str(exc))
     return redirect("ordini:dettaglio", pk=pk)
+
+
+@require_GET
+@richiede_permesso(
+    F.ORDINI_VEDERE, F.TRACCIABILITA_REGISTRA, F.TRACCIABILITA_CONSULTA, F.UTILITA_CAMBIA_ORDINE, F.CONSEGNA
+)
+def seleziona(request: HttpRequest) -> HttpResponse:
+    """Elenco degli ordini per il campo di selezione (HTMX)."""
+    testo = request.GET.get(f"{request.GET.get('campo', 'ordine')}_cerca", "")[:60].strip()
+    return render(request, "ordini/_selezione.html", {"testo": testo, "ordini": selezione.cerca(testo)})

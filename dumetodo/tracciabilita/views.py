@@ -8,7 +8,6 @@ from typing import Any
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, QuerySet
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
@@ -193,29 +192,26 @@ def file_ordine_carica(request: HttpRequest, ordine_id: int) -> HttpResponse:
 def file_carica(request: HttpRequest) -> HttpResponse:
     """Caricamento di foto/file indicando il codice dell'ordine (pagina adatta al telefono)."""
     if request.method == "POST":
-        testo = request.POST.get("ordine", "")[:60]
-        try:
-            ordine = forms.CampoOrdine(required=True).clean(testo)
-            caricati = servizi.carica_file_ordine(ordine.pk, request.FILES.getlist("file"), request.user)
-        except ValidationError as exc:
-            messages.error(request, " ".join(exc.messages))
-        except OperazioneNonConsentita as exc:
-            messages.error(request, str(exc))
+        form = forms.CaricaFileForm(request.POST)
+        ordine = form.cleaned_data["ordine"] if form.is_valid() else None
+        if ordine is None:
+            messages.error(request, " ".join(form.errors.get("ordine", ["Scegli l'ordine dall'elenco."])))
         else:
-            messages.success(request, f"{len(caricati)} file caricati sull'ordine {ordine.codice_breve}.")
-            return redirect(
-                f"{reverse('tracciabilita:file_lista')}?{urlencode({'ordine': ordine.numero, 'anno': ordine.anno})}"
-            )
+            try:
+                caricati = servizi.carica_file_ordine(ordine.pk, request.FILES.getlist("file"), request.user)
+            except OperazioneNonConsentita as exc:
+                messages.error(request, str(exc))
+            else:
+                messages.success(request, f"{len(caricati)} file caricati sull'ordine {ordine.codice_breve}.")
+                return redirect(f"{reverse('tracciabilita:file_lista')}?{urlencode({'ordine': ordine.pk})}")
         # Redirect anche in caso di errore: il caricamento via fetch segue il redirect e mostra il messaggio.
-        return redirect(f"{reverse('tracciabilita:file_carica')}?{urlencode({'ordine': testo})}")
+        dopo = urlencode({"ordine": ordine.pk}) if ordine else ""
+        return redirect(f"{reverse('tracciabilita:file_carica')}?{dopo}")
+    form = forms.CaricaFileForm(initial={"ordine": request.GET.get("ordine", "")[:60] or None})
     return render(
         request,
         "tracciabilita/file_carica.html",
-        {
-            "testo": request.GET.get("ordine", "")[:60],
-            "formato": servizi.FORMATO_ORDINE,
-            "dimensione_massima_mb": config.leggi("tracciabilita.dimensione_massima_file_mb"),
-        },
+        {"form": form, "dimensione_massima_mb": config.leggi("tracciabilita.dimensione_massima_file_mb")},
     )
 
 

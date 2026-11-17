@@ -11,13 +11,12 @@ import datetime as dt
 from typing import Any
 
 from django import forms
-from django.db.models import Q, QuerySet
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from dumetodo.core.models import Reparto
-from dumetodo.ordini.models import Ordine
+from dumetodo.ordini.selezione import CampoOrdine
 
-from . import servizi
 from .models import (
     Test,
 )
@@ -33,25 +32,6 @@ def _non_futura(data: dt.date | None) -> dt.date | None:
     if data and data > timezone.localdate():
         raise forms.ValidationError("La data non può essere nel futuro.")
     return data
-
-
-class CampoOrdine(forms.CharField):
-    """Codice d'ordine scritto dall'utente -> ``Ordine`` (o ``None`` se vuoto e facoltativo)."""
-
-    def __init__(self, **kw: Any) -> None:
-        kw.setdefault("label", "Ordine")
-        kw.setdefault("max_length", 60)
-        kw.setdefault("help_text", f"Formato {servizi.FORMATO_ORDINE}.")
-        super().__init__(**kw)
-
-    def clean(self, value: Any) -> Ordine | None:  # type: ignore[override]
-        testo = super().clean(value)
-        if not testo:
-            return None
-        try:
-            return servizi.risolvi_ordine(testo)
-        except servizi.OperazioneNonConsentita as exc:
-            raise forms.ValidationError(str(exc)) from exc
 
 
 def _reparti() -> QuerySet[Reparto]:
@@ -141,7 +121,7 @@ class Filtri(FormConStile):
 
 class FiltriTracce(Filtri):
     codice = forms.CharField(label="Codice", max_length=50, required=False)
-    ordine = forms.CharField(label="Ordine (numero)", max_length=30, required=False)
+    ordine = CampoOrdine(required=False, help_text="")
     chiave = forms.CharField(label="Chiave", max_length=50, required=False)
     reparto = forms.ModelChoiceField(label="Reparto", queryset=Reparto.objects.none(), required=False)
     inserita_dal = _campo_data("Inserita dal")
@@ -157,7 +137,7 @@ class FiltriTracce(Filtri):
         if d.get("codice"):
             qs = qs.filter(elemento__codice__icontains=d["codice"].strip())
         if d.get("ordine"):
-            qs = qs.filter(ordine__numero__icontains=d["ordine"].strip())
+            qs = qs.filter(ordine=d["ordine"])
         if d.get("chiave"):
             qs = qs.filter(chiave__iexact=d["chiave"].strip())
         if d.get("reparto"):
@@ -167,7 +147,8 @@ class FiltriTracce(Filtri):
 
 class FiltriQualita(Filtri):
     campo_data = "controllo_qualita__data"
-    ordine = forms.CharField(label="Ordine / stock", max_length=50, required=False)
+    ordine = CampoOrdine(required=False, help_text="")
+    riferimento = forms.CharField(label="Stock / riferimento", max_length=50, required=False)
     articolo = forms.CharField(label="Codice prodotto", max_length=50, required=False)
     test = forms.ModelChoiceField(label="Test", queryset=Test.objects.none(), required=False)
 
@@ -179,10 +160,9 @@ class FiltriQualita(Filtri):
         qs = super().filtra(qs)
         d = self.cleaned_data
         if d.get("ordine"):
-            t = d["ordine"].strip()
-            qs = qs.filter(
-                Q(controllo_qualita__ordine__numero__icontains=t) | Q(controllo_qualita__riferimento__icontains=t)
-            )
+            qs = qs.filter(controllo_qualita__ordine=d["ordine"])
+        if d.get("riferimento"):
+            qs = qs.filter(controllo_qualita__riferimento__icontains=d["riferimento"].strip())
         if d.get("articolo"):
             qs = qs.filter(controllo_qualita__articolo__icontains=d["articolo"].strip())
         if d.get("test"):
@@ -192,14 +172,15 @@ class FiltriQualita(Filtri):
 
 class FiltriFile(Filtri):
     campo_data = "caricato_il__date"
-    ordine = forms.CharField(label="Ordine (numero)", max_length=30, required=False)
-    anno = forms.IntegerField(label="Anno", min_value=2000, max_value=2100, required=False)
+    ordine = CampoOrdine(required=False, help_text="")
 
     def filtra(self, qs: QuerySet[Any]) -> QuerySet[Any]:
         qs = super().filtra(qs)
         d = self.cleaned_data
         if d.get("ordine"):
-            qs = qs.filter(ordine__numero__icontains=d["ordine"].strip())
-        if d.get("anno"):
-            qs = qs.filter(ordine__anno=d["anno"])
+            qs = qs.filter(ordine=d["ordine"])
         return qs
+
+
+class CaricaFileForm(forms.Form):
+    ordine = CampoOrdine(required=True)

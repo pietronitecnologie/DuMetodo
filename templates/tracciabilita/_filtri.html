@@ -1,7 +1,7 @@
 <form class="card card-body mb-3 py-2" method="get">
   <div class="row g-2 align-items-end">
     {% for campo in campi %}
-    <div class="col-6 col-md-2">
+    <div class="{% if campo.name == 'ordine' %}col-12 col-md-4{% else %}col-6 col-md-2{% endif %}">
       <label class="form-label small mb-0" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
       {{ campo }}
     </div>

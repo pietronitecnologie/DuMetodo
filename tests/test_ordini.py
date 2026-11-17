@@ -2,10 +2,11 @@ import datetime as dt
 from decimal import Decimal
 
 import pytest
+from django.urls import reverse
 
 from dumetodo.configurazione import servizi as config
 from dumetodo.ordini import servizi
-from dumetodo.ordini.models import RigaOrdine, StatoOrdine, StatoRiga, StoricoScadenza
+from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StatoRiga, StoricoScadenza
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
 
@@ -142,3 +143,50 @@ def test_dettaglio_mostra_i_colori_degli_articoli(client, ordine, operatore):
     html = client.get(f"/ordini/{ordine.pk}/").content.decode()
     assert f'style="color: {P[0]}" title="Nessuna descrizione in anagrafica">ART-A' in html
     assert f'style="color: {P[1]}"' in html
+
+
+# =========================================================================== selezione univoca dell'ordine
+def test_selezione_ordine_cerca_per_parole(db):
+    from dumetodo.ordini import selezione
+
+    a = Ordine.objects.create(serie="00040", numero="0004300", anno=2026)
+    b = Ordine.objects.create(serie="00040", numero="0004300", appendice="T1", anno=2026)
+    c = Ordine.objects.create(serie="00041", numero="0004300", anno=2025)
+    Ordine.objects.create(serie="00040", numero="0005555", anno=2026)
+    assert set(selezione.cerca("4300")) == {a, b, c}
+    assert list(selezione.cerca("4300 T1")) == [b]
+    assert set(selezione.cerca("40 4300 2026")) == {a, b}
+    assert list(selezione.cerca("4300 2025")) == [c]
+    assert not selezione.cerca("")
+    assert selezione.da_codice("40.0004300.T1-2026") == b
+    assert selezione.da_codice("00040.0004300-2026") == a
+    assert selezione.da_codice("4300") is None
+
+
+def test_campo_ordine_accetta_chiave_o_codice(db):
+    from django import forms
+
+    from dumetodo.ordini.selezione import CampoOrdine
+
+    o = Ordine.objects.create(serie="00040", numero="0004300", anno=2026)
+
+    class F(forms.Form):
+        ordine = CampoOrdine()
+
+    assert F({"ordine": str(o.pk)}).is_valid()
+    f = F({"ordine": "", "ordine_cerca": "40.0004300-2026"})
+    assert f.is_valid() and f.cleaned_data["ordine"] == o
+    f = F({"ordine": "999999"})
+    assert not f.is_valid() and "non trovato" in str(f.errors)
+    html = str(F(initial={"ordine": o.pk})["ordine"])
+    assert f'value="{o.pk}"' in html and "0004300" in html and 'name="ordine_cerca"' in html
+
+
+def test_endpoint_selezione(client, operatore, db):
+    Ordine.objects.create(serie="00040", numero="0004300", appendice="T1", anno=2026)
+    url = reverse("ordini:seleziona")
+    assert client.get(url).status_code == 302
+    client.force_login(operatore)
+    r = client.get(url, {"campo": "ordine", "ordine_cerca": "4300"})
+    assert r.status_code == 200 and "data-dm-ordine-pk" in r.content.decode() and "T1" in r.content.decode()
+    assert "Nessun ordine" in client.get(url, {"ordine_cerca": "999"}).content.decode()

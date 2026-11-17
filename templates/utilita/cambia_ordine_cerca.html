@@ -2,7 +2,8 @@
 {% block titolo %}Cambia ordine{% endblock %}
 {% block contenuto %}
 <h1 class="h4">Cambia ordine</h1>
-<form method="get" class="d-flex gap-2 mb-3"><input name="q" class="form-control form-control-sm w-auto" placeholder="Numero ordine" value="{{ q }}" autofocus><button class="btn btn-sm btn-primary">Cerca</button></form>
-{% if q %}<ul class="list-group">{% for o in ordini %}<li class="list-group-item d-flex"><a class="me-auto" href="{% url 'utilita:cambia_ordine' o.pk %}">{{ o.codice }}</a><span class="small text-muted">{{ o.get_stato_display }} · {{ o.data_scadenza|date:"d/m/Y" }}</span></li>
-{% empty %}<li class="list-group-item text-muted">Nessun ordine.</li>{% endfor %}</ul>{% endif %}
+<form method="get" class="card card-body mb-3" style="max-width: 36rem" data-dm-invia-alla-scelta>
+  {% include "_campo.html" with campo=form.ordine %}
+  <div><button class="btn btn-sm btn-primary">Apri</button></div>
+</form>
 {% endblock %}

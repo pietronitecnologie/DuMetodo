@@ -7,9 +7,7 @@
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciabilita:file_lista' %}">Lista file</a>
 </div>
 <form method="post" enctype="multipart/form-data" class="card card-body" style="max-width: 36rem" data-ridimensiona>{% csrf_token %}
-  <div class="mb-2"><label class="form-label small mb-0" for="ordine">Ordine</label>
-    <input type="text" class="form-control" id="ordine" name="ordine" required maxlength="60" value="{{ testo }}">
-    <div class="form-text">Formato {{ formato }}.</div></div>
+  {% include "_campo.html" with campo=form.ordine %}
   <div class="mb-2"><label class="form-label small mb-0" for="foto">Scatta una foto</label>
     <input type="file" class="form-control" id="foto" name="file" accept="image/*" capture="environment"></div>
   <div class="mb-2"><label class="form-label small mb-0" for="altri">oppure scegli foto o PDF</label>

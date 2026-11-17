@@ -31,7 +31,7 @@
 
 <div class="card mb-3">
   <div class="card-header d-flex align-items-center gap-2"><strong class="me-auto">Controlli qualità</strong>
-    {% if perms.core.tracciabilita_registra %}<a class="small" href="{% url 'tracciabilita:qualita_nuovo' %}?ordine={{ ordine.codice_breve|urlencode }}">Nuovo controllo</a>{% endif %}</div>
+    {% if perms.core.tracciabilita_registra %}<a class="small" href="{% url 'tracciabilita:qualita_nuovo' %}?ordine={{ ordine.pk }}">Nuovo controllo</a>{% endif %}</div>
   <ul class="list-group list-group-flush small">
     {% for cq in controlli %}
     <li class="list-group-item"><strong>{{ cq.test }}</strong> del {{ cq.data|date:"d/m/Y" }} · {{ cq.articolo }}{% if cq.eseguito_da %} · {{ cq.eseguito_da }}{% endif %}

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="{% static 'dumetodo.css' %}">
   <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
   <script src="{% static 'vendor/bootstrap.bundle.min.js' %}" defer></script>
+  <script src="{% static 'dumetodo.js' %}" defer></script>
   {% if is_client_desktop and user.is_authenticated %}<script src="{% static 'client/client.js' %}" defer></script>{% endif %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>

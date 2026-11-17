@@ -1,5 +1,6 @@
 import datetime as dt
 
+from django import forms
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -9,10 +10,16 @@ from django.views.decorators.http import require_GET, require_POST
 from dumetodo.consegne.servizi import etichette_xlsx
 from dumetodo.core.permessi import F, ha_permesso, is_fornitore, richiede_permesso
 from dumetodo.ordini.models import Ordine
+from dumetodo.ordini.selezione import CampoOrdine
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
 from . import servizi
 from .models import Annuncio
+
+
+class SceltaOrdineForm(forms.Form):
+    ordine = CampoOrdine(required=False)
+
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 FUNZIONI_UTILITA = (
@@ -149,9 +156,10 @@ def scorporazione(request: HttpRequest) -> HttpResponse:
 # ----------------------------------------------------------------------------------------- cambia ordine
 @richiede_permesso(F.UTILITA_CAMBIA_ORDINE)
 def cambia_ordine_cerca(request: HttpRequest) -> HttpResponse:
-    q = request.GET.get("q", "").strip()
-    ordini = Ordine.objects.filter(numero__icontains=q).order_by("-anno", "numero")[:50] if q else []
-    return render(request, "utilita/cambia_ordine_cerca.html", {"q": q, "ordini": ordini})
+    form = SceltaOrdineForm(request.GET or None)
+    if form.is_valid() and form.cleaned_data["ordine"]:
+        return redirect("utilita:cambia_ordine", pk=form.cleaned_data["ordine"].pk)
+    return render(request, "utilita/cambia_ordine_cerca.html", {"form": form})
 
 
 @richiede_permesso(F.UTILITA_CAMBIA_ORDINE)

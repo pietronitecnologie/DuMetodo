@@ -1,0 +1,14 @@
+<div class="dm-ordine" data-dm-ordine{% if widget.obbligatorio %} data-dm-ordine-obbligatorio="1"{% endif %}>
+  <input type="hidden" name="{{ widget.name }}" value="{{ widget.pk }}" data-dm-ordine-valore>
+  <div class="dm-ordine-scelto {% if not widget.ordine %}d-none{% endif %}" data-dm-ordine-scelto>
+    <span class="dm-ordine-etichetta" data-dm-ordine-etichetta>{% if widget.ordine %}{% include "ordini/_ordine_etichetta.html" with o=widget.ordine %}{% endif %}</span>
+    <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-dm-ordine-cambia>Cambia</button>
+  </div>
+  <div class="position-relative {% if widget.ordine %}d-none{% endif %}" data-dm-ordine-ricerca>
+    <input type="search" class="form-control form-control-sm" id="{{ widget.attrs.id }}" name="{{ widget.name }}_cerca"
+           placeholder="Numero ordine (es. 4300, 40 4300, 4300 T1 2026)" autocomplete="off" inputmode="search"
+           hx-get="{{ widget.url }}" hx-trigger="input changed delay:250ms, focus once" hx-target="next .dm-ordine-elenco"
+           hx-vals='{"campo": "{{ widget.name }}"}' {% if widget.obbligatorio and not widget.ordine %}required{% endif %}>
+    <div class="dm-ordine-elenco"></div>
+  </div>
+</div>

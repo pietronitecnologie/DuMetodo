@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.forms",
     "django_htmx",
     "simple_history",
     "django_celery_beat",
@@ -79,6 +80,9 @@ TEMPLATES = [
         },
     },
 ]
+
+# I widget dei form possono usare i template del progetto (es. widgets/ordine.html).
+FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
 DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["ATOMIC_REQUESTS"] = False
