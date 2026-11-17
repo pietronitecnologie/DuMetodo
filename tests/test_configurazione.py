@@ -208,3 +208,61 @@ def test_mittenti_non_ammessi_scartati(db):
     assert n == 0
     r = MessaggioEmail.objects.get()
     assert r.esito == EsitoMessaggio.SCARTATO and "mittente non ammesso" in r.dettaglio
+
+
+# =========================================================================== logo dell'azienda
+def _png(lato=300, colore=(20, 90, 200, 255)):
+    import io
+
+    from PIL import Image
+
+    b = io.BytesIO()
+    Image.new("RGBA", (lato, lato // 2), colore).save(b, "PNG")
+    return b.getvalue()
+
+
+@pytest.mark.django_db
+def test_logo_caricato_normalizzato_e_nel_menu_del_client(client, amministratore):
+    import base64
+    import io
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from PIL import Image
+
+    client.force_login(amministratore)
+    base = {
+        "gruppo": "AZIENDA",
+        "azienda-azienda.nome_fornitore": "Officine Rossi",
+        "azienda-azienda.nome_cliente": "C",
+    }
+    r = client.post("/configurazione/", {**base, "azienda-azienda.logo": SimpleUploadedFile("logo.png", _png())})
+    assert r.status_code == 302
+    config.invalida_cache()
+    salvato = Image.open(io.BytesIO(base64.b64decode(config.leggi("azienda.logo"))))
+    assert salvato.format == "PNG" and max(salvato.size) <= 256
+
+    dati = client.get("/client/configurazione.json").json()
+    assert dati["intestazione"]["titolo"] == "Officine Rossi"
+    for lato in ("16", "24", "32"):
+        icona = Image.open(io.BytesIO(base64.b64decode(dati["intestazione"]["loghi"][lato])))
+        assert icona.size == (int(lato), int(lato))
+
+    # salvando senza file il logo resta; "Rimuovi" lo toglie
+    client.post("/configurazione/", base)
+    config.invalida_cache()
+    assert config.leggi("azienda.logo")
+    client.post("/configurazione/", {**base, "azienda-azienda.logo__cancella": "on"})
+    config.invalida_cache()
+    assert config.leggi("azienda.logo") is None
+    assert client.get("/client/configurazione.json").json()["intestazione"] is None
+
+
+@pytest.mark.django_db
+def test_logo_rifiuta_file_non_immagine(client, amministratore):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    client.force_login(amministratore)
+    finto = SimpleUploadedFile("logo.png", b"<svg onload=alert(1)>")
+    r = client.post("/configurazione/", {"gruppo": "AZIENDA", "azienda-azienda.logo": finto})
+    assert r.status_code == 200 and "non è un&#x27;immagine valida" in r.content.decode()
+    assert config.leggi("azienda.logo") is None

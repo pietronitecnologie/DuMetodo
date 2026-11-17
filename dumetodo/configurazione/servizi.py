@@ -92,6 +92,13 @@ def _salva_segreto(chiave: str, valore: str | None, utente: Any) -> None:
 
 
 @transaction.atomic
+def cancella_valore(chiave: str, utente: Any = None) -> None:
+    """Torna al valore predefinito (es. "Rimuovi logo")."""
+    ValoreParametro.objects.filter(chiave=_parametro(chiave).chiave).delete()
+    transaction.on_commit(invalida_cache)
+
+
+@transaction.atomic
 def cancella_segreto(chiave: str, utente: Any = None) -> None:
     if _parametro(chiave).tipo != Tipo.SEGRETO:
         raise ValueError(f"{chiave} non è un parametro segreto")
@@ -129,6 +136,8 @@ def scrivi_molti(valori: Mapping[str, Any], utente: Any = None) -> None:
         if _parametro(chiave).tipo == Tipo.SEGRETO:
             _salva_segreto(chiave, valore, utente)
             continue
+        if _parametro(chiave).tipo == Tipo.IMMAGINE and not valore:
+            continue  # nessun file caricato: l'immagine resta quella di prima
         attuale = ValoreParametro.objects.filter(chiave=chiave).first()
         nuovo = _parametro(chiave).a_json(valore)
         if attuale is not None and attuale.valore == nuovo:

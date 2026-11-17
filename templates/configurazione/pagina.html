@@ -10,7 +10,7 @@ settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
 <div class="row g-3">
 {% for form in forms %}
   <div class="col-lg-6">
-    <form method="post" class="card h-100">{% csrf_token %}
+    <form method="post" class="card h-100" enctype="multipart/form-data">{% csrf_token %}
       <input type="hidden" name="gruppo" value="{{ form.gruppo.name }}">
       <div class="card-header"><strong>{{ form.gruppo.value }}</strong></div>
       <div class="card-body">
@@ -26,6 +26,9 @@ settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
             <a class="btn btn-sm btn-link" href="{% url 'configurazione:guida_tracciati' %}" target="_blank">Guida al linguaggio</a>
           </div>
           <div class="anteprima"></div>
+          {% elif campo.name in form.immagini %}
+          <div class="d-flex align-items-center gap-2 mb-2 small text-muted">Attuale:
+            <img src="data:image/png;base64,{{ form.immagini|get_item:campo.name }}" alt="" style="max-height:48px;max-width:160px;background:#eef1f5;border-radius:6px;padding:4px"></div>
           {% elif campo.name == "casella.mittenti_ammessi" %}
           <div class="d-flex align-items-start gap-2 mb-2">
             <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" hx-post="{% url 'configurazione:prova_casella' %}"

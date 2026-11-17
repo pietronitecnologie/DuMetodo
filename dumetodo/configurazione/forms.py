@@ -27,6 +27,8 @@ def _campo(p: Parametro) -> forms.Field:
                 strip=False,
                 widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}),
             )
+        case Tipo.IMMAGINE:
+            return forms.FileField(**comuni, widget=forms.FileInput(attrs={"accept": "image/png,image/jpeg"}))
         case Tipo.LISTA_EMAIL:
             comuni["help_text"] = f"{p.descrizione} Più indirizzi separati da virgola."
             return forms.CharField(**comuni, widget=forms.Textarea(attrs={"rows": 2}))
@@ -43,12 +45,18 @@ class ParametriGruppoForm(forms.Form):
         initial = {
             p.chiave: p.come_testo(servizi.leggi(p.chiave)) if p.tipo != Tipo.BOOLEANO else servizi.leggi(p.chiave)
             for p in self.parametri
-            if p.tipo != Tipo.SEGRETO  # le password non tornano mai nella pagina
+            if p.tipo not in (Tipo.SEGRETO, Tipo.IMMAGINE)  # password e file non tornano nella pagina
         }
         super().__init__(*args, initial=initial, prefix=gruppo.name.lower(), **kwargs)
         self.segreti_impostati: set[str] = set()
+        self.immagini: dict[str, str] = {}
         for p in self.parametri:
             self.fields[p.chiave] = _campo(p)
+            if p.tipo == Tipo.IMMAGINE and (attuale := servizi.leggi(p.chiave)):
+                self.immagini[p.chiave] = attuale
+                self.fields[f"{p.chiave}__cancella"] = forms.BooleanField(
+                    label=f"Rimuovi {p.etichetta.lower()}", required=False
+                )
             if p.tipo == Tipo.SEGRETO:
                 if servizi.segreto_impostato(p.chiave):
                     self.segreti_impostati.add(p.chiave)

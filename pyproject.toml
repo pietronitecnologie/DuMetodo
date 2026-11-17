@@ -17,6 +17,7 @@ dependencies = [
     "whitenoise>=6.7",
     "nh3>=0.2",
     "cryptography>=43",
+    "pillow>=10",
 ]
 
 [project.optional-dependencies]

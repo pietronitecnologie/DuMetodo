@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Mutex;
 
-use muda::{ContextMenu, Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
+use muda::{ContextMenu, IconMenuItem, Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy};
 use tao::window::{Fullscreen, Window, WindowBuilder};
@@ -271,8 +271,18 @@ fn main() {
                         let _ = webview.load_html(&avvio::pagina_indirizzo(&attuale, "", &percorso_conf));
                     }
                     // Pagine del server.
-                    Some(Messaggio::Menu { voci }) if dal_server => {
+                    Some(Messaggio::Menu { voci, intestazione }) if dal_server => {
                         let menu = Menu::new();
+                        // In testa: logo e nome dell'azienda (Configurazione > Azienda).
+                        if let Some(int) = &intestazione
+                            && let Some((rgba, w, h)) = ponte::logo_rgba(int, window.scale_factor())
+                            && let Ok(icona) = muda::Icon::from_rgba(rgba, w, h)
+                        {
+                            let titolo: String = int.titolo.chars().take(60).collect();
+                            let voce = IconMenuItem::with_id(MenuId::new("logo"), titolo, true, Some(icona), None);
+                            let _ = menu.append(&voce);
+                            let _ = menu.append(&PredefinedMenuItem::separator());
+                        }
                         for v in voci.iter().take(ponte::MASSIMO_VOCI) {
                             if v.separatore {
                                 let _ = menu.append(&PredefinedMenuItem::separator());

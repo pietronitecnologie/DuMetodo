@@ -38,6 +38,7 @@ class Tipo(StrEnum):
     LISTA_EMAIL = "lista_email"
     MENU_CLIENT = "menu_client"  # menu del tasto destro del client desktop (JSON)
     TRACCIATO = "tracciato"  # formato di un file esportato, nel linguaggio di dumetodo.tracciati
+    IMMAGINE = "immagine"  # PNG normalizzato (base64), vedi configurazione/immagini.py
     SEGRETO = "segreto"  # password: salvata cifrata (SegretoParametro), mai mostrata né storicizzata
 
 
@@ -80,6 +81,12 @@ class Parametro:
                 return str(valore).strip()
             case Tipo.SEGRETO:
                 return str(valore)
+            case Tipo.IMMAGINE:
+                from .immagini import normalizza
+
+                if hasattr(valore, "read"):  # file caricato dal form
+                    return normalizza(valore.read(), self.etichetta)
+                return str(valore)  # già normalizzato (letto dal database)
             case Tipo.INTERO:
                 try:
                     v = int(str(valore).strip())
@@ -167,6 +174,8 @@ class Parametro:
             return ", ".join(valore)
         if self.tipo == Tipo.BOOLEANO:
             return "Sì" if valore else "No"
+        if self.tipo == Tipo.IMMAGINE:
+            return "immagine caricata"
         return str(valore)
 
 
@@ -193,6 +202,14 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Nome del Cliente",
         "Nome del Cliente che invia gli ordini, usato nelle note e nelle email.",
         default="Cliente",
+    ),
+    Parametro(
+        "azienda.logo",
+        Tipo.IMMAGINE,
+        Gruppo.AZIENDA,
+        "Logo dell'azienda",
+        "PNG o JPEG (meglio quadrato, con fondo trasparente). Compare in testa al menu del tasto destro del "
+        "client desktop. Viene ridotto a 256 px.",
     ),
     # --- Produzione -----------------------------------------------------------------
     Parametro(

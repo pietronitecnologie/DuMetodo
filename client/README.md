@@ -9,6 +9,7 @@ propria. Aggiunge solo ciò che un browser normale non può fare:
 |---|---|
 | Menu del tasto destro **nativi**, diversi per tipo di elemento (ordine, riga, pagina…) e filtrati per i permessi dell'utente | sul **server**: Configurazione → Client desktop |
 | Aggiorna pagina, Copia tabella / colonna / riga (si incollano in Excel), Copia selezione, Incolla (anche su http) | voci predefinite del menu, modificabili sul server |
+| **Logo dell'azienda** in testa al menu del tasto destro (con il nome) | sul **server**: Configurazione → Azienda → Logo |
 | **Schede**: più pagine nella stessa finestra. Ctrl+T nuova, Ctrl+W chiudi, Ctrl+Tab / Ctrl+PagSu-PagGiù per passare, Ctrl+clic o clic centrale su un link e *Apri in nuova scheda* dal tasto destro; clic centrale sulla scheda per chiuderla. Un solo accesso vale per tutte le schede | sul client |
 | Navigazione limitata al server configurato; i link esterni si aprono nel browser di sistema | automatico |
 | Download salvati in cartelle scelte per regola (es. la bolla direttamente nella cartella di importazione del gestionale) | sul **PC**: `client.toml` |

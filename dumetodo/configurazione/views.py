@@ -18,12 +18,15 @@ def pagina(request: HttpRequest) -> HttpResponse:
     forms = []
     for gruppo in Gruppo:
         if request.method == "POST" and gruppo.name == gruppo_attivo:
-            form = ParametriGruppoForm(gruppo, request.POST)
+            form = ParametriGruppoForm(gruppo, request.POST, request.FILES)
             if form.is_valid():
                 servizi.scrivi_molti({p.chiave: form.cleaned_data[p.chiave] for p in form.parametri}, request.user)
                 for chiave in form.segreti_impostati:
                     if form.cleaned_data.get(f"{chiave}__cancella"):
                         servizi.cancella_segreto(chiave, request.user)
+                for chiave in form.immagini:
+                    if form.cleaned_data.get(f"{chiave}__cancella"):
+                        servizi.cancella_valore(chiave, request.user)
                 messages.success(request, f"Parametri '{gruppo.value}' salvati.")
                 return redirect("configurazione:pagina")
             messages.error(request, "Correggi gli errori evidenziati: nessun valore è stato salvato.")

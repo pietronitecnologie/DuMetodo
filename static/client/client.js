@@ -9,6 +9,7 @@
   if (!window.ipc || typeof window.ipc.postMessage !== "function") return;
 
   let menu = {};
+  let intestazione = null; // logo e nome dell'azienda in testa al menu (da Configurazione)
   let inAttesa = {};
   let campoIncolla = null; // campo su cui è stato aperto il menu (per "Incolla")
 
@@ -17,7 +18,7 @@
   const carica = () =>
     fetch("/client/configurazione.json", { credentials: "same-origin", headers: { Accept: "application/json" } })
       .then((r) => (r.ok ? r.json() : { menu: {} }))
-      .then((d) => { menu = d.menu || {}; })
+      .then((d) => { menu = d.menu || {}; intestazione = d.intestazione || null; })
       .catch(() => { menu = {}; });
 
   const dati = (el) => {
@@ -185,7 +186,7 @@
     while (voci.length && voci[voci.length - 1].separatore) voci.pop();
     if (!voci.length) return;
     e.preventDefault();
-    invia({ tipo: "menu", voci, x: e.clientX, y: e.clientY });
+    invia({ tipo: "menu", voci, intestazione, x: e.clientX, y: e.clientY });
   });
 
   window.DuMetodoClient = {
