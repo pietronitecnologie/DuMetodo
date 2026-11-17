@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titolo %}Annuncio{% endblock %}
+{% block contenuto %}
+<div class="col-lg-8">
+<h1 class="h4">{% if annuncio %}Modifica annuncio{% else %}Nuovo annuncio{% endif %}</h1>
+<form method="post" class="card card-body" onsubmit="document.getElementById('testo').value = document.getElementById('editor').innerHTML">{% csrf_token %}
+  <label class="form-label small mb-0">Data</label><input type="date" class="form-control form-control-sm mb-2" name="data" value="{% if annuncio %}{{ annuncio.data|date:'Y-m-d' }}{% else %}{{ oggi|date:'Y-m-d' }}{% endif %}" style="max-width:12rem">
+  <div class="btn-toolbar gap-1 mb-1">
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.execCommand('bold')"><b>G</b></button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.execCommand('italic')"><i>C</i></button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.execCommand('underline')"><u>S</u></button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.execCommand('insertUnorderedList')">Elenco</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.execCommand('insertOrderedList')">Elenco num.</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="const u = prompt('Indirizzo del link (https://...)'); if (u) document.execCommand('createLink', false, u)">Link</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.execCommand('removeFormat')">Pulisci</button>
+  </div>
+  <div id="editor" class="form-control mb-2" contenteditable="true" style="min-height:10rem">{% if annuncio %}{{ annuncio.testo|safe }}{% endif %}</div>
+  <input type="hidden" name="testo" id="testo">
+  <div class="form-check"><input class="form-check-input" type="checkbox" name="attivo" id="attivo" {% if not annuncio or annuncio.attivo %}checked{% endif %}><label class="form-check-label" for="attivo">Attivo</label></div>
+  <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="permanente" id="permanente" {% if annuncio.permanente %}checked{% endif %}><label class="form-check-label" for="permanente">Permanente (altrimenti resta visibile un giorno)</label></div>
+  <div><button class="btn btn-primary">Salva</button> <a href="{% url 'utilita:annunci' %}" class="btn btn-link">Annulla</a></div>
+</form>
+</div>
+{% endblock %}

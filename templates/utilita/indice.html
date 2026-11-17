@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block titolo %}Utilità{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-3">Utilità</h1>
+<div class="row g-3">
+  {% if perms.core.utilita_errori_importazione %}<div class="col-md-6 col-xl-4"><a class="card card-body h-100 text-decoration-none text-body" href="{% url 'importazione:problemi' %}"><strong>Errori di importazione</strong><span class="small text-muted">Problemi riscontrati nei file d'ordine, da verificare e segnare come gestiti.</span></a></div>{% endif %}
+  {% if perms.core.utilita_ristampa_etichette %}<div class="col-md-6 col-xl-4"><a class="card card-body h-100 text-decoration-none text-body" href="{% url 'utilita:ristampa_etichette' %}"><strong>Ristampa etichette da DDT</strong><span class="small text-muted">Rigenera il file etichette degli ordini di un DDT.</span></a></div>{% endif %}
+  {% if perms.core.utilita_annunci %}<div class="col-md-6 col-xl-4"><a class="card card-body h-100 text-decoration-none text-body" href="{% url 'utilita:annunci' %}"><strong>Gestione annunci</strong><span class="small text-muted">Messaggi mostrati agli utenti di {{ nome_fornitore }}.</span></a></div>{% endif %}
+  {% if perms.core.utilita_scorporazione %}<div class="col-md-6 col-xl-4"><a class="card card-body h-100 text-decoration-none text-body" href="{% url 'utilita:scorporazione' %}"><strong>Scorporazione di massa</strong><span class="small text-muted">Escludi dalla fatturazione righe consegnate.</span></a></div>{% endif %}
+  {% if perms.core.utilita_cambia_ordine %}<div class="col-md-6 col-xl-4"><a class="card card-body h-100 text-decoration-none text-body" href="{% url 'utilita:cambia_ordine_cerca' %}"><strong>Cambia ordine</strong><span class="small text-muted">Modifica numero, serie, appendice e scadenza di un ordine.</span></a></div>{% endif %}
+</div>
+{% endblock %}

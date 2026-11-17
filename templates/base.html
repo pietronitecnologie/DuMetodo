@@ -46,6 +46,8 @@
             {% if perms.core.report_prezzi %}<li><a class="dropdown-item" href="{% url 'report:prezzi' %}">Controllo prezzi</a></li>{% endif %}
           </ul></li>
         {% endif %}
+        {% if perms.core.utilita_errori_importazione or perms.core.utilita_ristampa_etichette or perms.core.utilita_annunci or perms.core.utilita_scorporazione or perms.core.utilita_cambia_ordine %}
+        <li class="nav-item"><a class="nav-link" href="{% url 'utilita:indice' %}">Utilità</a></li>{% endif %}
         {% if perms.core.utenti %}<li class="nav-item"><a class="nav-link" href="{% url 'utenti:lista' %}">Utenti</a></li>{% endif %}
         {% if is_amministratore %}<li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Amministrazione</a></li>
         {% endif %}
@@ -63,5 +65,6 @@
   {% endfor %}
   {% block contenuto %}{% endblock %}
 </main>
+{% if user.is_authenticated %}<div hx-get="{% url 'utilita:annunci_attivi' %}" hx-trigger="load"></div>{% endif %}
 </body>
 </html>

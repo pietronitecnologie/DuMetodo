@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titolo %}Cambia ordine {{ ordine.codice_breve }}{% endblock %}
+{% block contenuto %}
+<a href="{% url 'utilita:cambia_ordine_cerca' %}" class="btn btn-sm btn-outline-secondary mb-2">← Cerca</a>
+<h1 class="h4">Cambia ordine <a href="{{ ordine.get_absolute_url }}">{{ ordine.codice }}</a></h1>
+<div class="row g-3">
+<div class="col-lg-6"><form method="post" class="card card-body" onsubmit="return confirm('Confermi la modifica dell\'ordine? Righe, note, consegne e DDT restano collegati.')">{% csrf_token %}
+  <div class="row g-2">
+    <div class="col-4"><label class="form-label small mb-0">Serie</label><input class="form-control form-control-sm" name="serie" value="{{ ordine.serie }}" maxlength="5" required></div>
+    <div class="col-8"><label class="form-label small mb-0">Numero</label><input class="form-control form-control-sm" name="numero" value="{{ ordine.numero }}" maxlength="30" required></div>
+    <div class="col-4"><label class="form-label small mb-0">Appendice</label><input class="form-control form-control-sm" name="appendice" value="{{ ordine.appendice }}" maxlength="10"></div>
+    <div class="col-4"><label class="form-label small mb-0">Anno</label><input class="form-control form-control-sm" value="{{ ordine.anno }}" disabled></div>
+    <div class="col-4"><label class="form-label small mb-0">Scadenza</label><input type="date" class="form-control form-control-sm" name="data_scadenza" value="{{ ordine.data_scadenza|date:'Y-m-d' }}"></div>
+    <div class="col-12"><label class="form-label small mb-0">Motivo (per lo storico scadenze)</label><textarea class="form-control form-control-sm" name="motivo" rows="2" maxlength="500"></textarea></div>
+  </div>
+  <div class="mt-2"><button class="btn btn-primary">Salva</button></div>
+</form></div>
+<div class="col-lg-6"><div class="card"><div class="card-header"><strong>Dati collegati</strong></div><div class="card-body small">
+  {% for k, v in correlati.items %}<div>{{ v }} {{ k }}</div>{% endfor %}
+  <div class="text-muted mt-2">Sono collegati all'ordine e lo seguono automaticamente.</div></div>
+  <div class="card-header border-top"><strong>Storico scadenze</strong></div>
+  <ul class="list-group list-group-flush small">{% for s in storico %}<li class="list-group-item">{{ s.creato_il|date:"d/m/Y H:i" }}: {{ s.precedente|date:"d/m/Y"|default:"—" }} → {{ s.nuova|date:"d/m/Y"|default:"—" }} {% if s.utente %}({{ s.utente }}){% endif %} {{ s.motivo }}</li>{% empty %}<li class="list-group-item text-muted">Nessuna variazione.</li>{% endfor %}</ul>
+</div></div>
+</div>
+{% endblock %}

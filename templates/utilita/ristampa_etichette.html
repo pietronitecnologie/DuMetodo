@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titolo %}Ristampa etichette{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Ristampa etichette da DDT</h1>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+  <div><label class="form-label small mb-0">N. DDT</label><input name="numero" class="form-control form-control-sm" value="{{ numero }}" required></div>
+  <div><label class="form-label small mb-0">Anno</label><input name="anno" type="number" class="form-control form-control-sm" style="width:7rem" value="{{ anno }}"></div>
+  <button class="btn btn-sm btn-primary">Cerca</button>
+</form>
+{% if numero and not ordini %}<div class="alert alert-warning">Nessun ordine per il DDT {{ numero }} del {{ anno }}.
+  {% if altri_anni %}Il numero esiste negli anni: {% for a in altri_anni %}<a href="?numero={{ numero|urlencode }}&anno={{ a }}">{{ a }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.{% endif %}</div>{% endif %}
+{% if ordini %}<form method="post">{% csrf_token %}<input type="hidden" name="numero" value="{{ numero }}"><input type="hidden" name="anno" value="{{ anno }}">
+<table class="table table-sm bg-white align-middle"><thead><tr><th><input type="checkbox" class="form-check-input" checked onclick="document.querySelectorAll('input[name=ordine]').forEach(c => c.checked = this.checked)"></th><th>Ordine</th><th>Stato</th><th>Scadenza</th><th>Consegna</th></tr></thead><tbody>
+{% for o in ordini %}<tr><td><input type="checkbox" class="form-check-input" name="ordine" value="{{ o.pk }}" checked></td><td>{{ o.codice_breve }}</td><td>{{ o.get_stato_display }}</td><td>{{ o.data_scadenza|date:"d/m/Y" }}</td><td>{{ o.data_consegna|date:"d/m/Y" }}</td></tr>{% endfor %}
+</tbody></table><button class="btn btn-primary">Genera etichette (xlsx)</button></form>{% endif %}
+{% endblock %}

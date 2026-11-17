@@ -1,0 +1,16 @@
+{% if annunci %}<div class="modal fade" id="modale-annunci" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header bg-warning-subtle"><h2 class="h5 modal-title">Annunci</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">{% for a in annunci %}<div class="mb-3" data-annuncio="{{ a.pk }}-{{ a.attivato_il|date:'U' }}"><div class="small text-muted">{{ a.data|date:"d/m/Y" }}</div>{{ a.testo|safe }}</div>{% endfor %}</div>
+  <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button></div>
+</div></div></div>
+<script>
+(() => {
+  // Mostra il popup una sola volta per sessione per ogni annuncio (il testo è già ripulito lato server).
+  const chiavi = [...document.querySelectorAll('[data-annuncio]')].map(e => e.dataset.annuncio);
+  let visti = [];
+  try { visti = JSON.parse(sessionStorage.getItem('annunci-visti') || '[]'); } catch (e) {}
+  if (chiavi.every(k => visti.includes(k))) return;
+  try { sessionStorage.setItem('annunci-visti', JSON.stringify([...new Set([...visti, ...chiavi])])); } catch (e) {}
+  new bootstrap.Modal(document.getElementById('modale-annunci')).show();
+})();
+</script>{% endif %}

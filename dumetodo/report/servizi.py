@@ -161,8 +161,10 @@ def produttivita_giornaliera(lunedi: dt.date) -> list[dict[str, Any]]:
         "data_consegna", "qta", "ordine__appendice"
     ):
         giorni[data][categoria(appendice)] += qta
-    return [{"data": d, "per_categoria": [p.get(c, ZERO) for c in CATEGORIE], "totale": sum(p.values(), ZERO)}
-            for d, p in giorni.items()]
+    return [
+        {"data": d, "per_categoria": [p.get(c, ZERO) for c in CATEGORIE], "totale": sum(p.values(), ZERO)}
+        for d, p in giorni.items()
+    ]
 
 
 @transaction.atomic

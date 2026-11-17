@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titolo %}Scorporazione di massa{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Scorporazione di massa</h1>
+<p class="small text-muted">Le righe <strong>scorporate</strong> sono consegnate ma escluse dalla fatturazione. Cerca le righe consegnate di un articolo nel periodo e scegli quali scorporare.</p>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-2">
+  <div><label class="form-label small mb-0">Articolo</label><input name="articolo" class="form-control form-control-sm" value="{{ articolo }}" required></div>
+  <div><label class="form-label small mb-0">Variante</label><input name="variante" class="form-control form-control-sm" value="{{ variante }}"></div>
+  <div><label class="form-label small mb-0">Consegnate dal</label><input type="date" name="dal" class="form-control form-control-sm" value="{{ dal|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small mb-0">al</label><input type="date" name="al" class="form-control form-control-sm" value="{{ al|date:'Y-m-d' }}"></div>
+  <button class="btn btn-sm btn-primary">Cerca</button>
+</form>
+<div class="mb-3 small">{% for nome, p in periodi.items %}<a class="me-2" href="?articolo={{ articolo|urlencode }}&variante={{ variante|urlencode }}&dal={{ p.0|date:'Y-m-d' }}&al={{ p.1|date:'Y-m-d' }}">{{ nome }}</a>{% endfor %}</div>
+{% if righe is not None %}
+{% if troppe %}<div class="alert alert-warning py-1 small">Mostrate le prime 500 righe: restringi la ricerca.</div>{% endif %}
+<form method="post">{% csrf_token %}
+  <input type="hidden" name="articolo" value="{{ articolo }}"><input type="hidden" name="variante" value="{{ variante }}"><input type="hidden" name="dal" value="{{ dal|date:'Y-m-d' }}"><input type="hidden" name="al" value="{{ al|date:'Y-m-d' }}">
+  <table class="table table-sm bg-white align-middle"><thead><tr><th>Scorpora</th><th>Ordine</th><th>Riga</th><th>Articolo</th><th>Var.</th><th class="text-end">Qtà</th><th>Consegna</th></tr></thead><tbody>
+  {% for r in righe %}<tr class="{% if not r.is_attiva %}riga-chiusa{% endif %}"><td>{% if r.is_attiva %}<input type="hidden" name="visualizzata" value="{{ r.pk }}"><input type="checkbox" class="form-check-input" name="scorpora" value="{{ r.pk }}" {% if r.scorporata %}checked{% endif %}>{% endif %}</td>
+    <td><a href="{{ r.ordine.get_absolute_url }}">{{ r.ordine.codice_breve }}</a></td><td>{{ r.n_riga }}</td><td>{{ r.articolo }}</td><td>{{ r.variante }}</td><td class="text-end">{{ r.qta|floatformat:"-3" }}</td><td>{{ r.data_consegna|date:"d/m/Y" }}</td></tr>
+  {% empty %}<tr><td colspan="7" class="text-muted text-center">Nessuna riga consegnata.</td></tr>{% endfor %}
+  </tbody></table>
+  {% if righe %}<button class="btn btn-primary" onclick="return confirm('Salvare la scorporazione?')">Salva scorporazione</button>{% endif %}
+</form>{% endif %}
+{% endblock %}

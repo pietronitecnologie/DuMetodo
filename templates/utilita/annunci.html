@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titolo %}Annunci{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Annunci</h1><a class="btn btn-sm btn-primary" href="{% url 'utilita:annuncio_nuovo' %}">Nuovo annuncio</a></div>
+<table class="table table-sm bg-white align-middle"><thead><tr><th>Data</th><th>Testo</th><th>Stato</th><th>Attivato il</th><th></th></tr></thead><tbody>
+{% for a in annunci %}<tr><td>{{ a.data|date:"d/m/Y" }}</td><td>{{ a.testo|striptags|truncatewords:25 }}</td>
+  <td>{% if a.attivo and not a.scaduto %}<span class="badge text-bg-success">Attivo</span>{% elif a.scaduto %}<span class="badge text-bg-secondary">Scaduto</span>{% else %}<span class="badge text-bg-secondary">Disattivo</span>{% endif %}{% if a.permanente %} <span class="badge text-bg-info">Permanente</span>{% endif %}</td>
+  <td>{{ a.attivato_il|date:"d/m/Y H:i"|default:"—" }}</td>
+  <td class="text-nowrap"><a class="btn btn-sm btn-outline-secondary py-0" href="{% url 'utilita:annuncio' a.pk %}">Modifica</a>
+    <form class="d-inline" method="post" action="{% url 'utilita:annuncio_attiva' a.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary py-0">{% if a.attivo and not a.scaduto %}Disattiva{% else %}Attiva{% endif %}</button></form></td></tr>
+{% empty %}<tr><td colspan="5" class="text-muted text-center">Nessun annuncio.</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}

@@ -11,6 +11,7 @@ urlpatterns = [
     path("consegne/", include("dumetodo.consegne.urls")),
     path("pianificazione/", include("dumetodo.pianificazione.urls")),
     path("report/", include("dumetodo.report.urls")),
+    path("utilita/", include("dumetodo.utilita.urls")),
     path("note/", include("dumetodo.comunicazioni.urls")),
     path("importazione/", include("dumetodo.importazione.urls")),
     path("configurazione/", include("dumetodo.configurazione.urls")),
