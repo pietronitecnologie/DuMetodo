@@ -221,9 +221,9 @@ login e permesso.
 
 Da riga di comando: `python manage.py assegna_profilo <utente> Amministratore`.
 
-Personale del Fornitore, con gerarchia: **Amministratore** ⊃ **Caporeparto** ⊃ **Operatore**.
-Utenti del Cliente: **Cliente**. I gruppi di Metodo (`Geko Admin`, `GekoCapRep`, `Geko`, `Customer`)
-vengono rinominati automaticamente dalla migrazione `core/0002`.
+Il gruppo **Cliente** indica solo l'identità: chi ne fa parte scrive le note come Cliente e non vede quelle
+interne. Nella migrazione da Metodo i gruppi `Geko`, `GekoCapRep`, `Geko Admin` e `Customer` diventano i
+profili Operatore, Caporeparto, Amministratore e Cliente (unione dei permessi se l'utente era in più gruppi).
 
 ## Migrazione da Metodo
 
