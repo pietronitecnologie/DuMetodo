@@ -4,9 +4,9 @@
 {% block contenuto %}
 <div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Configurazione</h1>
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'configurazione:storico' %}">Storico modifiche</a></div>
-<div class="alert alert-info small">Qui ci sono solo i <strong>parametri di funzionamento</strong>, controllati e storicizzati.
-Le <strong>credenziali</strong> (password email, database) non stanno nel database: si impostano nel file <code>.env</code> del server.
-La <strong>capacità settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
+<div class="alert alert-info small py-2">Parametri di funzionamento, controllati e storicizzati. Le <strong>password</strong>
+(casella ordini) sono salvate cifrate, non vengono mai mostrate e non finiscono nello storico. La <strong>capacità
+settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
 <div class="row g-3">
 {% for form in forms %}
   <div class="col-lg-6">
@@ -26,6 +26,13 @@ La <strong>capacità settimanale</strong> di ogni reparto si imposta nella sched
             <a class="btn btn-sm btn-link" href="{% url 'configurazione:guida_tracciati' %}" target="_blank">Guida al linguaggio</a>
           </div>
           <div class="anteprima"></div>
+          {% elif campo.name == "casella.mittenti_ammessi" %}
+          <div class="d-flex align-items-start gap-2 mb-2">
+            <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" hx-post="{% url 'configurazione:prova_casella' %}"
+                    hx-include="closest form" hx-target="next .esito-prova" hx-indicator="this">Prova connessione</button>
+            <div class="esito-prova small"></div>
+          </div>
+          <div class="form-text mb-2">La prova usa i valori scritti qui sopra (anche se non ancora salvati) e non legge né modifica i messaggi.</div>
           {% elif campo.name == "client.menu" %}
           <div class="d-flex gap-2 mb-2">
             <button type="button" class="btn btn-sm btn-outline-secondary"

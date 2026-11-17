@@ -3,7 +3,6 @@ prima che diventino errori 500 in produzione."""
 
 from typing import Any
 
-from django.conf import settings
 from django.core.checks import Tags, Warning, register
 from django.db import DatabaseError
 
@@ -26,12 +25,17 @@ def controlla_parametri(app_configs: Any, **kwargs: Any) -> list[Warning]:
                 )
     except DatabaseError:
         return []
-    imap = settings.ORDINI_IMAP
-    if not (imap["HOST"] and imap["USER"] and imap["PASSWORD"]):
+    from dumetodo.importazione.posta import casella_configurata
+
+    try:
+        configurata = casella_configurata()
+    except DatabaseError:
+        configurata = True
+    if not configurata:
         avvisi.append(
             Warning(
                 "Casella IMAP ordini non configurata: la lettura automatica degli ordini è disattivata.",
-                hint="Imposta ORDINI_IMAP_HOST/USER/PASSWORD nel file .env.",
+                hint="Impostala in Configurazione > Casella ordini (IMAP).",
                 id="configurazione.W002",
             )
         )

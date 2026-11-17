@@ -7,7 +7,8 @@ Sostituisce la tabella chiave/valore ``Configuration`` di Metodo, che aveva ques
 - cursori tecnici (ID_EMAIL, IDX_SYNC) mescolati ai parametri di business.
 
 Nuova organizzazione:
-1. credenziali e infrastruttura -> variabili d'ambiente (vedi ``.env.example``);
+1. infrastruttura (database, chiavi) -> variabili d'ambiente (vedi ``.env.example``); le password che
+   l'amministratore deve poter cambiare dall'app (casella ordini) sono parametri ``SEGRETO``, cifrati;
 2. parametri di business -> dichiarati QUI, con tipo, default, validazione e descrizione;
    i valori modificati dagli amministratori stanno in ``ValoreParametro`` (storicizzato);
 3. soglie di capacità -> campo ``Reparto.soglia_ore_settimanali``;
@@ -37,6 +38,7 @@ class Tipo(StrEnum):
     LISTA_EMAIL = "lista_email"
     MENU_CLIENT = "menu_client"  # menu del tasto destro del client desktop (JSON)
     TRACCIATO = "tracciato"  # formato di un file esportato, nel linguaggio di dumetodo.tracciati
+    SEGRETO = "segreto"  # password: salvata cifrata (SegretoParametro), mai mostrata né storicizzata
 
 
 class Gruppo(StrEnum):
@@ -44,6 +46,7 @@ class Gruppo(StrEnum):
     PRODUZIONE = "Produzione"
     ORDINI = "Ordini"
     IMPORTAZIONE = "Importazione ordini"
+    CASELLA = "Casella ordini (IMAP)"
     COMUNICAZIONI = "Note e comunicazioni"
     EMAIL = "Indirizzi email"
     TRACCIABILITA = "Tracciabilità"
@@ -75,6 +78,8 @@ class Parametro:
         match self.tipo:
             case Tipo.TESTO:
                 return str(valore).strip()
+            case Tipo.SEGRETO:
+                return str(valore)
             case Tipo.INTERO:
                 try:
                     v = int(str(valore).strip())
@@ -268,6 +273,57 @@ PARAMETRI: tuple[Parametro, ...] = (
         Gruppo.IMPORTAZIONE,
         "Destinatari avvisi errori di importazione",
         "Chi riceve un'email quando un file d'ordine non può essere importato.",
+    ),
+    # --- Casella ordini (IMAP) ----------------------------------------------------------
+    # Se il server è vuoto valgono le variabili ORDINI_IMAP_* del file .env (compatibilità).
+    Parametro(
+        "casella.server",
+        Tipo.TESTO,
+        Gruppo.CASELLA,
+        "Server IMAP",
+        "Es. imap.gmail.com, outlook.office365.com, mail.azienda.it. Vuoto = valori del file .env.",
+        default="",
+    ),
+    Parametro("casella.porta", Tipo.INTERO, Gruppo.CASELLA, "Porta", "993 con SSL, 143 senza.", default=993, minimo=1),
+    Parametro(
+        "casella.ssl",
+        Tipo.BOOLEANO,
+        Gruppo.CASELLA,
+        "Connessione cifrata (SSL/TLS)",
+        "Lasciare attivo salvo indicazioni diverse del fornitore della posta.",
+        default=True,
+    ),
+    Parametro(
+        "casella.utente",
+        Tipo.TESTO,
+        Gruppo.CASELLA,
+        "Utente / indirizzo della casella",
+        "L'indirizzo a cui il Cliente invia gli ordini (es. ordini@azienda.it).",
+        default="",
+    ),
+    Parametro(
+        "casella.password",
+        Tipo.SEGRETO,
+        Gruppo.CASELLA,
+        "Password",
+        "Salvata cifrata e mai mostrata. Lascia vuoto per non cambiarla. Con Gmail/Microsoft 365 usa una "
+        "'password per le app'.",
+    ),
+    Parametro(
+        "casella.cartella",
+        Tipo.TESTO,
+        Gruppo.CASELLA,
+        "Cartella",
+        "Cartella da leggere (di solito INBOX).",
+        default="INBOX",
+    ),
+    Parametro(
+        "casella.mittenti_ammessi",
+        Tipo.LISTA_EMAIL,
+        Gruppo.CASELLA,
+        "Mittenti ammessi",
+        "Si importano solo gli ordini inviati da questi indirizzi; gli altri messaggi vengono scartati e "
+        "registrati. Vuoto = qualunque mittente.",
     ),
     # --- Comunicazioni ------------------------------------------------------------------
     Parametro(

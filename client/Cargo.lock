@@ -469,6 +469,7 @@ version = "0.1.0"
 dependencies = [
  "arboard",
  "directories",
+ "gtk",
  "muda",
  "open",
  "serde",

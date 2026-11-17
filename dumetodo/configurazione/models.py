@@ -21,3 +21,21 @@ class ValoreParametro(models.Model):
 
     def __str__(self) -> str:
         return self.chiave
+
+
+class SegretoParametro(models.Model):
+    """Parametro segreto (password), cifrato. Volutamente SENZA storico: le vecchie password non restano."""
+
+    chiave = models.CharField("chiave", max_length=100, unique=True)
+    cifrato = models.TextField("valore cifrato")
+    aggiornato_il = models.DateTimeField("aggiornato il", auto_now=True)
+    aggiornato_da = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        verbose_name = "parametro segreto"
+        verbose_name_plural = "parametri segreti"
+
+    def __str__(self) -> str:
+        return self.chiave
