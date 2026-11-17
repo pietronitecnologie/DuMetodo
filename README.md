@@ -21,7 +21,8 @@ L'analisi funzionale del codice originale, che fa da specifica per la riscrittur
 | **Consegna** con bolla, **DDT** con file tecnico, **etichette** | ✅ fase 2 |
 | Agenda ordini, pianificazione, tabulati | ⏳ fase 3 |
 | Magazzino, distinte base, richieste materiali, DDT in ingresso | ⏳ fase 4 |
-| Tracciabilità, controllo qualità, reclami, annunci | ⏳ fase 5 |
+| **Tracciabilità e qualità**: batterie, cavi dai banchi, lotti, controllo qualità, reclami, test display, foto | ✅ fase 5 |
+| Annunci | ⏳ fase 5 |
 | **Migrazione dei dati da Metodo** | ✅ fase 2 |
 | **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ⏳ fase finale |
 
@@ -134,6 +135,77 @@ Il linguaggio si usa oggi per:
 * **Etichette:** stesso xlsx di Metodo. Il codice Fornitore della colonna I si configura e le date
   sono vere date.
 
+## Tracciabilità e qualità
+
+Menu **Tracciabilità e qualità** (app `dumetodo.tracciabilita`). La pagina di ogni ordine mostra
+tracce, lotto/busta, controlli qualità, reclami, foto e file dell'ordine.
+
+* **Elementi tracciati:** ogni elemento fisico (batteria, cavo, generico) ha un codice UNICO e un tipo
+  esplicito. In Metodo il tipo si esprimeva con righe d'ordine finte e ogni evento creava un nuovo item.
+* **Batterie:** primo ingresso (codice generato `prefisso + 6 caratteri esadecimali`, prefisso in
+  Configurazione, unicità garantita dal database) o ricarica (solo di batterie note). Una batteria
+  senza eventi da N giorni (default 115) riceve un **work order** di ricarica, chiuso dalla ricarica
+  stessa o a mano. Il controllo gira ogni giorno (Celery beat, `configura_pianificazioni`).
+* **Tracce generiche:** chiave = valore su un codice; a un codice esistente si aggiungono eventi.
+* **Lotto/busta** dalla pagina dell'ordine; un doppio invio non crea doppioni.
+* **Etichette:** Code128 generato nel browser (JsBarcode, in `static/vendor`), pagina di stampa.
+* **Controllo qualità:** i **test** (con i loro **controlli**) si definiscono in Amministrazione. Un
+  controllo è "campione/KO" (numeri interi, KO ≤ campione) oppure "presente/assente". Distinta e
+  disegno sono controlli di presenza con codice `distinta` e `disegno` (in Metodo: id 8 e 9 nel codice).
+* **Reclami** con ordine (facoltativo), reparto, data scelta dall'utente e allegato.
+* **Test display:** con il lettore di codici a barre si legge `sito$$articolo` nel campo Sito: i
+  campi si compilano, l'esito diventa Positivo e il test si salva da solo se prodotto, FW e lotto
+  sono compilati. Prodotto, FW, lotto e data restano per il pezzo successivo.
+* **Foto e file per ordine:** dal telefono le foto vengono ridotte a 1024 px prima dell'invio. Sono
+  ammessi JPEG, PNG, GIF, WebP e PDF (tipo verificato dal contenuto) fino alla dimensione configurata.
+  I file stanno in `MEDIA_ROOT` (mai servito pubblicamente) e si scaricano solo da una vista che
+  controlla i permessi.
+* **Liste:** filtri in GET, paginazione ed **esportazione xlsx degli stessi dati filtrati**; gli
+  intervalli di date comprendono il giorno finale.
+* **Permessi:** il Fornitore registra; il Cliente consulta batterie, cavi, qualità, reclami, test
+  display e quanto collegato ai suoi ordini.
+
+### Protocollo dei banchi di prova (API cavi)
+
+Sostituisce `insertTracciaCavi` di Metodo, che era una GET anonima e creava ordini vuoti.
+
+1. Un amministratore crea la **postazione** (Amministrazione → Postazioni, ex asset) e genera il
+   **token** da *Tracciabilità e qualità → Postazioni e token*. Il token si vede una volta sola; nel
+   database c'è solo la sua impronta SHA-256. Rigenerarlo o revocarlo disattiva il precedente.
+2. Il banco invia `POST /tracciabilita/api/cavi/` (form-urlencoded) con l'intestazione
+   `X-Postazione-Token: <token>`. Solo per banchi che non sanno impostare intestazioni: parametro
+   `token=<token>` (finisce nei log del server web: preferire l'intestazione). Le GET sono rifiutate,
+   a meno che il parametro *API postazioni: accetta GET* sia attivo.
+
+| Parametro | Obbligatorio | Significato |
+|---|---|---|
+| `ordine` | sì (oppure `serie`, `numero`, `anno`, `appendice`) | `serie.numero[.appendice]-anno`, es. `00040.0004300-2026` |
+| `prodotto` | sì | codice del cavo (chiave della traccia) |
+| `misura` | sì | lunghezza misurata (valore) |
+| `data` | sì | `AAAA/MM/GG,hh:mm:ss`, `AAAA/MM/GG` o ISO `AAAA-MM-GGThh:mm:ss` (ora locale) |
+| `lotto` (o `lottoCavo`) | no | lotto della bobina |
+| `reparto` (o `location`) | no | codice reparto; default il reparto della postazione |
+| `asset` | no | se presente deve coincidere con il codice della postazione del token |
+
+Risposte JSON:
+
+| Stato | Quando | Corpo |
+|---|---|---|
+| 201 | traccia creata | `{"esito": "creata", "id": 12, "codice": "CV3F9A1C", "ordine": "00040.0004300-2026"}` |
+| 200 | stesso dato già ricevuto (stessa postazione, ordine, data, prodotto, misura) | come sopra, `"esito": "duplicata"` |
+| 400 | parametri non validi | `{"errore": "...", "campi": {...}}` |
+| 401 | token mancante, errato o postazione disattivata | `{"errore": "..."}` |
+| 404 | ordine inesistente (l'ordine **non** viene creato) | `{"errore": "Ordine ... non trovato.", ...}` |
+| 405 | metodo non ammesso | `{"errore": "..."}` |
+
+```bash
+curl -X POST https://dumetodo.esempio.it/tracciabilita/api/cavi/ -H "X-Postazione-Token: $TOKEN" \
+  -d ordine=00040.0004300-2026 -d prodotto=CV-AWG18 -d misura=1250 -d lotto=L-9 -d "data=2026/03/01,10:15:30"
+```
+
+Il pulsante **Intestato** della lista cavi registra l'evento sullo stesso cavo, una volta sola (in
+Metodo creava un nuovo codice a ogni clic).
+
 ## Ruoli
 
 Personale del Fornitore, con gerarchia: **Amministratore** ⊃ **Caporeparto** ⊃ **Operatore**.
@@ -156,6 +228,9 @@ python manage.py importa_configurazione_metodo configuration.csv --applica
   * note, segnate come già lette;
   * storico scadenze;
   * righe consegnate con i relativi DDT.
+  * tracciabilità e qualità: postazioni (senza token), elementi e tracce, test e controlli, controlli
+    qualità, reclami, test display, file per ordine. I file non vengono copiati: copia le cartelle
+    `Reclami/` e `file/` della cartella media di Metodo in `MEDIA_ROOT`.
 * **Ordini duplicati in Metodo:** quelli con la stessa chiave vengono fusi in uno solo e segnalati nel report.
 
 ## Sviluppo

@@ -66,8 +66,45 @@ TABELLE: dict[str, tuple[set[str], set[str]]] = {  # tabella -> (colonne obbliga
         {"id", "rif_ordine", "anno", "serie", "appendice", "articolo", "qta", "n_riga"},
         {"no_ddt", "data_ddt", "variante", "inviato", "data_inserimento"},
     ),
+    # --- Tracciabilità e qualità (passo in migrazione/tracciabilita.py)
+    "Prod_configuration": ({"id", "chiave", "valore"}, set()),
+    "Plan_asset": ({"id", "code"}, {"name", "location_id"}),
+    "Plan_coding": ({"id", "internalCode"}, {"rawMaterialCode"}),
+    "Prod_stored_item": ({"id"}, {"codice_id", "data_in"}),
+    "Prod_tracciabilita": (
+        {"id", "chiave"},
+        {"stored_item_id", "rif_ordine_id", "data_inserimento", "data", "valore", "location_id", "asset_id"},
+    ),
+    "Prod_check": ({"id", "nome"}, {"descrizione"}),
+    "Prod_test": ({"id", "nome"}, {"descrizione", "tipo", "checkDistinta", "checkDisegno"}),
+    "Prod_test_checks": ({"id", "test_id", "check_id"}, set()),
+    "Prod_controlloqlta": (
+        {"id", "codiceProdotto", "data_inserimento", "campione", "ko"},
+        {"ordine", "check_rif_id", "qtaInOrdine"},
+    ),
+    "Prod_reclami": ({"id", "codice", "articolo", "ordine"}, {"data", "reparto_id", "note", "file"}),
+    "Prod_displaytest": (
+        {"id", "sito", "articolo", "esito", "data"},
+        {"prodotto", "fw", "lotto", "note", "data_inserimento", "utente_id"},
+    ),
+    "Prod_fileordini": ({"id", "file", "rif_ordine"}, {"anno", "serie", "appendice", "data_inserimento"}),
 }
 FACOLTATIVE = {"Prod_anagrafica", "Plan_location", "Plan_locpath", "Prod_storicoscadenza", "Prod_documentitrasporto"}
+# --- Tracciabilità e qualità: tutte facoltative
+FACOLTATIVE |= {
+    "Prod_configuration",
+    "Plan_asset",
+    "Plan_coding",
+    "Prod_stored_item",
+    "Prod_tracciabilita",
+    "Prod_check",
+    "Prod_test",
+    "Prod_test_checks",
+    "Prod_controlloqlta",
+    "Prod_reclami",
+    "Prod_displaytest",
+    "Prod_fileordini",
+}
 
 
 class SchemaNonCompatibile(Exception):
