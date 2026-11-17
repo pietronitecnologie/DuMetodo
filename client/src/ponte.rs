@@ -17,6 +17,16 @@ pub enum Messaggio {
     },
     /// Legge gli appunti e li passa alla pagina con `DuMetodoClient.incolla(testo)`.
     Incolla,
+    /// Apre una nuova scheda (senza indirizzo: la pagina iniziale del server).
+    NuovaScheda {
+        #[serde(default)]
+        url: Option<String>,
+    },
+    ChiudiScheda,
+    /// Passa alla scheda successiva (+1) o precedente (-1).
+    CambiaScheda {
+        passo: i32,
+    },
     Zoom {
         passo: f64,
     },
@@ -66,6 +76,12 @@ pub const SCRIPT_INIZIALE: &str = r#"
     else if (ctrl && (e.key === "+" || e.key === "=")) { e.preventDefault(); invia({ tipo: "zoom", passo: 0.1 }); }
     else if (ctrl && e.key === "-") { e.preventDefault(); invia({ tipo: "zoom", passo: -0.1 }); }
     else if (ctrl && e.key === "0") { e.preventDefault(); invia({ tipo: "zoom", passo: 0 }); }
+    else if (ctrl && !e.shiftKey && e.key.toLowerCase() === "t") { e.preventDefault(); invia({ tipo: "nuova_scheda" }); }
+    else if (ctrl && e.key.toLowerCase() === "w") { e.preventDefault(); invia({ tipo: "chiudi_scheda" }); }
+    else if (ctrl && (e.key === "Tab" || e.key === "PageDown" || e.key === "PageUp")) {
+      e.preventDefault();
+      invia({ tipo: "cambia_scheda", passo: (e.key === "PageUp" || (e.key === "Tab" && e.shiftKey)) ? -1 : 1 });
+    }
     else if (e.altKey && e.key === "ArrowLeft") { history.back(); }
     else if (e.altKey && e.key === "ArrowRight") { history.forward(); }
   }, true);
@@ -94,6 +110,11 @@ mod test {
             matches!(interpreta(r#"{"tipo":"copia","testo":"a\tb"}"#), Some(Messaggio::Copia { ref testo }) if testo == "a\tb")
         );
         assert!(matches!(interpreta(r#"{"tipo":"incolla"}"#), Some(Messaggio::Incolla)));
+        assert!(matches!(interpreta(r#"{"tipo":"nuova_scheda"}"#), Some(Messaggio::NuovaScheda { url: None })));
+        assert!(matches!(
+            interpreta(r#"{"tipo":"cambia_scheda","passo":-1}"#),
+            Some(Messaggio::CambiaScheda { passo: -1 })
+        ));
         assert_eq!(js_stringa("a\"</script>"), "\"a\\\"</script>\"");
     }
 }

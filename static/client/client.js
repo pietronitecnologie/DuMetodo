@@ -87,7 +87,7 @@
     invia({ tipo: "copia", testo: t });
   };
 
-  const contesto = { cella: null, selezione: "" };
+  const contesto = { cella: null, selezione: "", link: "" };
 
   const azioni = {
     copia_tabella: () => {
@@ -107,6 +107,8 @@
       if (c) copiaTesto(tsv([Array.from(c.parentElement.cells).map(pulisci)]));
     },
     copia_selezione: () => copiaTesto(contesto.selezione),
+    nuova_scheda: () => invia({ tipo: "nuova_scheda" }),
+    apri_in_nuova_scheda: () => { if (contesto.link) invia({ tipo: "nuova_scheda", url: contesto.link }); },
     incolla: () => {
       // Il client nuovo legge gli appunti e chiama DuMetodoClient.incolla; in alternativa il browser.
       if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
@@ -145,6 +147,7 @@
     if (["copia_tabella", "copia_colonna", "copia_riga"].includes(azione)) return !!contesto.cella;
     if (azione === "copia_selezione") return !!contesto.selezione;
     if (azione === "incolla") return !!campoIncolla;
+    if (azione === "apri_in_nuova_scheda") return !!contesto.link;
     return true;
   };
 
@@ -152,6 +155,8 @@
     const campo = e.target.closest("input, textarea, [contenteditable=true]");
     campoIncolla = scrivibile(campo) ? campo : null;
     contesto.cella = e.target.closest("td, th");
+    const link = e.target.closest("a[href]");
+    contesto.link = link && link.origin === window.location.origin ? link.href : "";
     if (campo && typeof campo.selectionStart === "number" && campo.type !== "password") {
       contesto.selezione = campo.value.slice(campo.selectionStart, campo.selectionEnd);
     } else {

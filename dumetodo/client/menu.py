@@ -14,8 +14,8 @@ Formato (JSON, modificabile in Configurazione > Client desktop)::
 
 Azioni: naviga, post, copia, stampa, ricarica, indietro, avanti, schermo_intero, e quelle sul punto
 cliccato: copia_tabella, copia_colonna, copia_riga (formato incollabile in Excel), copia_selezione,
-incolla. Queste ultime compaiono solo quando servono (su una tabella, con del testo selezionato, su un
-campo in cui si può scrivere).
+incolla, nuova_scheda, apri_in_nuova_scheda. Queste compaiono solo quando servono (su una tabella, con del
+testo selezionato, su un campo in cui si può scrivere, su un link).
 - ``url`` deve essere un percorso interno (inizia con "/", non con "//"): niente siti esterni;
 - ``post`` invia ``campi`` con il token CSRF; ``conferma`` facoltativa chiede conferma prima;
 - ``permesso``: codice di una funzione (Utenti e permessi); la voce compare solo a chi ce l'ha;
@@ -42,6 +42,8 @@ AZIONI = {
     "copia_riga",
     "copia_selezione",
     "incolla",
+    "nuova_scheda",
+    "apri_in_nuova_scheda",
 }
 CAMPI_VOCE = {"etichetta", "azione", "url", "campi", "testo", "conferma", "permesso", "separatore"}
 _RE_TIPO = re.compile(r"^[a-z][a-z0-9_]{0,40}$")
@@ -49,6 +51,9 @@ _RE_SEGNAPOSTO = re.compile(r"\{([a-z][a-z0-9_]*)\}")
 
 PREDEFINITO: dict[str, list[dict[str, Any]]] = {
     "pagina": [
+        {"etichetta": "Apri in nuova scheda", "azione": "apri_in_nuova_scheda"},
+        {"etichetta": "Nuova scheda", "azione": "nuova_scheda"},
+        {"separatore": True},
         {"etichetta": "Aggiorna pagina", "azione": "ricarica"},
         {"separatore": True},
         {"etichetta": "Copia tabella", "azione": "copia_tabella"},
