@@ -13,5 +13,6 @@ urlpatterns = [
     path("note/", include("dumetodo.comunicazioni.urls")),
     path("importazione/", include("dumetodo.importazione.urls")),
     path("configurazione/", include("dumetodo.configurazione.urls")),
+    path("utenti/", include("dumetodo.core.urls_utenti")),
     path("admin/", admin.site.urls),
 ]

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titolo %}{% if utente %}{{ utente.username }}{% else %}Nuovo utente{% endif %}{% endblock %}
+{% block contenuto %}
+<a href="{% url 'utenti:lista' %}" class="btn btn-sm btn-outline-secondary mb-2">← Utenti</a>
+<h1 class="h4">{% if utente %}Utente {{ utente.username }}{% else %}Nuovo utente{% endif %}</h1>
+<form method="post" class="row g-3">{% csrf_token %}
+  <div class="col-lg-4"><div class="card"><div class="card-body">
+    <label class="form-label small mb-0">Nome utente</label><input class="form-control form-control-sm mb-2" name="username" required value="{{ valori.username }}">
+    <label class="form-label small mb-0">Nome</label><input class="form-control form-control-sm mb-2" name="nome" value="{{ valori.nome }}">
+    <label class="form-label small mb-0">Cognome</label><input class="form-control form-control-sm mb-2" name="cognome" value="{{ valori.cognome }}">
+    <label class="form-label small mb-0">Email</label><input class="form-control form-control-sm mb-2" type="email" name="email" value="{{ valori.email }}">
+    <label class="form-label small mb-0">{% if utente %}Nuova password (vuoto = invariata){% else %}Password{% endif %}</label>
+    <input class="form-control form-control-sm mb-2" type="password" name="password" autocomplete="new-password" {% if not utente %}required{% endif %}>
+    <div class="form-check"><input class="form-check-input" type="checkbox" name="attivo" id="attivo" {% if not utente or utente.is_active %}checked{% endif %}><label class="form-check-label" for="attivo">Attivo</label></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" name="cliente" id="cliente" {% if is_utente_cliente %}checked{% endif %}>
+      <label class="form-check-label" for="cliente">Utente di {{ nome_cliente }}</label>
+      <div class="form-text">Scrive le note come {{ nome_cliente }} e non vede le note interne.</div></div>
+    <hr>
+    <label class="form-label small mb-0">Applica un profilo</label>
+    <div class="input-group input-group-sm"><select class="form-select" name="profilo">{% for p in profili %}<option>{{ p }}</option>{% endfor %}</select>
+      <button class="btn btn-outline-secondary" name="azione" value="profilo" onclick="return confirm('Sostituire tutti i permessi con quelli del profilo?')">Applica</button></div>
+    <div class="form-text">Il profilo è un punto di partenza: dopo puoi modificare ogni singolo permesso.</div>
+  </div><div class="card-footer text-end"><button class="btn btn-primary" name="azione" value="salva">Salva</button></div></div></div>
+  <div class="col-lg-8">
+    {% if utente.is_superuser %}<div class="alert alert-info py-1 small">Superuser: ha comunque tutti i permessi.</div>{% endif %}
+    <div class="row g-2">
+    {% for sezione, voci in sezioni %}<div class="col-md-6"><div class="card h-100">
+      <div class="card-header d-flex"><strong class="me-auto">{{ sezione.value }}</strong>
+        <a href="#" class="small" onclick="this.closest('.card').querySelectorAll('input').forEach(i => i.checked = !i.checked); return false">inverti</a></div>
+      <div class="card-body py-2">{% for f, attivo in voci %}
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="permesso" value="{{ f.codice }}" id="p-{{ f.codice }}" {% if attivo %}checked{% endif %}>
+          <label class="form-check-label small" for="p-{{ f.codice }}" title="{{ f.descrizione }}">{{ f.etichetta }}</label></div>{% endfor %}
+      </div></div></div>{% endfor %}
+    </div>
+  </div>
+</form>
+{% endblock %}

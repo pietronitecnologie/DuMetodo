@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titolo %}Utenti e permessi{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Utenti e permessi</h1>
+  <a class="btn btn-sm btn-primary" href="{% url 'utenti:nuovo' %}">Nuovo utente</a></div>
+<table class="table table-sm bg-white align-middle"><thead><tr><th>Utente</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Permessi</th><th>Ultimo accesso</th></tr></thead><tbody>
+{% for u in utenti %}<tr class="{% if not u.is_active %}text-muted{% endif %}">
+  <td><a href="{% url 'utenti:modifica' u.pk %}">{{ u.username }}</a>{% if not u.is_active %} <span class="badge text-bg-secondary">disattivo</span>{% endif %}{% if u.is_superuser %} <span class="badge text-bg-dark">superuser</span>{% endif %}</td>
+  <td>{{ u.get_full_name }}</td><td>{{ u.email }}</td>
+  <td>{% if u.cliente %}{{ nome_cliente }}{% else %}{{ nome_fornitore }}{% endif %}</td>
+  <td>{% if u.is_superuser %}tutti{% else %}{{ u.n_permessi }} / {{ totale_funzioni }}{% endif %}</td>
+  <td>{{ u.last_login|date:"d/m/Y H:i"|default:"mai" }}</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}
