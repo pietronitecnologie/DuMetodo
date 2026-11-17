@@ -28,7 +28,7 @@ Tutte le funzioni dell'app `Prod` di Metodo sono state riscritte.
 | **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ✅ |
 | **Permessi granulari** per funzione, pagina Utenti e permessi | ✅ |
 | **Migrazione dei dati da Metodo** (ordini, magazzino, tracciabilità, utenti) | ✅ |
-| Client desktop (browser personalizzato in Rust) | ⏳ da avviare |
+| **Client desktop** (browser personalizzato in Rust, cartella `client/`): menu del tasto destro nativi definiti dal server | ✅ |
 
 ## Regole di progetto
 

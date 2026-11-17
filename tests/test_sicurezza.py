@@ -12,6 +12,8 @@ PUBBLICHE = {
     "utilita:annunci_attivi",  # frammento vuoto per chi non è del Fornitore
     "tracciabilita:api_cavi",  # protetta dal token della postazione (testata a parte)
 }
+# Solo login: servono a ogni utente collegato e restituiscono dati già filtrati per i suoi permessi.
+SOLO_LOGIN = {"client:configurazione"}
 
 
 def _rotte(resolver: URLResolver = None, prefisso: str = "", ns: str = ""):  # type: ignore[assignment]
@@ -37,6 +39,8 @@ def test_anonimo_e_utente_senza_permessi(client, db, nome, url):
     assert r.status_code in (302, 405), f"{nome}: {r.status_code}"
     if r.status_code == 302:
         assert "/accesso/" in r["Location"], nome
+    if nome in SOLO_LOGIN:
+        return
     client.force_login(User.objects.create_user("nessuno"))
     r = client.get(url)
     assert r.status_code in (403, 405), f"{nome}: {r.status_code}"

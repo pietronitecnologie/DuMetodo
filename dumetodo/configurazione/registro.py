@@ -18,6 +18,7 @@ Aggiungere un parametro = aggiungere una voce a ``PARAMETRI``. Nessuna migrazion
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -34,6 +35,7 @@ class Tipo(StrEnum):
     BOOLEANO = "booleano"
     EMAIL = "email"
     LISTA_EMAIL = "lista_email"
+    MENU_CLIENT = "menu_client"  # menu del tasto destro del client desktop (JSON)
     TRACCIATO = "tracciato"  # formato di un file esportato, nel linguaggio di dumetodo.tracciati
 
 
@@ -47,6 +49,7 @@ class Gruppo(StrEnum):
     TRACCIABILITA = "Tracciabilità"
     CONSEGNA = "Consegna e file per il gestionale"
     PIANIFICAZIONE = "Pianificazione e tabulati"
+    CLIENT = "Client desktop"
     MAGAZZINO = "Magazzino"
 
 
@@ -108,6 +111,15 @@ class Parametro:
                 except ErroreTracciato as exc:
                     raise ValidationError(f"{self.etichetta}: {exc}") from exc
                 return testo
+            case Tipo.MENU_CLIENT:
+                from dumetodo.client.menu import MenuNonValido, valida
+
+                testo = str(valore).replace("\r\n", "\n")
+                try:
+                    valida(testo)
+                except MenuNonValido as exc:
+                    raise ValidationError(f"{self.etichetta}: {exc}") from exc
+                return testo
             case Tipo.LISTA_EMAIL:
                 voci = valore if isinstance(valore, list | tuple) else str(valore).replace(";", ",").split(",")
                 indirizzi = []
@@ -153,7 +165,10 @@ class Parametro:
         return str(valore)
 
 
+from dumetodo.client.menu import PREDEFINITO as _MENU_PREDEFINITO  # noqa: E402
 from dumetodo.tracciati.esempi import FILE_TECNICO_DDT, READYPRO_BOLLA  # noqa: E402
+
+_MENU_CLIENT_PREDEFINITO = json.dumps(_MENU_PREDEFINITO, ensure_ascii=False, indent=2)
 
 PARAMETRI: tuple[Parametro, ...] = (
     # --- Azienda ------------------------------------------------------------------------
@@ -407,6 +422,18 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Il tabulato scorte considera solo le commesse con al massimo questi pezzi (in Metodo: 60).",
         default=60,
         minimo=1,
+    ),
+    # --- Client desktop -----------------------------------------------------------------
+    Parametro(
+        "client.menu",
+        Tipo.MENU_CLIENT,
+        Gruppo.CLIENT,
+        "Menu del tasto destro",
+        "Voci del menu nativo del client desktop per ogni tipo di elemento (pagina, ordine, riga...), in JSON. "
+        "Azioni: naviga, post, copia, stampa, ricarica, indietro, avanti, schermo_intero. Una voce con "
+        "'permesso' compare solo a chi ha quella funzione. {nome} = dato dell'elemento cliccato.",
+        default=_MENU_CLIENT_PREDEFINITO,
+        obbligatorio=True,
     ),
     # --- Consegna --------------------------------------------------------------------
     Parametro(

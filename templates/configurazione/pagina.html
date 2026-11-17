@@ -26,6 +26,12 @@ La <strong>capacità settimanale</strong> di ogni reparto si imposta nella sched
             <a class="btn btn-sm btn-link" href="{% url 'configurazione:guida_tracciati' %}" target="_blank">Guida al linguaggio</a>
           </div>
           <div class="anteprima"></div>
+          {% elif campo.name == "client.menu" %}
+          <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="if (confirm('Sostituire i menu con quelli predefiniti? Dovrai poi salvare.')) document.getElementById('{{ campo.id_for_label }}').value = document.getElementById('predefinito-{{ campo.id_for_label }}').content.textContent">Ripristina predefinito</button>
+            <template id="predefinito-{{ campo.id_for_label }}">{{ form.predefiniti|get_item:campo.name }}</template>
+          </div>
           {% endif %}
         {% endfor %}
       </div>

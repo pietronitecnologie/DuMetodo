@@ -3,7 +3,7 @@
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
   <a href="{% url 'ordini:lista' %}" class="btn btn-sm btn-outline-secondary">← Ordini</a>
-  <h1 class="h4 mb-0 me-auto">Ordine {{ ordine.codice_breve }}
+  <h1 class="h4 mb-0 me-auto" data-dm-menu="ordine" data-dm-id="{{ ordine.pk }}" data-dm-codice="{{ ordine.codice_breve }}">Ordine {{ ordine.codice_breve }}
     <span class="badge text-bg-secondary align-middle">{{ ordine.get_stato_display }}</span></h1>
   {% for t in transizioni %}
   <form method="post" action="{% url 'ordini:cambia_stato' ordine.pk %}"
@@ -41,7 +41,7 @@
           <th>Scadenza</th><th>Stato</th>{% if perms.core.ordini_righe or perms.core.ordini_dividi %}<th></th>{% endif %}</tr></thead>
         <tbody>
         {% for r in righe %}
-        <tr class="{% if not r.is_attiva %}riga-chiusa{% elif r.bolla_emessa %}riga-bolla{% elif r.in_evasione %}riga-evasione{% elif r.bloccata %}riga-bloccata{% endif %}{% if r.scorporata %} riga-scorporata{% endif %}">
+        <tr data-dm-menu="{% if r.is_attiva and not r.bolla_emessa %}riga{% else %}riga_chiusa{% endif %}" data-dm-ordine="{{ ordine.pk }}" data-dm-riga="{{ r.pk }}" data-dm-articolo="{{ r.articolo }}" data-dm-scorporo="{% if r.scorporata %}reincorpora{% else %}scorpora{% endif %}" class="{% if not r.is_attiva %}riga-chiusa{% elif r.bolla_emessa %}riga-bolla{% elif r.in_evasione %}riga-evasione{% elif r.bloccata %}riga-bloccata{% endif %}{% if r.scorporata %} riga-scorporata{% endif %}">
           <td>{{ r.n_riga }}</td><td class="articolo" style="color: {{ r.colore }}" title="{{ r.descrizione|default:'Nessuna descrizione in anagrafica' }}">{{ r.articolo }}</td><td>{{ r.variante }}</td>
           <td class="text-end">{{ r.qta|floatformat:"-3" }}</td>
           {% if perms.core.ordini_prezzi %}<td class="text-end">{{ r.prezzo_unitario|default:"" }}</td>{% endif %}

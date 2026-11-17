@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "dumetodo.pianificazione",
     "dumetodo.report",
     "dumetodo.utilita",
+    "dumetodo.client",
     "dumetodo.magazzino",
     "dumetodo.tracciabilita",
 ]
@@ -73,6 +74,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "dumetodo.core.context_processors.ruoli",
                 "dumetodo.core.context_processors.azienda",
+                "dumetodo.client.context_processors.client",
             ],
         },
     },
