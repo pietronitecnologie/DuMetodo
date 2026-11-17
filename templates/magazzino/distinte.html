@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titolo %}Distinte base{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Distinte base</h1>
+  <a class="btn btn-sm btn-outline-success me-2" href="{% url 'magazzino:distinte_esporta' %}">Esporta Excel</a>
+  {% if is_amministratore %}<button class="btn btn-sm btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#nuova">Nuova distinta</button>{% endif %}</div>
+{% if is_amministratore %}<form method="post" action="{% url 'magazzino:distinta_crea' %}" class="card card-body mb-3 collapse" id="nuova">{% csrf_token %}
+  <div class="row g-2">
+    <div class="col-md-3"><label class="form-label small mb-0">Codice articolo finito *</label><input class="form-control form-control-sm" name="articolo" required maxlength="50"></div>
+    <div class="col-md-1"><label class="form-label small mb-0">Variante</label><input class="form-control form-control-sm" name="variante" maxlength="20"></div>
+    <div class="col-md-4"><label class="form-label small mb-0">Descrizione</label><input class="form-control form-control-sm" name="descrizione"></div>
+    <div class="col-md-4"><label class="form-label small mb-0">Note</label><input class="form-control form-control-sm" name="note"></div>
+  </div>
+  <div class="form-text">Un codice non presente nell'anagrafica articoli finiti viene aggiunto.</div>
+  <div class="text-end"><button class="btn btn-sm btn-success">Crea</button></div>
+</form>{% endif %}
+<form method="get" class="row g-2 mb-2"><div class="col-md-5"><input type="search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Cerca articolo, variante, descrizione o codice componente"></div>
+  <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Cerca</button></div></form>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Articolo</th><th>Descrizione</th><th class="text-end">Componenti</th><th>Creata</th><th>Modificata</th></tr></thead>
+  <tbody>{% for d in pagina %}<tr>
+    <td><a class="fw-semibold" href="{{ d.get_absolute_url }}">{{ d.codice_completo }}</a></td><td>{{ d.descrizione|truncatewords:15 }}</td>
+    <td class="text-end"><span class="badge text-bg-secondary">{{ d.n_componenti }}</span></td>
+    <td class="small">{{ d.creato_il|date:"d/m/Y H:i" }}{% if d.creata_da %} — {{ d.creata_da }}{% endif %}</td>
+    <td class="small">{{ d.aggiornato_il|date:"d/m/Y H:i" }}{% if d.modificata_da %} — {{ d.modificata_da }}{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="5" class="text-muted text-center py-4">Nessuna distinta.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% include "magazzino/_paginazione.html" %}
+{% endblock %}

@@ -1,0 +1,7 @@
+{% autoescape off %}Salve,
+con la presente si richiedono i codici:
+
+{% for codice, testo, urgente in righe %}{{ codice }} - {{ testo }}
+{% endfor %}
+Saluti
+{% endautoescape %}

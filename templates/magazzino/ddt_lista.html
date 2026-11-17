@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titolo %}DDT in ingresso{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">DDT in ingresso</h1>
+  <a class="btn btn-sm btn-outline-primary me-2" href="{% url 'magazzino:ddt_importa' %}">Importa da file (CSV/XML)</a>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'magazzino:materiali' %}">Ricerca materiali</a></div>
+<div class="row g-3">
+<div class="col-lg-3">
+  <form method="post" action="{% url 'magazzino:ddt_crea' %}" class="card">{% csrf_token %}
+    <div class="card-header"><strong>Nuovo DDT (inserimento manuale)</strong></div>
+    <div class="card-body">
+      <label class="form-label small mb-0">Numero DDT *</label><input class="form-control form-control-sm" name="numero" required maxlength="50">
+      <label class="form-label small mb-0 mt-2">Data DDT *</label><input type="date" class="form-control form-control-sm" name="data" required value="{{ oggi|date:'Y-m-d' }}">
+      <label class="form-label small mb-0 mt-2">Fornitore *</label><input class="form-control form-control-sm" name="fornitore" required maxlength="100">
+      <div class="form-text">Dopo la creazione si inseriscono le righe dei materiali.</div>
+    </div>
+    <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Crea DDT</button></div>
+  </form>
+</div>
+<div class="col-lg-9">
+  <form method="get" class="row g-2 mb-2"><div class="col-md-5"><input type="search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Numero o fornitore"></div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Cerca</button></div></form>
+  <div class="table-responsive"><table class="table table-sm bg-white align-middle">
+    <thead><tr><th>DDT</th><th>Data</th><th>Fornitore</th><th class="text-end">Materiali</th><th>Origine</th><th>Registrato</th></tr></thead>
+    <tbody>{% for d in pagina %}<tr>
+      <td><a class="fw-semibold" href="{{ d.get_absolute_url }}">{{ d.numero }}</a></td><td>{{ d.data|date:"d/m/Y" }}</td><td>{{ d.fornitore }}</td>
+      <td class="text-end">{{ d.n_materiali }}{% if d.da_verificare %} <span class="badge text-bg-warning">{{ d.da_verificare }} da verificare</span>{% endif %}</td>
+      <td class="small">{{ d.get_origine_display }}</td><td class="small">{{ d.creato_il|date:"d/m/Y H:i" }}{% if d.creato_da %} — {{ d.creato_da }}{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="6" class="text-muted text-center py-4">Nessun DDT.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% include "magazzino/_paginazione.html" %}
+</div>
+</div>
+{% endblock %}

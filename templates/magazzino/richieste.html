@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titolo %}Richiesta materiali {{ reparto.nome }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Richiesta materiali — {{ reparto.nome }}</h1>
+  <a class="btn btn-sm btn-outline-secondary me-2" href="{% url 'magazzino:richieste' %}">Altri reparti</a>
+  <a class="btn btn-sm btn-outline-success" href="{% url 'magazzino:richieste_esporta' reparto.codice %}">Esporta Excel</a></div>
+<div class="row g-3">
+<div class="col-lg-3">
+  <form method="post" action="{% url 'magazzino:richiesta_aggiungi' reparto.codice %}" class="card">{% csrf_token %}
+    <div class="card-header"><strong>Nuova richiesta</strong></div>
+    <div class="card-body">
+      <label class="form-label small mb-0">Codice *</label>{% include "magazzino/_campo_codice.html" with id="rich" %}
+      <label class="form-label small mb-0 mt-2">Variante</label><input class="form-control form-control-sm" name="variante" maxlength="20">
+      <div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" name="urgente" id="urgente"><label class="form-check-label" for="urgente">Urgente</label></div>
+      <div class="form-text">Se il codice è già richiesto e non ancora ricevuto, aumenta il numero di richieste.</div>
+    </div>
+    <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Richiedi</button></div>
+  </form>
+</div>
+<div class="col-lg-9">
+  <form id="selezione" method="get" action="{% url 'magazzino:richieste_anteprima' reparto.codice %}"></form>
+  {% if is_amministratore %}<div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+    <span class="small text-muted">Comunica le selezionate al magazzino:</span>
+    {% for v, l in tipi %}<button form="selezione" name="tipo" value="{{ v }}" class="btn btn-sm btn-outline-{% if v == 'URGENTE' %}danger{% elif v == 'SOLLECITO' %}warning{% else %}primary{% endif %}">Mail {{ l }}</button>{% endfor %}
+    <a class="btn btn-sm btn-link" href="{% url 'magazzino:richieste_anteprima' reparto.codice %}?tipo=MANCANTE&amp;tutte=1">Tutte quelle mai comunicate</a>
+  </div>{% endif %}
+  <div class="table-responsive"><table class="table table-sm bg-white align-middle">
+    <thead><tr>{% if is_amministratore %}<th><input type="checkbox" class="form-check-input" title="Seleziona tutto" onclick="document.querySelectorAll('input[form=selezione][name=id]').forEach(c => c.checked = this.checked)"></th>{% endif %}
+      <th>Codice</th><th>Variante</th><th>Anagrafica</th><th>Ultima richiesta</th><th>Richieste</th><th>Comunicazioni</th>{% if is_amministratore %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for r in richieste %}<tr>
+      {% if is_amministratore %}<td><input type="checkbox" class="form-check-input" form="selezione" name="id" value="{{ r.pk }}"></td>{% endif %}
+      <td class="fw-semibold">{{ r.codice }}</td><td>{{ r.variante }}</td>
+      <td>{% if r.in_anagrafica %}<span class="badge text-bg-success">Presente</span>{% else %}<span class="badge text-bg-warning">Non in anagrafica</span>{% endif %}</td>
+      <td>{{ r.data_richiesta|date:"d/m/Y H:i" }}</td>
+      <td><span class="badge text-bg-secondary">{{ r.numero_richieste }}</span>{% if r.urgente %} <span class="badge text-bg-danger">Urgente</span>{% endif %}</td>
+      <td>{% if r.mail_mancante %}<span class="badge text-bg-primary">Mancante</span> {% endif %}{% if r.mail_urgente %}<span class="badge text-bg-danger">Urgente</span> {% endif %}{% if r.mail_sollecito %}<span class="badge text-bg-warning">Sollecito</span>{% endif %}
+        {% if not r.mail_mancante and not r.mail_urgente and not r.mail_sollecito %}<span class="text-muted">-</span>{% endif %}
+        {% if r.ultima_email %}<div class="small text-muted">ultima email: {{ r.ultima_email.get_stato_display|lower }}</div>{% endif %}</td>
+      {% if is_amministratore %}<td class="text-end text-nowrap">
+        <form method="post" action="{% url 'magazzino:richiesta_urgenza' r.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><input type="hidden" name="urgente" value="{% if r.urgente %}0{% else %}1{% endif %}"><button class="btn btn-sm btn-outline-secondary py-0">{% if r.urgente %}Non urgente{% else %}Urgente{% endif %}</button></form>
+        <form method="post" action="{% url 'magazzino:richiesta_ricevi' r.pk %}" class="d-inline" onsubmit="return confirm('Hai veramente ricevuto il materiale?')">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-success py-0">Ricevi</button></form>
+        <form method="post" action="{% url 'magazzino:richiesta_elimina' r.pk %}" class="d-inline" onsubmit="return confirm('Vuoi eliminare la richiesta?')">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-outline-danger py-0">Elimina</button></form>
+      </td>{% endif %}
+    </tr>{% empty %}<tr><td colspan="8" class="text-muted text-center py-4">Nessuna richiesta aperta.</td></tr>{% endfor %}
+    </tbody></table></div>
+</div>
+</div>
+{% endblock %}

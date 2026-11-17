@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titolo %}Componente {{ componente.codice_completo }}{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Componente {{ componente.codice_completo }}</h1>
+<div class="row g-3">
+<div class="col-lg-6">
+<form method="post" class="card card-body">{% csrf_token %}
+  <input type="hidden" name="torna" value="{{ torna }}">
+  <div class="row g-2">
+    <div class="col-8"><label class="form-label small mb-0">Codice</label><input class="form-control form-control-sm" value="{{ componente.codice }}" disabled></div>
+    <div class="col-4"><label class="form-label small mb-0">Variante</label><input class="form-control form-control-sm" value="{{ componente.variante }}" disabled></div>
+    <div class="col-12"><label class="form-label small mb-0">Descrizione</label><textarea class="form-control form-control-sm" name="descrizione" rows="2">{{ request.POST.descrizione|default:componente.descrizione }}</textarea></div>
+    <div class="col-4"><label class="form-label small mb-0">UM</label><select class="form-select form-select-sm" name="um">{% for v, l in unita %}<option value="{{ v }}" {% if v == componente.um %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="col-4"><label class="form-label small mb-0">Prezzo medio (€)</label><input class="form-control form-control-sm" name="prezzo_medio" inputmode="decimal" value="{{ request.POST.prezzo_medio|default:componente.prezzo_medio|default_if_none:'' }}"></div>
+    <div class="col-4"><label class="form-label small mb-0">Fornitore</label><input class="form-control form-control-sm" name="fornitore" maxlength="100" value="{{ request.POST.fornitore|default:componente.fornitore }}"></div>
+    <div class="col-12"><label class="form-label small mb-0">Note</label><textarea class="form-control form-control-sm" name="note" rows="2">{{ request.POST.note|default:componente.note }}</textarea></div>
+    <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="attivo" id="attivo" {% if componente.attivo %}checked{% endif %}><label class="form-check-label" for="attivo">Attivo</label></div>
+      <div class="form-text">Un componente non attivo non viene più proposto nei suggerimenti, ma resta nelle distinte e nello storico.</div></div>
+  </div>
+  <div class="text-end mt-2"><a class="btn btn-sm btn-outline-secondary" href="{{ torna }}">Annulla</a> <button class="btn btn-sm btn-primary">Salva</button></div>
+</form>
+</div>
+<div class="col-lg-6"><div class="card"><div class="card-header"><strong>Storico modifiche</strong></div>
+  <ul class="list-group list-group-flush small">{% for h in storico %}<li class="list-group-item">{{ h.history_date|date:"d/m/Y H:i" }} — {{ h.get_history_type_display }}{% if h.history_user %} da {{ h.history_user }}{% endif %}</li>{% empty %}<li class="list-group-item text-muted">Nessuna modifica.</li>{% endfor %}</ul>
+</div></div>
+</div>
+{% endblock %}

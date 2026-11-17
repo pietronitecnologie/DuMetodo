@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titolo %}Anagrafica componenti{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Anagrafica componenti</h1>
+  <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#nuovo">Nuovo componente</button></div>
+<form method="post" action="{% url 'magazzino:componente_nuovo' %}" class="card card-body mb-3 collapse" id="nuovo">{% csrf_token %}
+  <div class="row g-2">
+    <div class="col-md-2"><label class="form-label small mb-0">Codice *</label><input class="form-control form-control-sm" name="codice" required maxlength="50"></div>
+    <div class="col-md-1"><label class="form-label small mb-0">Variante</label><input class="form-control form-control-sm" name="variante" maxlength="20"></div>
+    <div class="col-md-3"><label class="form-label small mb-0">Descrizione</label><input class="form-control form-control-sm" name="descrizione"></div>
+    <div class="col-md-1"><label class="form-label small mb-0">UM</label><select class="form-select form-select-sm" name="um">{% for v, l in unita %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+    <div class="col-md-1"><label class="form-label small mb-0">Prezzo medio</label><input class="form-control form-control-sm" name="prezzo_medio" inputmode="decimal"></div>
+    <div class="col-md-2"><label class="form-label small mb-0">Fornitore</label><input class="form-control form-control-sm" name="fornitore" maxlength="100"></div>
+    <div class="col-md-2"><label class="form-label small mb-0">Note</label><input class="form-control form-control-sm" name="note"></div>
+  </div>
+  <div class="text-end mt-2"><button class="btn btn-sm btn-success">Crea</button></div>
+</form>
+<form method="get" class="row g-2 mb-2 align-items-end">
+  <div class="col-md-4"><input type="search" class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Cerca codice, variante, descrizione, fornitore"></div>
+  <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="attivi" value="1" id="attivi" {% if request.GET.attivi == "1" %}checked{% endif %}><label class="form-check-label small" for="attivi">Solo attivi</label></div></div>
+  <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Cerca</button> <a class="btn btn-sm btn-outline-secondary" href="{% url 'magazzino:componenti' %}">Pulisci</a></div>
+</form>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Codice</th><th>Descrizione</th><th>UM</th><th class="text-end">Prezzo medio</th><th>Fornitore</th><th>Creato il</th><th>Stato</th><th></th></tr></thead>
+  <tbody>
+  {% for c in pagina %}<tr class="{% if not c.attivo %}text-muted{% endif %}">
+    <td class="fw-semibold">{{ c.codice_completo }}</td><td>{{ c.descrizione|truncatewords:12 }}</td><td>{{ c.get_um_display }}</td>
+    <td class="text-end">{% if c.prezzo_medio is not None %}€ {{ c.prezzo_medio|floatformat:2 }}{% endif %}</td>
+    <td>{{ c.fornitore }}</td><td>{{ c.creato_il|date:"d/m/Y" }}</td>
+    <td>{% if c.attivo %}<span class="badge text-bg-success">attivo</span>{% else %}<span class="badge text-bg-secondary">non attivo</span>{% endif %}</td>
+    <td class="text-end"><a class="btn btn-sm btn-outline-primary py-0" href="{% url 'magazzino:componente' c.pk %}?torna={{ request.get_full_path|urlencode }}">Modifica</a></td>
+  </tr>{% empty %}<tr><td colspan="8" class="text-muted text-center py-4">Nessun componente.</td></tr>{% endfor %}
+  </tbody></table></div>
+<div class="d-flex align-items-center"><span class="small text-muted me-auto">{{ totale }} componenti</span>{% include "magazzino/_paginazione.html" %}</div>
+{% endblock %}

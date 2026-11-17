@@ -1,0 +1,5 @@
+{# Codice componente con suggerimenti caricati al volo (HTMX). La variante è sempre un campo a parte: #}
+{# in Metodo il suggerimento inseriva "CODICE.VARIANTE" nel codice e creava componenti fasulli. #}
+<input class="form-control form-control-sm" id="codice-{{ id }}" name="codice" required maxlength="50" autocomplete="off" list="sugg-{{ id }}"
+       hx-get="{% url 'magazzino:suggerimenti' %}" hx-trigger="keyup changed delay:300ms" hx-target="#sugg-{{ id }}" hx-swap="innerHTML">
+<datalist id="sugg-{{ id }}"></datalist>

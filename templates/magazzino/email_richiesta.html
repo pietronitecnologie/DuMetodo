@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="it"><body style="font-family:Arial,sans-serif;font-size:14px;color:#222">
+<p>Salve,<br>con la presente si richiedono i codici:</p>
+<ul>{% for codice, testo, urgente in righe %}<li><strong>{{ codice }}</strong> - {{ testo }}</li>{% endfor %}</ul>
+<p>Saluti</p>
+</body></html>
