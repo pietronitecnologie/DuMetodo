@@ -9,3 +9,14 @@ body { background: #f6f7f9; }
 .nota-interna { background: #f1f3f5; }
 .nota-testo { white-space: pre-wrap; }
 .articolo { font-weight: 600; }
+
+/* ---- Selezione dell'ordine ---------------------------------------------------------------- */
+.dm-ordine-elenco { position: absolute; left: 0; top: 100%; z-index: 1050; min-width: 100%; width: max-content; max-width: min(28rem, 92vw); }
+.dm-ordine-risultati { max-height: 22rem; overflow-y: auto; margin-top: 2px; }
+.dm-ordine-risultati .list-group-item-action:focus { background: var(--bs-primary-bg-subtle); outline: none; }
+.dm-ordine-scelto { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; min-height: calc(1.5em + .5rem + 2px); padding: .25rem .5rem;
+  border: 1px solid var(--bs-success-border-subtle); background: var(--bs-success-bg-subtle); border-radius: var(--bs-border-radius); }
+.dm-ordine-scelto.d-none { display: none !important; }
+.dm-chiave-ordine { display: inline-flex; align-items: baseline; gap: .35rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dm-chiave-ordine > span[title="Serie"], .dm-chiave-ordine > span[title="Anno"] { color: var(--bs-secondary-color); font-size: .875em; }
+.dm-chiave-ordine > b { font-size: 1.05em; }

@@ -212,6 +212,33 @@ fn main() {
                 Some(Messaggio::Stampa) if dal_server => {
                     let _ = webview.print();
                 }
+                Some(Messaggio::Copia { testo }) if dal_server => {
+                    let esito = if testo.len() > ponte::MASSIMO_APPUNTI {
+                        Err("testo troppo lungo".to_string())
+                    } else {
+                        arboard::Clipboard::new().and_then(|mut c| c.set_text(testo)).map_err(|e| e.to_string())
+                    };
+                    let avviso = match esito {
+                        Ok(()) => "Copiato negli appunti".to_string(),
+                        Err(e) => {
+                            registra(&percorso_conf, &format!("Copia negli appunti non riuscita: {e}"));
+                            "Copia non riuscita".to_string()
+                        }
+                    };
+                    avvisa(&webview, &avviso);
+                }
+                Some(Messaggio::Incolla) if dal_server => {
+                    match arboard::Clipboard::new().and_then(|mut c| c.get_text()) {
+                        Ok(testo) if testo.len() <= ponte::MASSIMO_APPUNTI => {
+                            let _ = webview.evaluate_script(&format!(
+                                "window.DuMetodoClient && window.DuMetodoClient.incolla({})",
+                                ponte::js_stringa(&testo)
+                            ));
+                        }
+                        Ok(_) => avvisa(&webview, "Testo negli appunti troppo lungo"),
+                        Err(_) => avvisa(&webview, "Negli appunti non c'è testo"),
+                    }
+                }
                 Some(Messaggio::SchermoIntero) if !chiosco => {
                     let attivo = window.fullscreen().is_some();
                     window.set_fullscreen(if attivo { None } else { Some(Fullscreen::Borderless(None)) });
@@ -240,14 +267,17 @@ fn main() {
                     (true, None) => "Download completato".to_string(),
                     (false, _) => "Download non riuscito".to_string(),
                 };
-                let _ = webview.evaluate_script(&format!(
-                    "window.__duMetodoAvviso && window.__duMetodoAvviso({})",
-                    ponte::js_stringa(&testo)
-                ));
+                avvisa(&webview, &testo);
             }
             _ => {}
         }
     });
+}
+
+/// Piccolo avviso in basso a destra nella pagina (lo disegna lo script iniziale).
+fn avvisa(webview: &WebView, testo: &str) {
+    let _ = webview
+        .evaluate_script(&format!("window.__duMetodoAvviso && window.__duMetodoAvviso({})", ponte::js_stringa(testo)));
 }
 
 fn costruisci_webview(

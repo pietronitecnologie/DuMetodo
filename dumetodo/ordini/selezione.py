@@ -30,18 +30,18 @@ def _senza_zeri(t: str) -> str:
 
 
 def cerca(testo: str, limite: int = MASSIMO_RISULTATI) -> QuerySet[Ordine]:
-    """Ordini che corrispondono a TUTTE le parole scritte (numero, serie, appendice o anno).
+    """Ordini che corrispondono a TUTTE le parole scritte (parte del numero, serie, appendice o anno).
 
-    Prima gli ordini aperti, poi i più recenti.
+    Senza testo: gli ordini aperti con la scadenza più vicina. Prima gli aperti, poi i più recenti.
     """
     parole = _PAROLA.findall(testo or "")[:5]
     if not parole:
-        return Ordine.objects.none()
+        return Ordine.objects.aperti().order_by("data_scadenza", "numero")[:limite]
     qs = Ordine.objects.all()
     for p in parole:
-        cond = Q(numero__iendswith=_senza_zeri(p)) | Q(numero__iexact=p) | Q(appendice__iexact=p)
+        cond = Q(numero__icontains=_senza_zeri(p)) | Q(appendice__iexact=p)
         if p.isdigit():
-            cond |= Q(serie__endswith=_senza_zeri(p)) & ~Q(numero__iendswith=_senza_zeri(p))
+            cond |= Q(serie__endswith=_senza_zeri(p))
             if len(p) == 4 and 2000 <= int(p) <= 2100:
                 cond |= Q(anno=int(p))
         qs = qs.filter(cond)

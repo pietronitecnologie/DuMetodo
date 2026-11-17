@@ -157,7 +157,7 @@ def test_selezione_ordine_cerca_per_parole(db):
     assert list(selezione.cerca("4300 T1")) == [b]
     assert set(selezione.cerca("40 4300 2026")) == {a, b}
     assert list(selezione.cerca("4300 2025")) == [c]
-    assert not selezione.cerca("")
+    assert set(selezione.cerca("")) == set(Ordine.objects.all())  # vuoto: ordini aperti
     assert selezione.da_codice("40.0004300.T1-2026") == b
     assert selezione.da_codice("00040.0004300-2026") == a
     assert selezione.da_codice("4300") is None

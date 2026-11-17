@@ -123,4 +123,4 @@ def cambia_scadenza(request: HttpRequest, pk: int) -> HttpResponse:
 def seleziona(request: HttpRequest) -> HttpResponse:
     """Elenco degli ordini per il campo di selezione (HTMX)."""
     testo = request.GET.get(f"{request.GET.get('campo', 'ordine')}_cerca", "")[:60].strip()
-    return render(request, "ordini/_selezione.html", {"testo": testo, "ordini": selezione.cerca(testo)})
+    return render(request, "ordini/_selezione.html", {"testo": testo, "ordini": list(selezione.cerca(testo))})

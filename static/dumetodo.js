@@ -16,6 +16,10 @@
   }
 
   document.addEventListener("click", function (e) {
+    // Clic fuori: chiude gli elenchi aperti.
+    document.querySelectorAll("[data-dm-ordine] .dm-ordine-elenco").forEach(function (el) {
+      if (!el.closest("[data-dm-ordine]").contains(e.target)) el.innerHTML = "";
+    });
     var box = e.target.closest("[data-dm-ordine]");
     if (!box) return;
     var bottone = e.target.closest("[data-dm-ordine-pk]");
@@ -34,7 +38,9 @@
     var box = e.target.closest && e.target.closest("[data-dm-ordine]");
     if (!box || e.target.type !== "search") return;
     var voci = Array.prototype.slice.call(box.querySelectorAll("[data-dm-ordine-pk]"));
-    if (e.key === "Enter") {
+    if (e.key === "Escape") {
+      box.querySelector(".dm-ordine-elenco").innerHTML = "";
+    } else if (e.key === "Enter") {
       // Invio: sceglie il primo (o unico) risultato invece di inviare il form a metà.
       if (voci.length) { e.preventDefault(); scegli(box, voci[0]); }
     } else if (e.key === "ArrowDown" && voci.length) {

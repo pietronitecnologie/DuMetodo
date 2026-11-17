@@ -12,7 +12,10 @@ Formato (JSON, modificabile in Configurazione > Client desktop)::
                 {"separatore": true},
                 {"etichetta": "Copia codice", "azione": "copia", "testo": "{codice}"}]}
 
-Azioni: naviga, post, copia, stampa, ricarica, indietro, avanti, schermo_intero.
+Azioni: naviga, post, copia, stampa, ricarica, indietro, avanti, schermo_intero, e quelle sul punto
+cliccato: copia_tabella, copia_colonna, copia_riga (formato incollabile in Excel), copia_selezione,
+incolla. Queste ultime compaiono solo quando servono (su una tabella, con del testo selezionato, su un
+campo in cui si può scrivere).
 - ``url`` deve essere un percorso interno (inizia con "/", non con "//"): niente siti esterni;
 - ``post`` invia ``campi`` con il token CSRF; ``conferma`` facoltativa chiede conferma prima;
 - ``permesso``: codice di una funzione (Utenti e permessi); la voce compare solo a chi ce l'ha;
@@ -25,17 +28,38 @@ import json
 import re
 from typing import Any
 
-AZIONI = {"naviga", "post", "copia", "stampa", "ricarica", "indietro", "avanti", "schermo_intero"}
+AZIONI = {
+    "naviga",
+    "post",
+    "copia",
+    "stampa",
+    "ricarica",
+    "indietro",
+    "avanti",
+    "schermo_intero",
+    "copia_tabella",
+    "copia_colonna",
+    "copia_riga",
+    "copia_selezione",
+    "incolla",
+}
 CAMPI_VOCE = {"etichetta", "azione", "url", "campi", "testo", "conferma", "permesso", "separatore"}
 _RE_TIPO = re.compile(r"^[a-z][a-z0-9_]{0,40}$")
 _RE_SEGNAPOSTO = re.compile(r"\{([a-z][a-z0-9_]*)\}")
 
 PREDEFINITO: dict[str, list[dict[str, Any]]] = {
     "pagina": [
+        {"etichetta": "Aggiorna pagina", "azione": "ricarica"},
+        {"separatore": True},
+        {"etichetta": "Copia tabella", "azione": "copia_tabella"},
+        {"etichetta": "Copia colonna", "azione": "copia_colonna"},
+        {"etichetta": "Copia riga", "azione": "copia_riga"},
+        {"etichetta": "Copia selezione", "azione": "copia_selezione"},
+        {"separatore": True},
+        {"etichetta": "Incolla", "azione": "incolla"},
+        {"separatore": True},
         {"etichetta": "Indietro", "azione": "indietro"},
         {"etichetta": "Avanti", "azione": "avanti"},
-        {"etichetta": "Ricarica", "azione": "ricarica"},
-        {"separatore": True},
         {"etichetta": "Stampa pagina", "azione": "stampa"},
         {"etichetta": "Schermo intero", "azione": "schermo_intero"},
     ],

@@ -11,6 +11,12 @@ pub enum Messaggio {
     },
     Stampa,
     SchermoIntero,
+    /// Copia negli appunti del sistema (funziona anche su http, dove navigator.clipboard non c'è).
+    Copia {
+        testo: String,
+    },
+    /// Legge gli appunti e li passa alla pagina con `DuMetodoClient.incolla(testo)`.
+    Incolla,
     Zoom {
         passo: f64,
     },
@@ -33,9 +39,11 @@ pub struct Voce {
 }
 
 pub const MASSIMO_VOCI: usize = 60;
+/// Limite del testo copiato o incollato (una tabella grande resta ben sotto).
+pub const MASSIMO_APPUNTI: usize = 4 * 1024 * 1024;
 
 pub fn interpreta(testo: &str) -> Option<Messaggio> {
-    if testo.len() > 64 * 1024 {
+    if testo.len() > MASSIMO_APPUNTI + 1024 {
         return None;
     }
     serde_json::from_str(testo).ok()
@@ -82,6 +90,10 @@ mod test {
         assert!(matches!(m, Some(Messaggio::Menu { ref voci }) if voci.len() == 2 && voci[1].separatore));
         assert!(matches!(interpreta(r#"{"tipo":"stampa"}"#), Some(Messaggio::Stampa)));
         assert!(interpreta(r#"{"tipo":"esegui_comando","cmd":"rm"}"#).is_none());
+        assert!(
+            matches!(interpreta(r#"{"tipo":"copia","testo":"a\tb"}"#), Some(Messaggio::Copia { ref testo }) if testo == "a\tb")
+        );
+        assert!(matches!(interpreta(r#"{"tipo":"incolla"}"#), Some(Messaggio::Incolla)));
         assert_eq!(js_stringa("a\"</script>"), "\"a\\\"</script>\"");
     }
 }

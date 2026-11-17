@@ -24,8 +24,12 @@ class FiltriOrdiniForm(forms.Form):
     )
     aperti = forms.BooleanField(label="Solo aperti", required=False, initial=True)
     categoria = forms.ChoiceField(label="Categoria", required=False, choices=CATEGORIE)
-    scadenza_dal = forms.DateField(label="Scadenza dal", required=False, widget=forms.DateInput(attrs={"type": "date"}))
-    scadenza_al = forms.DateField(label="al", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    scadenza_dal = forms.DateField(
+        label="Scadenza dal", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+    )
+    scadenza_al = forms.DateField(
+        label="al", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+    )
 
     def filtra(self, qs):  # type: ignore[no-untyped-def]
         d = self.cleaned_data
@@ -64,10 +68,12 @@ class FiltriOrdiniForm(forms.Form):
 class DividiRigaForm(forms.Form):
     qta = forms.DecimalField(label="Quantità da separare", min_value=0, decimal_places=3, max_digits=14)
     nuova_scadenza = forms.DateField(
-        label="Scadenza della nuova riga", required=False, widget=forms.DateInput(attrs={"type": "date"})
+        label="Scadenza della nuova riga",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
     )
 
 
 class CambiaScadenzaForm(forms.Form):
-    nuova = forms.DateField(label="Nuova scadenza", widget=forms.DateInput(attrs={"type": "date"}))
+    nuova = forms.DateField(label="Nuova scadenza", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     motivo = forms.CharField(label="Motivo", max_length=500, widget=forms.Textarea(attrs={"rows": 2}))

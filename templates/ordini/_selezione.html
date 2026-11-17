@@ -1,11 +1,11 @@
-{% if testo %}<div class="list-group dm-ordine-risultati shadow-sm">
+<div class="list-group dm-ordine-risultati shadow">
+  {% if not testo %}<div class="list-group-item py-1 small text-muted bg-body-tertiary">Ordini aperti con la scadenza più vicina — scrivi per cercare</div>{% endif %}
 {% for o in ordini %}
-  <button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2 py-1"
-          data-dm-ordine-pk="{{ o.pk }}">
+  <button type="button" class="list-group-item list-group-item-action py-1" data-dm-ordine-pk="{{ o.pk }}">
     {% include "ordini/_ordine_etichetta.html" %}
-    <span class="ms-auto small text-muted text-end">{{ o.get_stato_display }}{% if o.data_scadenza %} · scad. {{ o.data_scadenza|date:"d/m/Y" }}{% endif %}</span>
+    <div class="small text-muted">{{ o.get_stato_display }}{% if o.data_scadenza %} · scadenza {{ o.data_scadenza|date:"d/m/Y" }}{% endif %}</div>
   </button>
 {% empty %}
-  <div class="list-group-item small text-muted">Nessun ordine per «{{ testo }}».</div>
+  <div class="list-group-item small text-muted">Nessun ordine{% if testo %} per «{{ testo }}»{% endif %}.</div>
 {% endfor %}
-</div>{% endif %}
+</div>

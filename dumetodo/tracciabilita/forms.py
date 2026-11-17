@@ -25,7 +25,9 @@ DATA = {"type": "date"}
 
 
 def _campo_data(etichetta: str, required: bool = False, **kw: Any) -> forms.DateField:
-    return forms.DateField(label=etichetta, required=required, widget=forms.DateInput(attrs=DATA), **kw)
+    return forms.DateField(
+        label=etichetta, required=required, widget=forms.DateInput(attrs=DATA, format="%Y-%m-%d"), **kw
+    )
 
 
 def _non_futura(data: dt.date | None) -> dt.date | None:
