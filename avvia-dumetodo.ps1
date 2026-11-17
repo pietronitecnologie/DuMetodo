@@ -49,6 +49,22 @@ if (-not (Select-String -Path .env -Pattern '^POSTGRES_PASSWORD=.' -Quiet)) {
     exit 1
 }
 
+# Versione del codice: mostrata anche in fondo a ogni pagina di DuMetodo.
+# (con $ErrorActionPreference=Stop, Windows PowerShell trasforma l'output di errore di git in eccezione)
+$versione = $null
+try { $versione = (git rev-parse --short HEAD 2>$null) } catch { }
+if ($versione) {
+    $env:DUMETODO_VERSIONE = $versione
+    Write-Host "Versione del codice: $versione"
+    $remota = $null
+    try { git fetch --quiet origin 2>$null; $remota = (git rev-parse --short origin/main 2>$null) } catch { }
+    if ($remota -and $remota -ne $versione) {
+        Write-Host "È disponibile una versione più recente ($remota): esegui 'git pull' e rilancia lo script." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Questa cartella non è una copia git di DuMetodo: non si aggiorna con 'git pull'." -ForegroundColor Yellow
+}
+
 Write-Host "Avvio DuMetodo (la prima volta può richiedere qualche minuto)..."
 docker compose up -d --build
 if ($LASTEXITCODE -ne 0) { Write-Host "Avvio non riuscito." -ForegroundColor Red; exit 1 }

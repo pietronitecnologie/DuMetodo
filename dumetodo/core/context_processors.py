@@ -11,7 +11,10 @@ def ruoli(request: HttpRequest) -> dict[str, object]:
 def azienda(request: HttpRequest) -> dict[str, object]:
     from dumetodo.configurazione import servizi as config
 
+    from .versione import versione
+
     return {
+        "versione_dumetodo": versione(),
         "nome_fornitore": config.leggi("azienda.nome_fornitore") or "Fornitore",
         "nome_cliente": config.leggi("azienda.nome_cliente") or "Cliente",
     }

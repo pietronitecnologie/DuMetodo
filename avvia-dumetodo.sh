@@ -38,6 +38,17 @@ if ! grep -q '^POSTGRES_PASSWORD=.' .env; then
   exit 1
 fi
 
+# Versione del codice: mostrata anche in fondo a ogni pagina di DuMetodo.
+if DUMETODO_VERSIONE=$(git rev-parse --short HEAD 2>/dev/null); then
+  export DUMETODO_VERSIONE
+  echo "Versione del codice: $DUMETODO_VERSIONE"
+  git fetch --quiet origin 2>/dev/null || true
+  remota=$(git rev-parse --short origin/main 2>/dev/null || true)
+  if [ -n "$remota" ] && [ "$remota" != "$DUMETODO_VERSIONE" ]; then
+    echo "È disponibile una versione più recente ($remota): esegui 'git pull' e rilancia lo script."
+  fi
+fi
+
 echo "Avvio DuMetodo (la prima volta può richiedere qualche minuto)…"
 docker compose up -d --build
 

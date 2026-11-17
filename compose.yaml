@@ -1,7 +1,10 @@
 # Avvio rapido: ./avvia-dumetodo.sh (Linux/macOS) o avvia-dumetodo.ps1 (Windows).
 # Manuale: cp .env.example .env (e compilalo), poi: docker compose up -d --build
 x-app: &app
-  build: .
+  build:
+    context: .
+    args:
+      DUMETODO_VERSIONE: ${DUMETODO_VERSIONE:-sconosciuta}
   image: dumetodo:locale
   env_file: .env
   restart: unless-stopped

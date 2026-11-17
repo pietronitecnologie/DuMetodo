@@ -100,6 +100,7 @@
   {% endfor %}
   {% block contenuto %}{% endblock %}
 </main>
+<footer class="dm-versione text-center small text-muted py-2">DuMetodo · versione {{ versione_dumetodo }}</footer>
 {% if user.is_authenticated %}<div hx-get="{% url 'utilita:annunci_attivi' %}" hx-trigger="load"></div>{% endif %}
 </body>
 </html>
