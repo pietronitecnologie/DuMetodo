@@ -1,17 +1,15 @@
-"""Tracciabilità (batterie, cavi, tracce generiche, lotto/busta) e qualità (controlli, reclami, test display).
+"""Tracciabilità (tracce generiche, lotto/busta, file per ordine) e qualità (controlli).
 
 Differenze principali rispetto a Metodo:
-- il tipo di elemento tracciato (batteria, cavo, generico) è un campo esplicito di ``Elemento``:
-  in Metodo era espresso collegando lo ``Stored_Item`` a righe d'ordine finte, che sporcavano le righe;
 - ``Elemento`` sostituisce la coppia ``Plan.Coding`` + ``Stored_Item`` (un record per elemento fisico,
   non uno per evento); il codice è UNICO a livello di database;
 - ogni dato legato a un ordine ha una ForeignKey verso ``Ordine`` (in Metodo: stringhe, regex e
   ``contains`` sul solo numero, che mescolavano ordini di serie o anni diversi);
-- i banchi di prova sono ``Postazione`` (ex ``Plan.Asset``) e si autenticano con un token segreto;
 - i controlli qualità hanno campi numerici veri e un risultato di presenza separato; i controlli
   "distinta" e "disegno" sono controlli come gli altri, riconosciuti dal ``codice`` e mai dalla chiave
   primaria;
-- le date inserite dall'utente non vengono più sovrascritte (``auto_now`` su reclami e tracce).
+- le date inserite dall'utente non vengono più sovrascritte (``auto_now`` sulle tracce);
+- batterie, cavi, postazioni (banchi) e work order batterie sono stati eliminati: non più usati.
 """
 
 from __future__ import annotations
@@ -34,54 +32,11 @@ def _percorso(cartella: str, nome: str) -> str:
     return f"{cartella}/{uuid.uuid4().hex}{estensione}"
 
 
-# =========================================================================== postazioni
-class Postazione(ModelloTemporale):
-    """Banco di prova o postazione di lavoro (ex ``Plan.Asset``).
-
-    Le postazioni automatiche (es. la taglierina dei cavi) inviano le tracce all'API autenticandosi
-    con un token: nel database se ne conserva solo l'impronta SHA-256.
-    """
-
-    codice = models.CharField("codice", max_length=30, unique=True, help_text="Es. GKAST-107 (ex codice asset).")
-    nome = models.CharField("nome", max_length=100)
-    reparto = models.ForeignKey(
-        "core.Reparto", on_delete=models.PROTECT, null=True, blank=True, related_name="postazioni"
-    )
-    attiva = models.BooleanField("attiva", default=True)
-    token_hash = models.CharField("impronta del token", max_length=64, blank=True, default="", editable=False)
-    token_generato_il = models.DateTimeField("token generato il", null=True, blank=True, editable=False)
-
-    history = HistoricalRecords(excluded_fields=["token_hash"])
-
-    class Meta:
-        verbose_name = "postazione"
-        verbose_name_plural = "postazioni"
-        ordering = ["codice"]
-        constraints = [
-            models.UniqueConstraint(fields=["token_hash"], condition=~Q(token_hash=""), name="postazione_token_unico")
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.codice} – {self.nome}" if self.nome else self.codice
-
-    @property
-    def ha_token(self) -> bool:
-        return bool(self.token_hash)
-
-
 # =========================================================================== elementi e tracce
-class TipoElemento(models.TextChoices):
-    BATTERIA = "BAT", "Batteria"
-    CAVO = "CAV", "Cavo"
-    GENERICO = "GEN", "Generico"
-
-
 class Elemento(ModelloTemporale):
     """Elemento fisico tracciato, identificato da un codice univoco (ex ``Coding`` + ``Stored_Item``)."""
 
     codice = models.CharField("codice", max_length=50, unique=True)
-    tipo = models.CharField("tipo", max_length=3, choices=TipoElemento.choices, default=TipoElemento.GENERICO)
-    lotto = models.CharField("lotto", max_length=100, blank=True, default="", help_text="Es. lotto del cavo.")
     creato_da = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
@@ -98,14 +53,11 @@ class Elemento(ModelloTemporale):
 class Chiave:
     """Chiavi riservate degli eventi (le tracce generiche usano chiavi libere)."""
 
-    INGRESSO = "IN"
-    RICARICA = "RC"
     LOTTO = "LOTTO"
     BUSTA = "BUSTA"
-    INTESTATO = "INTESTATO"
 
-    RISERVATE = frozenset({INGRESSO, RICARICA, LOTTO, BUSTA, INTESTATO})
-    ETICHETTE = {INGRESSO: "Primo ingresso", RICARICA: "Ricarica", INTESTATO: "Intestato"}
+    RISERVATE = frozenset({LOTTO, BUSTA})
+    ETICHETTE: dict[str, str] = {}
 
 
 class Traccia(models.Model):
@@ -117,7 +69,6 @@ class Traccia(models.Model):
     chiave = models.CharField("chiave", max_length=50)
     valore = models.CharField("valore", max_length=100, blank=True, default="")
     reparto = models.ForeignKey("core.Reparto", on_delete=models.PROTECT, null=True, blank=True, related_name="+")
-    postazione = models.ForeignKey(Postazione, on_delete=models.PROTECT, null=True, blank=True, related_name="tracce")
     # Data di inserimento vera (in Metodo era auto_now: cambiava a ogni salvataggio).
     inserita_il = models.DateTimeField("inserita il", auto_now_add=True)
     inserita_da = models.ForeignKey(
@@ -135,17 +86,6 @@ class Traccia(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=Q(elemento__isnull=False) | Q(ordine__isnull=False), name="traccia_elemento_o_ordine"
-            ),
-            # Un banco che reinvia lo stesso dato non crea doppioni (in Metodo: controllo non atomico,
-            # più un job O(n²) di pulizia).
-            models.UniqueConstraint(
-                fields=["postazione", "ordine", "data", "chiave", "valore"],
-                condition=Q(postazione__isnull=False),
-                name="traccia_postazione_unica",
-            ),
-            models.UniqueConstraint(fields=["elemento"], condition=Q(chiave="IN"), name="traccia_ingresso_unico"),
-            models.UniqueConstraint(
-                fields=["elemento"], condition=Q(chiave="INTESTATO"), name="traccia_intestatura_unica"
             ),
         ]
 
@@ -167,38 +107,7 @@ class Traccia(models.Model):
 
         data = timezone.localtime(self.data).strftime("%d/%m/%Y")
         codice = self.elemento.codice if self.elemento_id else ""
-        if self.elemento_id and self.elemento.tipo == TipoElemento.BATTERIA:
-            return f"{codice},{self.chiave},{data}"
         return f"{codice},{self.chiave},{self.valore},{data}"
-
-
-class StatoWorkOrder(models.TextChoices):
-    APERTO = "OPN", "Aperto"
-    CHIUSO = "CLS", "Chiuso"
-
-
-class WorkOrderBatteria(models.Model):
-    """Richiesta di ricarica di una batteria ferma da troppo tempo (ex ``WorkOrderTraccia``)."""
-
-    elemento = models.ForeignKey(Elemento, on_delete=models.PROTECT, related_name="work_order")
-    ultima_traccia = models.ForeignKey(Traccia, on_delete=models.PROTECT, null=True, blank=True, related_name="+")
-    stato = models.CharField("stato", max_length=3, choices=StatoWorkOrder.choices, default=StatoWorkOrder.APERTO)
-    aperto_il = models.DateTimeField("aperto il", auto_now_add=True)
-    chiuso_il = models.DateTimeField("chiuso il", null=True, blank=True)
-    chiuso_da = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-
-    class Meta:
-        verbose_name = "work order batteria"
-        verbose_name_plural = "work order batterie"
-        ordering = ["stato", "-aperto_il"]
-        constraints = [
-            models.UniqueConstraint(fields=["elemento"], condition=Q(stato="OPN"), name="workorder_uno_aperto")
-        ]
-
-    def __str__(self) -> str:
-        return f"Work order {self.elemento} ({self.get_stato_display()})"
 
 
 # =========================================================================== file per ordine

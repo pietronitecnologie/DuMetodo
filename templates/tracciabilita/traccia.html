@@ -3,10 +3,9 @@
 {% block titolo %}Traccia {{ traccia.elemento|default:traccia.ordine }}{% endblock %}
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center mb-2 gap-2">
-  <h1 class="h4 me-auto mb-0">{% if traccia.elemento %}{{ traccia.elemento.get_tipo_display }} {{ traccia.elemento }}{% else %}Traccia dell'ordine {{ traccia.ordine.codice_breve }}{% endif %}</h1>
+  <h1 class="h4 me-auto mb-0">{% if traccia.elemento %}Elemento {{ traccia.elemento }}{% else %}Traccia dell'ordine {{ traccia.ordine.codice_breve }}{% endif %}</h1>
   {% if perms.core.tracciabilita_registra %}
-    {% if traccia.elemento.tipo == "BAT" %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tracciabilita:batteria_nuova' %}?codice={{ traccia.elemento.codice|urlencode }}">Registra ricarica</a>
-    {% elif traccia.elemento %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tracciabilita:traccia_nuova' %}?codice={{ traccia.elemento.codice|urlencode }}">Aggiungi evento</a>{% endif %}
+    {% if traccia.elemento %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tracciabilita:traccia_nuova' %}?codice={{ traccia.elemento.codice|urlencode }}">Aggiungi evento</a>{% endif %}
     <a class="btn btn-sm btn-outline-dark" target="_blank" rel="noopener" href="{% url 'tracciabilita:stampa' %}?barcode={{ traccia.testo_barcode|urlencode }}">Stampa etichetta</a>
   {% endif %}
 </div>
@@ -18,7 +17,7 @@
     <div class="col-6 col-md-2"><div class="text-muted">Valore</div>{{ traccia.valore|default:"—" }}</div>
     <div class="col-6 col-md-2"><div class="text-muted">Ordine</div>{% if traccia.ordine %}<a href="{{ traccia.ordine.get_absolute_url }}">{{ traccia.ordine.codice_breve }}</a>{% else %}—{% endif %}</div>
     <div class="col-6 col-md-2"><div class="text-muted">Reparto</div>{{ traccia.reparto|default:"—" }}</div>
-    <div class="col-6 col-md-2"><div class="text-muted">Inserita</div>{{ traccia.inserita_il|date:"d/m/Y H:i" }}{% if traccia.inserita_da %} · {{ traccia.inserita_da }}{% endif %}{% if traccia.postazione %} · {{ traccia.postazione.codice }}{% endif %}</div>
+    <div class="col-6 col-md-2"><div class="text-muted">Inserita</div>{{ traccia.inserita_il|date:"d/m/Y H:i" }}{% if traccia.inserita_da %} · {{ traccia.inserita_da }}{% endif %}</div>
   </div>
   <svg class="barcode mt-3" jsbarcode-format="CODE128" jsbarcode-value="{{ traccia.testo_barcode }}" jsbarcode-height="60" jsbarcode-fontsize="14"></svg>
 </div></div>
@@ -26,10 +25,10 @@
 {% if traccia.elemento %}
 <h2 class="h6">Storia di {{ traccia.elemento }}</h2>
 <table class="table table-sm bg-white">
-  <thead><tr><th>Data</th><th>Chiave</th><th>Valore</th><th>Ordine</th><th>Reparto</th><th>Postazione</th></tr></thead>
+  <thead><tr><th>Data</th><th>Chiave</th><th>Valore</th><th>Ordine</th><th>Reparto</th></tr></thead>
   <tbody>{% for t in storia %}
     <tr{% if t.pk == traccia.pk %} class="table-active"{% endif %}><td><a href="{{ t.get_absolute_url }}">{{ t.data|date:"d/m/Y H:i" }}</a></td><td>{{ t.chiave_leggibile }}</td><td>{{ t.valore }}</td>
-      <td>{{ t.ordine.codice_breve|default:"" }}</td><td>{{ t.reparto|default:"" }}</td><td>{{ t.postazione.codice|default:"" }}</td></tr>
+      <td>{{ t.ordine.codice_breve|default:"" }}</td><td>{{ t.reparto|default:"" }}</td></tr>
   {% endfor %}</tbody>
 </table>
 {% endif %}

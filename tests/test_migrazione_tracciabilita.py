@@ -15,8 +15,6 @@ from dumetodo.tracciabilita.models import (
     ControlloQualita,
     Elemento,
     FileOrdine,
-    Postazione,
-    TipoElemento,
     Traccia,
 )
 from dumetodo.tracciabilita.models import Test as ModelloTest
@@ -99,25 +97,11 @@ def test_migrazione_tracciabilita_e_qualita(metodo_db):
     assert "Migrazione completata" in out
     o4300 = Ordine.objects.get(numero="0004300")
 
-    # postazioni: codice doppio reso univoco, nessun token
-    assert set(Postazione.objects.values_list("codice", flat=True)) == {"GKAST-107", "GKAST-107-2"}
-    assert not Postazione.objects.exclude(token_hash="").exists()
-
-    # elementi con tipo dedotto, tracce con FK all'ordine
-    tipi = dict(Elemento.objects.values_list("codice", "tipo"))
-    assert tipi == {"BT00AA11": TipoElemento.BATTERIA, "CVX123456": TipoElemento.CAVO, "GEN-1": TipoElemento.GENERICO}
-    batteria = Elemento.objects.get(codice="BT00AA11")
-    assert list(batteria.tracce.order_by("data").values_list("chiave", flat=True)) == [
-        "IN",
-        "RC",
-    ]  # IN ripetuto saltato
-    assert batteria.tracce.get(chiave="IN").ordine == o4300
-    cavo = Traccia.objects.get(elemento__codice="CVX123456")  # doppione del banco saltato
-    assert (cavo.postazione.codice, cavo.valore, cavo.elemento.lotto) == ("GKAST-107", "1200", "LOT-1")
-    assert cavo.inserita_il.date() == dt.date(2024, 3, 2)
+    # batterie, cavi e postazioni non vengono più importati: restano solo le tracce generiche
+    assert list(Elemento.objects.values_list("codice", flat=True)) == ["GEN-1"]
+    assert set(Traccia.objects.values_list("chiave", flat=True)) == {"LOTTO", "Collaudo"}
     assert Traccia.objects.get(chiave="LOTTO").ordine == o4300
-    assert Traccia.objects.count() == 5
-    assert "primo ingresso ripetuto" in out
+    assert "batterie e cavi (non importati)" in out
 
     # qualità: test con distinta, righe raggruppate, ordine "SERIE.NUMERO" risolto con l'anno
     test = ModelloTest.objects.get(codice="pulsanti")

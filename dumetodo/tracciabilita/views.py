@@ -1,5 +1,4 @@
-"""Viste di tracciabilità e qualità: sottili, chiamano ``servizi``. Ogni modifica è POST con CSRF,
-tranne l'API delle postazioni, autenticata con token (niente cookie, quindi niente CSRF)."""
+"""Viste di tracciabilità e qualità: sottili, chiamano ``servizi``. Ogni modifica è POST con CSRF."""
 
 from __future__ import annotations
 
@@ -11,12 +10,11 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Exists, OuterRef, Prefetch, QuerySet
-from django.http import FileResponse, Http404, HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.db.models import Prefetch, QuerySet
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from dumetodo.configurazione import servizi as config
@@ -25,16 +23,11 @@ from dumetodo.ordini.models import Ordine
 
 from . import forms, servizi
 from .models import (
-    Chiave,
     EsitoControllo,
     FileOrdine,
-    Postazione,
-    StatoWorkOrder,
     Test,
     TipoControllo,
-    TipoElemento,
     Traccia,
-    WorkOrderBatteria,
 )
 from .servizi import OperazioneNonConsentita
 
@@ -79,61 +72,9 @@ def _errori_form(request: HttpRequest, form: Any) -> None:
         messages.error(request, errore)
 
 
-# =========================================================================== batterie
+# =========================================================================== tracce
 def _tracce() -> QuerySet[Traccia]:
-    return Traccia.objects.select_related("elemento", "ordine", "reparto", "postazione", "inserita_da")
-
-
-@require_GET
-@richiede_permesso(F.TRACCIABILITA_CONSULTA, F.TRACCIABILITA_REGISTRA)
-def batterie(request: HttpRequest) -> HttpResponse:
-    return _lista(
-        request,
-        form_cls=forms.FiltriTracce,
-        qs=_tracce().filter(elemento__tipo=TipoElemento.BATTERIA),
-        template="tracciabilita/batterie.html",
-        esporta=servizi.esporta_batterie,
-        nome_file="ListaBatterie.xlsx",
-    )
-
-
-@richiede_permesso(F.TRACCIABILITA_REGISTRA)
-def batteria_nuova(request: HttpRequest) -> HttpResponse:
-    if request.method == "POST":
-        form = forms.BatteriaForm(request.POST)
-        if form.is_valid():
-            d = form.cleaned_data
-            try:
-                traccia = servizi.registra_batteria(
-                    utente=request.user, azione=d["azione"], data=d["data"], reparto=d["reparto"],
-                    codice=d["codice"], ordine=d["ordine"],
-                )  # fmt: skip
-            except OperazioneNonConsentita as exc:
-                messages.error(request, str(exc))
-            else:
-                messages.success(request, f"Batteria {traccia.elemento}: {traccia.chiave_leggibile} registrato.")
-                return redirect(traccia)
-    else:
-        codice = request.GET.get("codice", "")[:50]
-        form = forms.BatteriaForm(
-            initial={
-                "codice": codice,
-                "azione": Chiave.RICARICA if codice else Chiave.INGRESSO,
-                "data": timezone.localdate(),
-            }
-        )
-    return render(request, "tracciabilita/batteria_nuova.html", {"form": form})
-
-
-@require_GET
-@richiede_permesso(F.TRACCIABILITA_REGISTRA)
-def genera_codice(request: HttpRequest) -> HttpResponse:
-    """Propone un codice batteria libero (HTMX: sostituisce il campo codice). Sola lettura."""
-    try:
-        codice = servizi.genera_codice(servizi.prefisso_batterie())
-    except OperazioneNonConsentita as exc:
-        return HttpResponse(str(exc), status=409)
-    return render(request, "tracciabilita/_campo_codice.html", {"codice": codice})
+    return Traccia.objects.select_related("elemento", "ordine", "reparto", "inserita_da")
 
 
 # =========================================================================== tracce generiche
@@ -177,9 +118,8 @@ def traccia_nuova(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.TRACCIABILITA_CONSULTA, F.TRACCIABILITA_REGISTRA)
 def traccia(request: HttpRequest, pk: int) -> HttpResponse:
     t = get_object_or_404(_tracce(), pk=pk)
-    visibile_al_cliente = t.ordine_id or (t.elemento and t.elemento.tipo != TipoElemento.GENERICO)
-    if is_cliente(request.user) and not visibile_al_cliente:
-        raise Http404  # il cliente vede solo ciò che vede nelle liste batterie/cavi o nell'ordine
+    if is_cliente(request.user) and not t.ordine_id:
+        raise Http404  # il cliente vede solo le tracce dei suoi ordini
     storia = _tracce().filter(elemento=t.elemento) if t.elemento_id else _tracce().filter(pk=t.pk)
     return render(request, "tracciabilita/traccia.html", {"traccia": t, "storia": storia[:100]})
 
@@ -192,74 +132,6 @@ def stampa(request: HttpRequest) -> HttpResponse:
     if not testo or len(testo) > 200 or not testo.isprintable() or not testo.isascii():
         return HttpResponseBadRequest("Parametro barcode mancante o non valido (testo ASCII, max 200 caratteri).")
     return render(request, "tracciabilita/stampa.html", {"barcode": testo})
-
-
-# =========================================================================== cavi
-@require_GET
-@richiede_permesso(F.TRACCIABILITA_CONSULTA, F.TRACCIABILITA_REGISTRA)
-def cavi(request: HttpRequest) -> HttpResponse:
-    return _lista(
-        request,
-        form_cls=forms.FiltriTracce,
-        qs=_tracce()
-        .filter(elemento__tipo=TipoElemento.CAVO)
-        .exclude(chiave=Chiave.INTESTATO)
-        .annotate(intestato=Exists(Traccia.objects.filter(elemento=OuterRef("elemento"), chiave=Chiave.INTESTATO))),
-        template="tracciabilita/cavi.html",
-        esporta=servizi.esporta_cavi,
-        nome_file="ListaCavi.xlsx",
-        predefiniti=_giorni_fa(config.leggi("tracciabilita.giorni_liste")),
-    )
-
-
-@require_POST
-@richiede_permesso(F.TRACCIABILITA_REGISTRA)
-def cavo_intestato(request: HttpRequest, elemento_id: int) -> HttpResponse:
-    try:
-        t = servizi.registra_intestatura(elemento_id, request.user)
-        esito, classe = f"Intestato {timezone.localtime(t.data):%d/%m/%Y %H:%M}", "success"
-    except OperazioneNonConsentita as exc:
-        esito, classe = str(exc), "danger"
-    if request.htmx:
-        return render(request, "tracciabilita/_esito.html", {"esito": esito, "classe": classe})
-    messages.info(request, esito)
-    return redirect("tracciabilita:cavi")
-
-
-@csrf_exempt
-def api_cavi(request: HttpRequest) -> HttpResponse:
-    """API dei banchi (ex ``insertTracciaCavi``, che in Metodo era una GET anonima). Protocollo nel README."""
-    if request.method not in ("POST", "GET"):
-        return JsonResponse({"errore": "Metodo non ammesso: usa POST."}, status=405)
-    if request.method == "GET" and not config.leggi("tracciabilita.api_consenti_get"):
-        return JsonResponse({"errore": "Metodo non ammesso: usa POST."}, status=405)
-    token = request.headers.get("X-Postazione-Token") or request.GET.get("token") or request.POST.get("token")
-    postazione = servizi.postazione_da_token(token)
-    if postazione is None:
-        return JsonResponse({"errore": "Token della postazione mancante o non valido."}, status=401)
-    form = forms.CavoPostazioneForm(request.POST if request.method == "POST" else request.GET, postazione=postazione)
-    if not form.is_valid():
-        stato = 404 if form.has_error("ordine", code="non_trovato") else 400
-        errori = {campo: [str(e) for e in lista] for campo, lista in form.errors.items()}
-        primo = next(iter(errori.values()))[0]
-        return JsonResponse({"errore": primo, "campi": errori}, status=stato)
-    d = form.cleaned_data
-    try:
-        t, creata = servizi.registra_cavo_da_postazione(
-            postazione, ordine=d["ordine"], prodotto=d["prodotto"], misura=d["misura"], lotto=d["lotto"],
-            data=d["data"], reparto=d["reparto"],
-        )  # fmt: skip
-    except OperazioneNonConsentita as exc:
-        return JsonResponse({"errore": str(exc)}, status=409)
-    return JsonResponse(
-        {
-            "esito": "creata" if creata else "duplicata",
-            "id": t.pk,
-            "codice": t.elemento.codice if t.elemento else "",
-            "ordine": t.ordine.codice if t.ordine else "",
-        },
-        status=201 if creata else 200,
-    )
 
 
 # =========================================================================== pannello nella pagina dell'ordine
@@ -390,78 +262,6 @@ def file_elimina(request: HttpRequest, pk: int) -> HttpResponse:
         return redirect(fo.ordine if fo else "tracciabilita:file_lista")
     messages.success(request, "File eliminato.")
     return redirect(ordine)
-
-
-# =========================================================================== work order batterie
-@require_GET
-@richiede_permesso(F.TRACCIABILITA_REGISTRA)
-def work_order(request: HttpRequest) -> HttpResponse:
-    stato = request.GET.get("stato", StatoWorkOrder.APERTO)
-    qs = WorkOrderBatteria.objects.select_related("elemento", "ultima_traccia__reparto", "chiuso_da")
-    if stato in StatoWorkOrder.values:
-        qs = qs.filter(stato=stato)
-    pagina = Paginator(qs, PER_PAGINA).get_page(request.GET.get("pagina"))
-    return render(
-        request,
-        "tracciabilita/work_order.html",
-        {"pagina": pagina, "stato": stato, "giorni": config.leggi("tracciabilita.giorni_ricarica_batterie")},
-    )
-
-
-@require_POST
-@richiede_permesso(F.TRACCIABILITA_REGISTRA)
-def work_order_chiudi(request: HttpRequest, pk: int) -> HttpResponse:
-    try:
-        wo = servizi.chiudi_work_order(pk, request.user)
-        messages.success(request, f"Work order della batteria {wo.elemento} chiuso.")
-    except OperazioneNonConsentita as exc:
-        messages.error(request, str(exc))
-    return redirect("tracciabilita:work_order")
-
-
-@require_POST
-@richiede_permesso(F.TRACCIABILITA_WORK_ORDER)
-def work_order_genera(request: HttpRequest) -> HttpResponse:
-    n = servizi.genera_work_order_batterie()
-    messages.success(request, f"Work order aperti: {n}.")
-    return redirect("tracciabilita:work_order")
-
-
-# =========================================================================== postazioni (token)
-@require_GET
-@richiede_permesso(F.TRACCIABILITA_POSTAZIONI)
-def postazioni(request: HttpRequest) -> HttpResponse:
-    return render(
-        request, "tracciabilita/postazioni.html", {"postazioni": Postazione.objects.select_related("reparto")}
-    )
-
-
-@require_POST
-@richiede_permesso(F.TRACCIABILITA_POSTAZIONI)
-def postazione_token(request: HttpRequest, pk: int) -> HttpResponse:
-    postazione = get_object_or_404(Postazione, pk=pk)
-    token = servizi.genera_token_postazione(postazione.pk, request.user)
-    # Il token viene mostrato solo in questa risposta (non in un messaggio salvato nella sessione).
-    risposta = render(
-        request,
-        "tracciabilita/postazioni.html",
-        {
-            "postazioni": Postazione.objects.select_related("reparto"),
-            "nuovo_token": token,
-            "postazione_token": postazione,
-            "url_api": request.build_absolute_uri(reverse("tracciabilita:api_cavi")),
-        },
-    )
-    risposta["Cache-Control"] = "no-store"
-    return risposta
-
-
-@require_POST
-@richiede_permesso(F.TRACCIABILITA_POSTAZIONI)
-def postazione_revoca(request: HttpRequest, pk: int) -> HttpResponse:
-    p = servizi.revoca_token_postazione(get_object_or_404(Postazione, pk=pk).pk, request.user)
-    messages.success(request, f"Token della postazione {p.codice} revocato.")
-    return redirect("tracciabilita:postazioni")
 
 
 # =========================================================================== controllo qualità

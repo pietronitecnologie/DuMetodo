@@ -19,8 +19,6 @@ from dumetodo.ordini.models import Ordine
 
 from . import servizi
 from .models import (
-    Chiave,
-    Postazione,
     Test,
 )
 
@@ -76,31 +74,6 @@ class FormConStile(forms.Form):
 
 
 # =========================================================================== inserimento
-class BatteriaForm(FormConStile):
-    azione = forms.ChoiceField(
-        label="Azione",
-        choices=[(Chiave.INGRESSO, "Primo ingresso"), (Chiave.RICARICA, "Ricarica")],
-        widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
-        initial=Chiave.INGRESSO,
-    )
-    codice = forms.CharField(
-        label="Codice batteria",
-        max_length=50,
-        required=False,
-        help_text="Primo ingresso: lascia vuoto per generarlo automaticamente.",
-    )
-    data = _campo_data("Data", required=True)
-    reparto = forms.ModelChoiceField(label="Reparto", queryset=Reparto.objects.none())
-    ordine = CampoOrdine(required=False)
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.fields["reparto"].queryset = _reparti()
-
-    def clean_data(self) -> dt.date | None:
-        return _non_futura(self.cleaned_data.get("data"))
-
-
 class TracciaForm(FormConStile):
     codice = forms.CharField(label="Codice elemento", max_length=50)
     chiave = forms.CharField(label="Chiave", max_length=50)
@@ -115,76 +88,6 @@ class TracciaForm(FormConStile):
 
     def clean_data(self) -> dt.date | None:
         return _non_futura(self.cleaned_data.get("data"))
-
-
-class CavoPostazioneForm(forms.Form):
-    """Parametri dell'API dei banchi (nomi compatibili con ``insertTracciaCavi`` di Metodo)."""
-
-    ordine = forms.CharField(max_length=60, required=False)
-    serie = forms.CharField(max_length=5, required=False)
-    numero = forms.CharField(max_length=30, required=False)
-    appendice = forms.CharField(max_length=10, required=False)
-    anno = forms.IntegerField(min_value=2000, max_value=2100, required=False)
-    prodotto = forms.CharField(max_length=50)
-    misura = forms.CharField(max_length=100)
-    lotto = forms.CharField(max_length=100, required=False)
-    lottoCavo = forms.CharField(max_length=100, required=False)
-    data = forms.CharField(max_length=40)
-    reparto = forms.CharField(max_length=30, required=False)
-    location = forms.CharField(max_length=30, required=False)
-    asset = forms.CharField(max_length=30, required=False)
-
-    FORMATI_DATA = ("%Y/%m/%d,%H:%M:%S", "%Y/%m/%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d")
-
-    def __init__(self, *args: Any, postazione: Postazione, **kwargs: Any) -> None:
-        self.postazione = postazione
-        super().__init__(*args, **kwargs)
-
-    def clean_data(self) -> dt.datetime:
-        testo = self.cleaned_data["data"].strip()
-        for formato in self.FORMATI_DATA:
-            try:
-                valore = dt.datetime.strptime(testo, formato)
-            except ValueError:
-                continue
-            valore = timezone.make_aware(valore)
-            if not (dt.datetime(2000, 1, 1, tzinfo=dt.UTC) <= valore <= timezone.now() + dt.timedelta(days=1)):
-                raise forms.ValidationError("Data fuori intervallo.")
-            return valore
-        raise forms.ValidationError("Data non valida: usa AAAA/MM/GG,hh:mm:ss oppure AAAA-MM-GGThh:mm:ss.")
-
-    def clean(self) -> dict[str, Any]:
-        d = super().clean()
-        if self.errors:
-            return d
-        if d.get("ordine"):
-            testo = d["ordine"]
-            try:
-                d["ordine"] = servizi.risolvi_ordine(testo)
-            except servizi.OperazioneNonConsentita as exc:
-                codice = "non_trovato" if servizi.FORMATO_RE.match(testo.strip()) else "non_valido"
-                self.add_error("ordine", forms.ValidationError(str(exc), code=codice))
-                return d
-        elif d.get("serie") and d.get("numero") and d.get("anno"):
-            d["ordine"] = servizi.cerca_ordine(d["serie"], d["numero"], d.get("appendice", ""), d["anno"])
-            if d["ordine"] is None:
-                self.add_error("ordine", forms.ValidationError("Ordine non trovato.", code="non_trovato"))
-                return d
-        else:
-            self.add_error(
-                "ordine", "Indica l'ordine: ordine=serie.numero[.appendice]-anno oppure serie, numero, anno."
-            )
-            return d
-        codice_reparto = d.get("reparto") or d.get("location")
-        d["reparto"] = None
-        if codice_reparto:
-            d["reparto"] = Reparto.objects.filter(codice=codice_reparto).first()
-            if d["reparto"] is None:
-                raise forms.ValidationError(f"Reparto {codice_reparto} sconosciuto.")
-        if d.get("asset") and d["asset"] != self.postazione.codice:
-            raise forms.ValidationError("Il parametro asset non corrisponde alla postazione del token.")
-        d["lotto"] = d.get("lotto") or d.get("lottoCavo") or ""
-        return d
 
 
 class ControlloQualitaForm(FormConStile):
@@ -239,17 +142,14 @@ class Filtri(FormConStile):
 class FiltriTracce(Filtri):
     codice = forms.CharField(label="Codice", max_length=50, required=False)
     ordine = forms.CharField(label="Ordine (numero)", max_length=30, required=False)
-    chiave = forms.CharField(label="Chiave / prodotto", max_length=50, required=False)
-    lotto = forms.CharField(label="Lotto", max_length=100, required=False)
+    chiave = forms.CharField(label="Chiave", max_length=50, required=False)
     reparto = forms.ModelChoiceField(label="Reparto", queryset=Reparto.objects.none(), required=False)
-    postazione = forms.ModelChoiceField(label="Postazione", queryset=Postazione.objects.none(), required=False)
     inserita_dal = _campo_data("Inserita dal")
     inserita_al = _campo_data("al")
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.fields["reparto"].queryset = Reparto.objects.all()
-        self.fields["postazione"].queryset = Postazione.objects.all()
 
     def filtra(self, qs: QuerySet[Any]) -> QuerySet[Any]:
         qs = super().filtra(qs)
@@ -260,12 +160,8 @@ class FiltriTracce(Filtri):
             qs = qs.filter(ordine__numero__icontains=d["ordine"].strip())
         if d.get("chiave"):
             qs = qs.filter(chiave__iexact=d["chiave"].strip())
-        if d.get("lotto"):
-            qs = qs.filter(elemento__lotto__icontains=d["lotto"].strip())
         if d.get("reparto"):
             qs = qs.filter(reparto=d["reparto"])
-        if d.get("postazione"):
-            qs = qs.filter(postazione=d["postazione"])
         return self.filtra_date(qs, "inserita_il__date", d.get("inserita_dal"), d.get("inserita_al"))
 
 

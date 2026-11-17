@@ -56,7 +56,6 @@ class F:
     ORDINI_RIGHE = "ordini_righe"
     ORDINI_DIVIDI = "ordini_dividi"
     ORDINI_ANNULLA = "ordini_annulla"
-    ATTIVA_PRODUZIONE = "attiva_produzione"
     NOTE_SCRIVERE = "note_scrivere"
     NOTE_ELIMINARE_TUTTE = "note_eliminare_tutte"
     IMPORTAZIONE = "importazione"
@@ -78,8 +77,6 @@ class F:
     MAGAZZINO_DDT_ELIMINA = "magazzino_ddt_elimina"
     TRACCIABILITA_CONSULTA = "tracciabilita_consulta"
     TRACCIABILITA_REGISTRA = "tracciabilita_registra"
-    TRACCIABILITA_WORK_ORDER = "tracciabilita_work_order"
-    TRACCIABILITA_POSTAZIONI = "tracciabilita_postazioni"
     TRACCIABILITA_FILE_ELIMINA_TUTTI = "tracciabilita_file_elimina_tutti"
     REPORT_DASHBOARD = "report_dashboard"
     REPORT_PRODUTTIVITA = "report_produttivita"
@@ -108,7 +105,6 @@ FUNZIONI: list[Funzione] = [
         "Annullare, consegnare forzatamente e riaprire ordini",
         "Comprende annullare righe e modificare righe già in spedizione.",
     ),
-    Funzione(F.ATTIVA_PRODUZIONE, Sezione.PRODUZIONE, "Attivare la produzione"),
     Funzione(F.NOTE_SCRIVERE, Sezione.PRODUZIONE, "Scrivere note sugli ordini"),
     Funzione(F.NOTE_ELIMINARE_TUTTE, Sezione.PRODUZIONE, "Eliminare le note di altri utenti"),
     Funzione(F.IMPORTAZIONE, Sezione.PRODUZIONE, "Importare ordini", "Caricamento file e consultazione importazioni."),
@@ -139,16 +135,14 @@ FUNZIONI: list[Funzione] = [
         F.TRACCIABILITA_CONSULTA,
         Sezione.QUALITA,
         "Consultare tracciabilità e qualità",
-        "Batterie, cavi, tracce dell'ordine, controlli qualità, foto.",
+        "Tracce dell'ordine, controlli qualità, foto.",
     ),
     Funzione(
         F.TRACCIABILITA_REGISTRA,
         Sezione.QUALITA,
         "Registrare tracce e controlli",
-        "Batterie, tracce, lotti/buste, controlli qualità, foto; work order batterie.",
+        "Tracce, lotti/buste, controlli qualità, foto.",
     ),
-    Funzione(F.TRACCIABILITA_WORK_ORDER, Sezione.QUALITA, "Generare i work order delle batterie"),
-    Funzione(F.TRACCIABILITA_POSTAZIONI, Sezione.QUALITA, "Gestire postazioni e token dei banchi di collaudo"),
     Funzione(F.TRACCIABILITA_FILE_ELIMINA_TUTTI, Sezione.QUALITA, "Eliminare foto e file caricati da altri"),
     Funzione(F.REPORT_DASHBOARD, Sezione.REPORT, "Dashboard"),
     Funzione(F.REPORT_PRODUTTIVITA, Sezione.REPORT, "Analisi produttività"),
@@ -172,7 +166,6 @@ _OPERATORE = {
     F.ORDINI_VEDERE,
     F.ORDINI_STATO,
     F.ORDINI_RIGHE,
-    F.ATTIVA_PRODUZIONE,
     F.NOTE_SCRIVERE,
     F.IMPORTAZIONE,
     F.CONSEGNA,
@@ -190,7 +183,7 @@ _OPERATORE = {
     F.TRACCIABILITA_CONSULTA,
     F.TRACCIABILITA_REGISTRA,
 }
-_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.TRACCIABILITA_WORK_ORDER}
+_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA}
 PROFILI: dict[str, set[str]] = {
     "Operatore": _OPERATORE,
     "Caporeparto": _CAPOREPARTO,

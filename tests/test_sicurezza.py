@@ -10,7 +10,6 @@ PUBBLICHE = {
     "login",
     "logout",
     "utilita:annunci_attivi",  # frammento vuoto per chi non è del Fornitore
-    "tracciabilita:api_cavi",  # protetta dal token della postazione (testata a parte)
 }
 # Solo login: servono a ogni utente collegato e restituiscono dati già filtrati per i suoi permessi.
 SOLO_LOGIN = {"client:configurazione"}

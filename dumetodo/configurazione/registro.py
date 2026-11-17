@@ -464,15 +464,6 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Valore della colonna I del file etichette (in Metodo era fisso: 0003659).",
         default="0003659",
     ),
-    # --- Tracciabilità ------------------------------------------------------------------
-    Parametro(
-        "tracciabilita.prefisso_codice_cavi",
-        Tipo.TESTO,
-        Gruppo.TRACCIABILITA,
-        "Prefisso codice cavi",
-        "Prefisso dei codici generati per i cavi.",
-        legacy=("ITEM_CODE_CAVI",),
-    ),
     # --- Magazzino ----------------------------------------------------------------------
     Parametro(
         "magazzino.reparti_richieste",
@@ -503,15 +494,6 @@ PARAMETRI: tuple[Parametro, ...] = (
     ),
     # --- Tracciabilità e qualità --------------------------------------------------------
     Parametro(
-        "tracciabilita.prefisso_codice_batterie",
-        Tipo.TESTO,
-        Gruppo.TRACCIABILITA,
-        "Prefisso codice batterie",
-        "Prefisso dei codici generati per le batterie (seguito da 6 caratteri esadecimali).",
-        default="BT",
-        obbligatorio=True,
-    ),
-    Parametro(
         "tracciabilita.reparto_lotti",
         Tipo.TESTO,
         Gruppo.TRACCIABILITA,
@@ -521,30 +503,13 @@ PARAMETRI: tuple[Parametro, ...] = (
         default="GK01-PLS",
     ),
     Parametro(
-        "tracciabilita.giorni_ricarica_batterie",
-        Tipo.INTERO,
-        Gruppo.TRACCIABILITA,
-        "Giorni massimi senza ricarica",
-        "Una batteria senza eventi da più giorni di così riceve un work order di ricarica.",
-        default=115,
-        minimo=1,
-    ),
-    Parametro(
         "tracciabilita.giorni_liste",
         Tipo.INTERO,
         Gruppo.TRACCIABILITA,
         "Giorni mostrati di default nelle liste",
-        "Liste tracce e cavi: senza filtri mostrano gli eventi degli ultimi N giorni (oggi compreso).",
+        "Lista tracce: senza filtri mostrano gli eventi degli ultimi N giorni (oggi compreso).",
         default=2,
         minimo=0,
-    ),
-    Parametro(
-        "tracciabilita.api_consenti_get",
-        Tipo.BOOLEANO,
-        Gruppo.TRACCIABILITA,
-        "API postazioni: accetta GET",
-        "Solo per banchi che non sanno fare POST. Il token resta obbligatorio.",
-        default=False,
     ),
     Parametro(
         "tracciabilita.dimensione_massima_file_mb",
@@ -571,6 +536,13 @@ LEGACY_SEGRETI: dict[str, str] = {
     "MAIL_TICKET_PSW": "(app Tickets, fuori da DuMetodo)",
 }
 # Cursori tecnici della vecchia tabella: sostituiti da tabelle dedicate, non vanno importati.
-# ARTICOLO_TRACCIA_*: in DuMetodo il tipo di elemento tracciato è esplicito, non dedotto dal codice articolo.
-LEGACY_IGNORATI = {"ID_EMAIL", "IDX_SYNC", "ID_MIGRAZIONE", "ARTICOLO_TRACCIA_BATTERIE", "ARTICOLO_TRACCIA_CAVI"}
+# ARTICOLO_TRACCIA_* e ITEM_CODE_CAVI: tracciabilità di batterie e cavi eliminata da DuMetodo.
+LEGACY_IGNORATI = {
+    "ID_EMAIL",
+    "IDX_SYNC",
+    "ID_MIGRAZIONE",
+    "ARTICOLO_TRACCIA_BATTERIE",
+    "ARTICOLO_TRACCIA_CAVI",
+    "ITEM_CODE_CAVI",
+}
 LEGACY_PREFISSO_SOGLIE = "SOGLIA_"

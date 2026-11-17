@@ -112,12 +112,6 @@ def test_ore_teoriche(ordine):
     assert servizi.ore_teoriche(ordine) == Decimal("3.00")  # (10*2.5 + 5*1) / 10
 
 
-def test_attiva_produzione(ordine, operatore):
-    assert servizi.attiva_produzione(dt.date(2026, 4, 1), dt.date(2026, 4, 30), operatore) == 1
-    ordine.refresh_from_db()
-    assert ordine.stato == StatoOrdine.IN_LAVORAZIONE
-
-
 def test_vincolo_db_una_sola_riga_attiva_per_numero(ordine):
     from django.db import IntegrityError, transaction
 

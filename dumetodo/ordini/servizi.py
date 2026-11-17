@@ -76,20 +76,6 @@ def cambia_stato(ordine_id: int, nuovo_stato: str, utente: Any) -> Ordine:
     return ordine
 
 
-@transaction.atomic
-def attiva_produzione(dal: dt.date, al: dt.date, utente: Any) -> int:
-    """Porta in lavorazione gli ordini 'Inserito' con scadenza nell'intervallo. Ritorna il numero."""
-    if not ha_permesso(utente, F.ATTIVA_PRODUZIONE):
-        raise OperazioneNonConsentita("Non hai i permessi per questa operazione.")
-    if dal > al:
-        raise OperazioneNonConsentita("La data iniziale è successiva a quella finale.")
-    qs = Ordine.objects.select_for_update().filter(stato=StatoOrdine.INSERITO, data_scadenza__range=(dal, al))
-    ids = list(qs.values_list("pk", flat=True))
-    for ordine_id in ids:
-        cambia_stato(ordine_id, StatoOrdine.IN_LAVORAZIONE, utente)
-    return len(ids)
-
-
 # --------------------------------------------------------------------------- azioni sulle righe
 AZIONI_RIGA = ("evadi", "blocca", "scorpora", "reincorpora", "annulla")
 

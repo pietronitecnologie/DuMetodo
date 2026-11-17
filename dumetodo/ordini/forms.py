@@ -71,8 +71,3 @@ class DividiRigaForm(forms.Form):
 class CambiaScadenzaForm(forms.Form):
     nuova = forms.DateField(label="Nuova scadenza", widget=forms.DateInput(attrs={"type": "date"}))
     motivo = forms.CharField(label="Motivo", max_length=500, widget=forms.Textarea(attrs={"rows": 2}))
-
-
-class AttivaProduzioneForm(forms.Form):
-    dal = forms.DateField(label="Scadenza dal", widget=forms.DateInput(attrs={"type": "date"}))
-    al = forms.DateField(label="al", widget=forms.DateInput(attrs={"type": "date"}))

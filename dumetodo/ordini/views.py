@@ -11,7 +11,7 @@ from dumetodo.core.permessi import F, ha_permesso, richiede_permesso
 
 from . import servizi, stati
 from .aiuti_visivi import colora_cambi_articolo
-from .forms import AttivaProduzioneForm, CambiaScadenzaForm, DividiRigaForm, FiltriOrdiniForm
+from .forms import CambiaScadenzaForm, DividiRigaForm, FiltriOrdiniForm
 from .models import Ordine, RigaOrdine, StatoRiga
 
 
@@ -114,16 +114,3 @@ def cambia_scadenza(request: HttpRequest, pk: int) -> HttpResponse:
         except servizi.OperazioneNonConsentita as exc:
             messages.error(request, str(exc))
     return redirect("ordini:dettaglio", pk=pk)
-
-
-@richiede_permesso(F.ATTIVA_PRODUZIONE)
-def attiva_produzione(request: HttpRequest) -> HttpResponse:
-    form = AttivaProduzioneForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        try:
-            n = servizi.attiva_produzione(form.cleaned_data["dal"], form.cleaned_data["al"], request.user)
-            messages.success(request, f"{n} ordini attivati (stato 'Lavorato con mancanze').")
-            return redirect("ordini:lista")
-        except servizi.OperazioneNonConsentita as exc:
-            form.add_error(None, str(exc))
-    return render(request, "ordini/attiva_produzione.html", {"form": form})

@@ -1,6 +1,5 @@
 import datetime as dt
 import io
-import re
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -14,24 +13,18 @@ from dumetodo.ordini.models import Ordine
 from dumetodo.tracciabilita import models as modelli
 from dumetodo.tracciabilita import servizi
 from dumetodo.tracciabilita.models import (
-    Chiave,
     Controllo,
     ControlloQualita,
     Elemento,
     EsitoControllo,
     FileOrdine,
-    Postazione,
-    StatoWorkOrder,
     TipoControllo,
-    TipoElemento,
     Traccia,
-    WorkOrderBatteria,
 )
 from dumetodo.tracciabilita.servizi import OperazioneNonConsentita
 
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 200
 PDF = b"%PDF-1.4\n" + b"x" * 100
-API = "/tracciabilita/api/cavi/"
 
 
 @pytest.fixture
@@ -42,13 +35,6 @@ def reparto(db):
 @pytest.fixture
 def reparto_pulsanti(db):
     return Reparto.objects.create(codice="GK01-PLS", nome="Pulsanti")
-
-
-@pytest.fixture
-def postazione(reparto, amministratore):
-    p = Postazione.objects.create(codice="GKAST-107", nome="Taglierina", reparto=reparto)
-    p.token = servizi.genera_token_postazione(p.pk, amministratore)
-    return p
 
 
 def _xlsx(response) -> list[tuple]:
@@ -82,86 +68,17 @@ def test_risolvi_ordine_per_chiave_completa(ordine):
 
 
 # =========================================================================== batterie
-def test_primo_ingresso_genera_codice_con_prefisso_configurato(operatore, reparto, ordine):
-    config.scrivi("tracciabilita.prefisso_codice_batterie", "XB")
-    config.invalida_cache()
-    t = servizi.registra_batteria(
-        utente=operatore, azione=Chiave.INGRESSO, data=timezone.localdate(), reparto=reparto, ordine=ordine
-    )
-    assert re.fullmatch(r"XB[0-9A-F]{6}", t.elemento.codice)
-    assert t.elemento.tipo == TipoElemento.BATTERIA and t.ordine == ordine and t.inserita_da == operatore
-    assert t.testo_barcode == f"{t.elemento.codice},IN,{timezone.localdate():%d/%m/%Y}"
-
-
-def test_prefisso_predefinito_senza_riferimenti_al_cliente(operatore, reparto):
-    t = servizi.registra_batteria(utente=operatore, azione="IN", data=timezone.localdate(), reparto=reparto)
-    assert t.elemento.codice.startswith("BT")
-
-
-def test_ingresso_di_codice_esistente_e_ricarica_di_sconosciuta_rifiutati(operatore, reparto):
-    oggi = timezone.localdate()
-    servizi.registra_batteria(utente=operatore, azione="IN", data=oggi, reparto=reparto, codice="BAT1")
-    with pytest.raises(OperazioneNonConsentita, match="esistente"):
-        servizi.registra_batteria(utente=operatore, azione="IN", data=oggi, reparto=reparto, codice="BAT1")
-    with pytest.raises(OperazioneNonConsentita, match="sconosciuta"):
-        servizi.registra_batteria(utente=operatore, azione="RC", data=oggi, reparto=reparto, codice="NUOVA")
-    assert not Elemento.objects.filter(codice="NUOVA").exists()
-    rc = servizi.registra_batteria(utente=operatore, azione="RC", data=oggi, reparto=reparto, codice="BAT1")
-    assert rc.elemento.tracce.count() == 2 and Elemento.objects.count() == 1
-
-
 def test_data_utente_rispettata(operatore, reparto):
     ieri = timezone.localdate() - dt.timedelta(days=1)
-    t = servizi.registra_batteria(utente=operatore, azione="IN", data=ieri, reparto=reparto, codice="B2")
+    t = servizi.registra_traccia(utente=operatore, codice="B2", chiave="X", valore="1", data=ieri, reparto=reparto)
     assert timezone.localtime(t.data).date() == ieri
 
 
 def test_cliente_non_puo_registrare(cliente, reparto):
     with pytest.raises(OperazioneNonConsentita, match="permessi"):
-        servizi.registra_batteria(utente=cliente, azione="IN", data=timezone.localdate(), reparto=reparto)
-
-
-def test_codice_generato_univoco_con_nuovi_tentativi(operatore, monkeypatch):
-    Elemento.objects.create(codice="BTAAAAAA")
-    valori = iter(["aaaaaa", "aaaaaa", "bbbbbb"])
-    monkeypatch.setattr(servizi.secrets, "token_hex", lambda n: next(valori))
-    assert servizi.genera_codice("BT") == "BTBBBBBB"
-
-
-def test_collisione_in_creazione_si_riprova(operatore, monkeypatch):
-    # Due richieste parallele ricevono la stessa proposta: il vincolo del database decide, la seconda riprova.
-    Elemento.objects.create(codice="BT111111")
-    proposte = iter(["BT111111", "BT222222"])
-    monkeypatch.setattr(servizi, "genera_codice", lambda prefisso: next(proposte))
-    e = servizi._crea_elemento_generato("BT", TipoElemento.BATTERIA, operatore)
-    assert e.codice == "BT222222"
-
-
-def test_ricarica_chiude_il_work_order(operatore, reparto):
-    servizi.registra_batteria(
-        utente=operatore, azione="IN", data=timezone.localdate() - dt.timedelta(days=200), reparto=reparto, codice="B9"
-    )
-    assert servizi.genera_work_order_batterie() == 1
-    assert servizi.genera_work_order_batterie() == 0  # un solo work order aperto per batteria
-    wo = WorkOrderBatteria.objects.get()
-    assert wo.stato == StatoWorkOrder.APERTO and wo.ultima_traccia.chiave == "IN"
-    servizi.registra_batteria(utente=operatore, azione="RC", data=timezone.localdate(), reparto=reparto, codice="B9")
-    wo.refresh_from_db()
-    assert wo.stato == StatoWorkOrder.CHIUSO and wo.chiuso_da == operatore
-    assert servizi.genera_work_order_batterie() == 0  # ricaricata di recente
-
-
-def test_chiusura_work_order_via_post(client, operatore, reparto):
-    e = Elemento.objects.create(codice="B5", tipo=TipoElemento.BATTERIA)
-    wo = WorkOrderBatteria.objects.create(elemento=e)
-    client.force_login(operatore)
-    assert client.get(reverse("tracciabilita:work_order_chiudi", args=[wo.pk])).status_code == 405
-    client.post(reverse("tracciabilita:work_order_chiudi", args=[wo.pk]))
-    wo.refresh_from_db()
-    assert wo.stato == StatoWorkOrder.CHIUSO
-    client.logout()
-    r = client.post(reverse("tracciabilita:work_order_genera"))
-    assert r.status_code == 302 and "accesso" in r["Location"]
+        servizi.registra_traccia(
+            utente=cliente, codice="B3", chiave="X", valore="", data=timezone.localdate(), reparto=reparto
+        )
 
 
 # =========================================================================== tracce generiche e lotti
@@ -177,7 +94,7 @@ def test_traccia_generica_salva_il_valore_e_accoda_eventi(operatore, reparto, or
     assert t2.elemento == t1.elemento and t1.elemento.tracce.count() == 2
     assert t1.testo_barcode == f"EL1,Collaudo,OK 12V,{oggi:%d/%m/%Y}"
     with pytest.raises(OperazioneNonConsentita, match="riservata"):
-        servizi.registra_traccia(utente=operatore, codice="EL1", chiave="in", valore="", data=oggi, reparto=reparto)
+        servizi.registra_traccia(utente=operatore, codice="EL1", chiave="lotto", valore="", data=oggi, reparto=reparto)
 
 
 def test_lotto_busta_senza_doppioni(operatore, ordine, reparto_pulsanti):
@@ -200,109 +117,7 @@ def test_lotto_busta_da_pagina_ordine_htmx(client, operatore, ordine):
 
 
 # =========================================================================== API postazioni (cavi)
-def test_token_conservato_solo_come_impronta(postazione):
-    postazione.refresh_from_db()
-    assert postazione.token and postazione.token not in postazione.token_hash and len(postazione.token_hash) == 64
-    assert servizi.postazione_da_token(postazione.token) == postazione
-    assert servizi.postazione_da_token("sbagliato") is None
-
-
-def test_api_senza_token_o_con_token_errato(client, postazione, ordine):
-    dati = {"ordine": "40.0004300-2026", "prodotto": "CV1", "misura": "120", "data": "2026/03/01,10:00:00"}
-    assert client.post(API, dati).status_code == 401
-    assert client.post(API, dati, headers={"X-Postazione-Token": "x" * 43}).status_code == 401
-    postazione.attiva = False
-    postazione.save()
-    assert client.post(API, dati, headers={"X-Postazione-Token": postazione.token}).status_code == 401
-    assert not Traccia.objects.exists()
-
-
-def test_api_crea_traccia_cavo_e_deduplica(client, postazione, ordine):
-    dati = {
-        "ordine": "00040.0004300-2026",
-        "lottoCavo": "LOT-9",
-        "prodotto": "CV-AWG18",
-        "misura": "1250",
-        "data": "2026/03/01,10:15:30",
-        "asset": "GKAST-107",
-    }
-    r = client.post(API, dati, headers={"X-Postazione-Token": postazione.token})
-    assert r.status_code == 201, r.content
-    corpo = r.json()
-    t = Traccia.objects.get(pk=corpo["id"])
-    assert corpo["esito"] == "creata" and t.ordine == ordine and t.postazione == postazione
-    assert (t.chiave, t.valore, t.elemento.lotto, t.elemento.tipo) == ("CV-AWG18", "1250", "LOT-9", TipoElemento.CAVO)
-    assert t.reparto == postazione.reparto
-    assert timezone.localtime(t.data).replace(tzinfo=None) == dt.datetime(2026, 3, 1, 10, 15, 30)
-    r2 = client.post(API, dati, headers={"X-Postazione-Token": postazione.token})
-    assert r2.status_code == 200 and r2.json() == {**corpo, "esito": "duplicata"}
-    assert Traccia.objects.count() == 1 and Elemento.objects.count() == 1
-
-
-def test_api_ordine_sconosciuto_non_crea_ordini(client, postazione, ordine):
-    n = Ordine.objects.count()
-    dati = {"ordine": "00040.0009999-2026", "prodotto": "CV", "misura": "1", "data": "2026/03/01"}
-    r = client.post(API, dati, headers={"X-Postazione-Token": postazione.token})
-    assert r.status_code == 404 and "non trovato" in r.json()["errore"]
-    assert Ordine.objects.count() == n and not Traccia.objects.exists()
-    dati["ordine"] = "boh"
-    assert client.post(API, dati, headers={"X-Postazione-Token": postazione.token}).status_code == 400
-
-
-def test_api_valida_gli_ingressi(client, postazione, ordine):
-    base = {"ordine": "40.0004300-2026", "prodotto": "CV", "misura": "1", "data": "2026/03/01"}
-    h = {"X-Postazione-Token": postazione.token}
-    assert client.post(API, {**base, "data": "ieri"}, headers=h).status_code == 400
-    assert client.post(API, {**base, "misura": ""}, headers=h).status_code == 400
-    assert client.post(API, {**base, "asset": "ALTRO"}, headers=h).status_code == 400
-    assert client.post(API, {**base, "location": "NESSUNO"}, headers=h).status_code == 400
-    r = client.post(API, {**base, "serie": "40", "numero": "4300", "anno": "2026", "ordine": ""}, headers=h)
-    assert r.status_code == 201
-
-
-def test_api_get_solo_se_abilitata(client, postazione, ordine):
-    query = f"?token={postazione.token}&ordine=40.0004300-2026&prodotto=CV&misura=5&data=2026/03/02"
-    assert client.get(API + query).status_code == 405
-    config.scrivi("tracciabilita.api_consenti_get", True)
-    config.invalida_cache()
-    assert client.get(API + query).status_code == 201
-
-
-def test_intestatura_sul_cavo_esistente(client, operatore, postazione, ordine):
-    t, _ = servizi.registra_cavo_da_postazione(
-        postazione, ordine=ordine, prodotto="CV", misura="10", lotto="L", data=timezone.now(), reparto=None
-    )
-    client.force_login(operatore)
-    url = reverse("tracciabilita:cavo_intestato", args=[t.elemento_id])
-    assert client.get(url).status_code == 405
-    client.post(url)
-    i = t.elemento.tracce.get(chiave=Chiave.INTESTATO)
-    assert i.ordine == ordine and Elemento.objects.count() == 1
-    with pytest.raises(OperazioneNonConsentita, match="già intestato"):
-        servizi.registra_intestatura(t.elemento_id, operatore)
-
-
 # =========================================================================== liste ed esportazioni
-def test_esportazione_batterie_rispetta_i_filtri_e_include_il_giorno_finale(client, operatore):
-    b1 = Elemento.objects.create(codice="BX1", tipo=TipoElemento.BATTERIA)
-    b2 = Elemento.objects.create(codice="BX2", tipo=TipoElemento.BATTERIA)
-    _traccia(b1, chiave="IN", giorni_fa=0)  # oggi alle 23:30: con il vecchio filtro andava persa
-    _traccia(b2, chiave="IN", giorni_fa=10)
-    _traccia(Elemento.objects.create(codice="GEN1"), chiave="IN", giorni_fa=0)
-    client.force_login(operatore)
-    oggi = timezone.localdate()
-    url = reverse("tracciabilita:batterie")
-    righe = _xlsx(
-        client.get(url, {"dal": (oggi - dt.timedelta(days=1)).isoformat(), "al": oggi.isoformat(), "formato": "xlsx"})
-    )
-    assert [r[1] for r in righe] == ["BX1"]
-    righe = _xlsx(client.get(url, {"codice": "BX2", "formato": "xlsx"}))
-    assert [r[1] for r in righe] == ["BX2"]
-    assert len(_xlsx(client.get(url, {"formato": "xlsx"}))) == 2
-    pagina = client.get(url, {"codice": "BX1"}).content.decode()
-    assert "BX1" in pagina and "BX2" not in pagina and "formato=xlsx" in pagina
-
-
 def test_lista_tracce_mostra_di_default_gli_ultimi_giorni(client, operatore):
     _traccia(Elemento.objects.create(codice="RECENTE"), giorni_fa=1)
     _traccia(Elemento.objects.create(codice="VECCHIA"), giorni_fa=30)
@@ -317,19 +132,10 @@ def test_lista_tracce_mostra_di_default_gli_ultimi_giorni(client, operatore):
     assert r.status_code == 200 and "successiva" in r.content.decode()
 
 
-def test_esportazione_cavi_tiene_prodotto_e_misura(client, cliente, postazione, ordine):
-    servizi.registra_cavo_da_postazione(
-        postazione, ordine=ordine, prodotto="CV-X", misura="300", lotto="L1", data=timezone.now(), reparto=None
-    )
-    client.force_login(cliente)
-    righe = _xlsx(client.get(reverse("tracciabilita:cavi"), {"formato": "xlsx"}))
-    assert len(righe) == 1 and righe[0][6:8] == ("CV-X", "300") and righe[0][3] == "L1"
-
-
 # =========================================================================== permessi delle viste
 @pytest.mark.parametrize(
     "nome",
-    ["batterie", "cavi", "qualita"],
+    ["qualita"],
 )
 def test_liste_visibili_a_fornitore_e_cliente(client, operatore, cliente, nome):
     for u in (operatore, cliente):
@@ -342,12 +148,9 @@ def test_liste_visibili_a_fornitore_e_cliente(client, operatore, cliente, nome):
     [
         "tracce",
         "file_lista",
-        "batteria_nuova",
         "traccia_nuova",
         "qualita_nuovo",
         "file_carica",
-        "work_order",
-        "genera_codice",
     ],
 )
 def test_pagine_del_fornitore(client, operatore, cliente, nome):
@@ -357,48 +160,6 @@ def test_pagine_del_fornitore(client, operatore, cliente, nome):
     assert client.get(url).status_code == 403
     client.force_login(operatore)
     assert client.get(url).status_code == 200
-
-
-def test_postazioni_e_token_solo_amministratore(client, operatore, amministratore, reparto):
-    p = Postazione.objects.create(codice="BANCO1", nome="Banco", reparto=reparto)
-    client.force_login(operatore)
-    assert client.get(reverse("tracciabilita:postazioni")).status_code == 403
-    assert client.post(reverse("tracciabilita:postazione_token", args=[p.pk])).status_code == 403
-    client.force_login(amministratore)
-    r = client.post(reverse("tracciabilita:postazione_token", args=[p.pk]))
-    token = re.search(r"user-select-all\">([^<]+)<", r.content.decode()).group(1)
-    assert servizi.postazione_da_token(token) == p and r["Cache-Control"] == "no-store"
-    client.post(reverse("tracciabilita:postazione_revoca", args=[p.pk]))
-    assert servizi.postazione_da_token(token) is None
-
-
-def test_creazione_batteria_da_vista_e_pagina_con_barcode(client, operatore, reparto):
-    client.force_login(operatore)
-    r = client.post(
-        reverse("tracciabilita:batteria_nuova"),
-        {"azione": "IN", "codice": "", "data": timezone.localdate().isoformat(), "reparto": reparto.pk},
-    )
-    t = Traccia.objects.get()
-    assert r.status_code == 302 and r["Location"] == t.get_absolute_url()
-    pagina = client.get(r["Location"]).content.decode()
-    assert f'jsbarcode-value="{t.testo_barcode}"' in pagina and "JsBarcode.all.min.js" in pagina
-    r = client.post(
-        reverse("tracciabilita:batteria_nuova"),
-        {
-            "azione": "IN",
-            "codice": "X",
-            "data": (timezone.localdate() + dt.timedelta(days=3)).isoformat(),
-            "reparto": reparto.pk,
-        },
-    )
-    assert r.status_code == 200 and "futuro" in r.content.decode()
-
-
-def test_genera_codice_htmx(client, operatore):
-    client.force_login(operatore)
-    r = client.get(reverse("tracciabilita:genera_codice"))
-    assert re.search(r'value="BT[0-9A-F]{6}"', r.content.decode())
-    assert not Elemento.objects.exists()  # una proposta non crea nulla
 
 
 def test_stampa_barcode_escape_e_parametro_obbligatorio(client, operatore):

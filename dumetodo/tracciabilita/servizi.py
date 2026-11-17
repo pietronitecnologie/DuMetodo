@@ -1,4 +1,4 @@
-"""Logica di business di tracciabilità e qualità. Le viste (e l'API delle postazioni) chiamano SOLO queste funzioni.
+"""Logica di business di tracciabilità e qualità. Le viste chiamano SOLO queste funzioni.
 
 Come negli altri moduli ``servizi``: ogni operazione gira in una transazione, blocca le righe che
 modifica, verifica i permessi lato server e solleva ``OperazioneNonConsentita`` con un messaggio
@@ -6,25 +6,21 @@ leggibile. Difetti di Metodo corretti qui (vedi docs/analisi-metodo/04, §9):
 - nessun ordine viene più creato implicitamente: un ordine sconosciuto è un errore;
 - l'ordine si trova per chiave completa (serie, numero, appendice, anno), mai con ``contains``;
 - il valore delle tracce generiche viene salvato; a un elemento esistente si possono aggiungere eventi;
-- i codici generati sono univoci (vincolo nel database + nuovi tentativi);
-- i doppioni dei banchi sono impediti da un vincolo univoco, non da un job di pulizia O(n²).
 """
 
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 import io
 import re
-import secrets
 from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal
 from pathlib import PurePath
 from typing import Any
 
 from django.core.files.uploadedfile import UploadedFile
-from django.db import IntegrityError, transaction
-from django.db.models import Max, OuterRef, QuerySet, Subquery
+from django.db import transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -42,19 +38,12 @@ from .models import (
     Elemento,
     EsitoControllo,
     FileOrdine,
-    Postazione,
-    StatoWorkOrder,
     Test,
     TipoControllo,
-    TipoElemento,
     Traccia,
-    WorkOrderBatteria,
 )
 
 __all__ = ["OperazioneNonConsentita"]
-
-TENTATIVI_CODICE = 10
-_RE_PREFISSO = re.compile(r"^[A-Za-z0-9_-]{0,40}$")
 
 
 def _richiedi(utente: Any, codice: str = F.TRACCIABILITA_REGISTRA) -> None:
@@ -110,107 +99,8 @@ def risolvi_ordine(testo: str) -> Ordine:
     return ordine
 
 
-# =========================================================================== codici
-def _prefisso(chiave: str, predefinito: str) -> str:
-    prefisso = (config.leggi(chiave) or predefinito).strip()
-    if not _RE_PREFISSO.match(prefisso):
-        raise OperazioneNonConsentita(
-            f"Il prefisso configurato in '{chiave}' non è valido: solo lettere, cifre, '-' e '_' (max 40)."
-        )
-    return prefisso
-
-
-def prefisso_batterie() -> str:
-    return _prefisso("tracciabilita.prefisso_codice_batterie", "BT")
-
-
-def prefisso_cavi() -> str:
-    return _prefisso("tracciabilita.prefisso_codice_cavi", "CV")
-
-
-def genera_codice(prefisso: str) -> str:
-    """Propone un codice libero: prefisso + 6 caratteri esadecimali maiuscoli (es. BT3F9A1C).
-
-    La proposta non è una prenotazione: l'unicità definitiva è garantita dal vincolo del database
-    al momento della creazione (vedi ``_crea_elemento_generato``).
-    """
-    for _ in range(TENTATIVI_CODICE):
-        codice = f"{prefisso}{secrets.token_hex(3).upper()}"
-        if not Elemento.objects.filter(codice=codice).exists():
-            return codice
-    raise OperazioneNonConsentita("Impossibile generare un codice libero, riprova.")
-
-
-def _crea_elemento_generato(prefisso: str, tipo: str, utente: Any, lotto: str = "") -> Elemento:
-    for _ in range(TENTATIVI_CODICE):
-        codice = genera_codice(prefisso)
-        try:
-            with transaction.atomic():
-                return Elemento.objects.create(codice=codice, tipo=tipo, lotto=lotto, creato_da=_utente(utente))
-        except IntegrityError:  # stesso codice generato in parallelo: si riprova
-            continue
-    raise OperazioneNonConsentita("Impossibile generare un codice libero, riprova.")
-
-
 def _utente(utente: Any) -> Any:
     return utente if getattr(utente, "is_authenticated", False) else None
-
-
-# =========================================================================== batterie
-@transaction.atomic
-def registra_batteria(
-    *,
-    utente: Any,
-    azione: str,
-    data: dt.date,
-    reparto: Reparto | None,
-    codice: str = "",
-    ordine: Ordine | None = None,
-) -> Traccia:
-    """Primo ingresso (IN) o ricarica (RC) di una batteria.
-
-    Primo ingresso senza codice: il codice viene generato. Una ricarica di una batteria sconosciuta
-    è un errore (Metodo la creava in silenzio).
-    """
-    _richiedi(utente)
-    codice = (codice or "").strip()
-    if azione == Chiave.INGRESSO:
-        if not codice:
-            elemento = _crea_elemento_generato(prefisso_batterie(), TipoElemento.BATTERIA, utente)
-        else:
-            errore = OperazioneNonConsentita(f"Codice {codice} esistente: primo ingresso non possibile.")
-            if Elemento.objects.filter(codice=codice).exists():
-                raise errore
-            try:
-                with transaction.atomic():
-                    elemento = Elemento.objects.create(
-                        codice=codice, tipo=TipoElemento.BATTERIA, creato_da=_utente(utente)
-                    )
-            except IntegrityError:
-                raise errore from None
-    elif azione == Chiave.RICARICA:
-        if not codice:
-            raise OperazioneNonConsentita("Indica il codice della batteria da ricaricare.")
-        elemento = Elemento.objects.select_for_update().filter(codice=codice).first()
-        if elemento is None:
-            raise OperazioneNonConsentita(f"Batteria {codice} sconosciuta: registra prima il primo ingresso.")
-        if elemento.tipo != TipoElemento.BATTERIA:
-            raise OperazioneNonConsentita(f"Il codice {codice} non è una batteria.")
-    else:
-        raise OperazioneNonConsentita("Azione non valida: scegli primo ingresso o ricarica.")
-    traccia = Traccia.objects.create(
-        elemento=elemento,
-        ordine=ordine,
-        data=_momento(data),
-        chiave=azione,
-        reparto=reparto,
-        inserita_da=_utente(utente),
-    )
-    if azione == Chiave.RICARICA:
-        WorkOrderBatteria.objects.filter(elemento=elemento, stato=StatoWorkOrder.APERTO).update(
-            stato=StatoWorkOrder.CHIUSO, chiuso_il=timezone.now(), chiuso_da=_utente(utente)
-        )
-    return traccia
 
 
 # =========================================================================== tracce generiche
@@ -234,9 +124,7 @@ def registra_traccia(
         raise OperazioneNonConsentita("La chiave è obbligatoria.")
     if chiave.upper() in Chiave.RISERVATE:
         raise OperazioneNonConsentita(f"La chiave {chiave} è riservata: usa la pagina dedicata.")
-    elemento, _ = Elemento.objects.get_or_create(
-        codice=codice, defaults={"tipo": TipoElemento.GENERICO, "creato_da": _utente(utente)}
-    )
+    elemento, _ = Elemento.objects.get_or_create(codice=codice, defaults={"creato_da": _utente(utente)})
     return Traccia.objects.create(
         elemento=elemento,
         ordine=ordine,
@@ -276,121 +164,6 @@ def registra_lotto_busta(ordine_id: int, lotto: str, busta: str, utente: Any) ->
             )
         )
     return create
-
-
-# =========================================================================== cavi
-def registra_cavo_da_postazione(
-    postazione: Postazione,
-    *,
-    ordine: Ordine,
-    prodotto: str,
-    misura: str,
-    lotto: str,
-    data: dt.datetime,
-    reparto: Reparto | None,
-) -> tuple[Traccia, bool]:
-    """Traccia inviata da un banco (ex ``insertTracciaCavi``). Ritorna (traccia, creata).
-
-    Lo stesso dato reinviato (stessa postazione, ordine, istante, prodotto e misura) non crea doppioni.
-    """
-    filtro = {"postazione": postazione, "ordine": ordine, "data": data, "chiave": prodotto, "valore": misura}
-    with transaction.atomic():
-        esistente = Traccia.objects.filter(**filtro).first()
-        if esistente is not None:
-            return esistente, False
-        try:
-            with transaction.atomic():
-                elemento = _crea_elemento_generato(prefisso_cavi(), TipoElemento.CAVO, None, lotto=lotto)
-                traccia = Traccia.objects.create(elemento=elemento, reparto=reparto or postazione.reparto, **filtro)
-        except IntegrityError:  # inviato due volte in parallelo
-            return Traccia.objects.get(**filtro), False
-        return traccia, True
-
-
-@transaction.atomic
-def registra_intestatura(elemento_id: int, utente: Any) -> Traccia:
-    """Il cavo è stato intestato: evento sullo stesso elemento (in Metodo creava un nuovo codice a ogni clic)."""
-    _richiedi(utente)
-    elemento = Elemento.objects.select_for_update().filter(pk=elemento_id).first()
-    if elemento is None or elemento.tipo != TipoElemento.CAVO:
-        raise OperazioneNonConsentita("Cavo inesistente.")
-    if elemento.tracce.filter(chiave=Chiave.INTESTATO).exists():
-        raise OperazioneNonConsentita(f"Il cavo {elemento.codice} è già intestato.")
-    ultima = elemento.tracce.order_by("-data", "-id").first()
-    return Traccia.objects.create(
-        elemento=elemento,
-        ordine=ultima.ordine if ultima else None,
-        reparto=ultima.reparto if ultima else None,
-        data=timezone.now(),
-        chiave=Chiave.INTESTATO,
-        inserita_da=utente,
-    )
-
-
-# =========================================================================== postazioni e token
-def _impronta(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
-
-
-@transaction.atomic
-def genera_token_postazione(postazione_id: int, utente: Any) -> str:
-    """Nuovo token della postazione (quello precedente smette di funzionare). Viene mostrato una sola volta."""
-    _richiedi(utente, F.TRACCIABILITA_POSTAZIONI)
-    postazione = Postazione.objects.select_for_update().get(pk=postazione_id)
-    token = secrets.token_urlsafe(32)
-    postazione.token_hash = _impronta(token)
-    postazione.token_generato_il = timezone.now()
-    postazione.save(update_fields=["token_hash", "token_generato_il", "aggiornato_il"])
-    return token
-
-
-@transaction.atomic
-def revoca_token_postazione(postazione_id: int, utente: Any) -> Postazione:
-    _richiedi(utente, F.TRACCIABILITA_POSTAZIONI)
-    postazione = Postazione.objects.select_for_update().get(pk=postazione_id)
-    postazione.token_hash = ""
-    postazione.token_generato_il = None
-    postazione.save(update_fields=["token_hash", "token_generato_il", "aggiornato_il"])
-    return postazione
-
-
-def postazione_da_token(token: str | None) -> Postazione | None:
-    if not token or len(token) > 200:
-        return None
-    return Postazione.objects.select_related("reparto").filter(token_hash=_impronta(token), attiva=True).first()
-
-
-# =========================================================================== work order batterie
-def genera_work_order_batterie() -> int:
-    """Apre un work order per ogni batteria senza eventi da più di N giorni (se non ne ha già uno aperto)."""
-    giorni = config.leggi("tracciabilita.giorni_ricarica_batterie")
-    limite = timezone.localdate() - dt.timedelta(days=giorni)
-    ultima = Traccia.objects.filter(elemento=OuterRef("pk")).order_by("-data", "-id").values("pk")[:1]
-    candidati = (
-        Elemento.objects.filter(tipo=TipoElemento.BATTERIA)
-        .annotate(ultima_data=Max("tracce__data"), ultima_id=Subquery(ultima))
-        .filter(ultima_data__date__lte=limite)
-        .exclude(work_order__stato=StatoWorkOrder.APERTO)
-    )
-    nuovi = [WorkOrderBatteria(elemento=e, ultima_traccia_id=e.ultima_id) for e in candidati]
-    # Il vincolo "un solo work order aperto per batteria" protegge da esecuzioni in parallelo.
-    WorkOrderBatteria.objects.bulk_create(nuovi, ignore_conflicts=True)
-    return len(nuovi)
-
-
-@transaction.atomic
-def chiudi_work_order(work_order_id: int, utente: Any) -> WorkOrderBatteria:
-    _richiedi(utente)
-    wo = WorkOrderBatteria.objects.select_for_update().filter(pk=work_order_id).first()
-    if wo is None:
-        raise OperazioneNonConsentita("Work order inesistente.")
-    if wo.stato == StatoWorkOrder.CHIUSO:
-        raise OperazioneNonConsentita("Il work order è già chiuso.")
-    wo.stato = StatoWorkOrder.CHIUSO
-    wo.chiuso_il = timezone.now()
-    wo.chiuso_da = utente
-    wo.save(update_fields=["stato", "chiuso_il", "chiuso_da"])
-    return wo
 
 
 # =========================================================================== file
@@ -562,15 +335,6 @@ def _ordine_testo(o: Ordine | None) -> str:
     return o.codice_breve if o else ""
 
 
-def esporta_batterie(qs: QuerySet[Traccia]) -> bytes:
-    righe = (
-        (t.elemento.codice, _ordine_testo(t.ordine), t.inserita_il, t.data, t.chiave_leggibile, str(t.reparto or ""))
-        for t in qs
-    )
-    intestazioni = ("Codice", "Ordine", "Data inserimento", "Data", "Azione", "Reparto")
-    return xlsx("Batterie", intestazioni, righe, {2: DATA_ORA, 3: DATA})
-
-
 def esporta_tracce(qs: QuerySet[Traccia]) -> bytes:
     righe = (
         (
@@ -581,35 +345,11 @@ def esporta_tracce(qs: QuerySet[Traccia]) -> bytes:
             t.chiave,
             t.valore,
             str(t.reparto or ""),
-            t.postazione.codice if t.postazione else "",
         )
         for t in qs
     )
-    intestazioni = ("Codice", "Ordine", "Data inserimento", "Data", "Chiave", "Valore", "Reparto", "Postazione")
+    intestazioni = ("Codice", "Ordine", "Data inserimento", "Data", "Chiave", "Valore", "Reparto")
     return xlsx("Tracce", intestazioni, righe, {2: DATA_ORA, 3: DATA_ORA})
-
-
-def esporta_cavi(qs: QuerySet[Traccia]) -> bytes:
-    # In Metodo la colonna del prodotto veniva sovrascritta dalla lunghezza: ora sono due colonne.
-    righe = (
-        (
-            t.elemento.codice,
-            _ordine_testo(t.ordine),
-            t.elemento.lotto,
-            t.inserita_il,
-            t.data,
-            t.chiave,
-            t.valore,
-            str(t.reparto or ""),
-            t.postazione.codice if t.postazione else "",
-        )
-        for t in qs
-    )
-    intestazioni = (
-        "Codice", "Ordine", "Lotto", "Data inserimento", "Data lavorazione", "Prodotto", "Misura", "Reparto",
-        "Postazione",
-    )  # fmt: skip
-    return xlsx("Cavi", intestazioni, righe, {3: DATA_ORA, 4: DATA_ORA})
 
 
 def esporta_qualita(qs: QuerySet[EsitoControllo]) -> bytes:

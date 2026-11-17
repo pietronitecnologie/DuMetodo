@@ -19,7 +19,7 @@
     <div class="collapse navbar-collapse" id="menu">
       <ul class="navbar-nav me-auto">
         {% if perms.core.ordini_vedere %}<li class="nav-item"><a class="nav-link" href="{% url 'ordini:lista' %}">Ordini</a></li>{% endif %}
-        {% if perms.core.agenda or perms.core.pianificazione or perms.core.consegna or perms.core.ddt or perms.core.importazione or perms.core.attiva_produzione %}
+        {% if perms.core.agenda or perms.core.pianificazione or perms.core.consegna or perms.core.ddt or perms.core.importazione %}
         <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Produzione</a>
           <ul class="dropdown-menu">
             {% if perms.core.agenda %}<li><a class="dropdown-item" href="{% url 'pianificazione:agenda' %}">Agenda ordini</a></li>
@@ -29,11 +29,10 @@
             <li><a class="dropdown-item" href="{% url 'pianificazione:tabulato_settimanale' %}">Tabulato settimanale</a></li>
             <li><a class="dropdown-item" href="{% url 'pianificazione:tabulato_scorte' %}">Tabulato scorte</a></li>
             <li><a class="dropdown-item" href="{% url 'pianificazione:tabulato_commesse' %}">Commesse per tabulato</a></li>{% endif %}
-            {% if perms.core.consegna or perms.core.ddt or perms.core.importazione or perms.core.attiva_produzione %}<li><hr class="dropdown-divider"></li>{% endif %}
+            {% if perms.core.consegna or perms.core.ddt or perms.core.importazione %}<li><hr class="dropdown-divider"></li>{% endif %}
             {% if perms.core.consegna %}<li><a class="dropdown-item" href="{% url 'consegne:pagina' %}">Consegna</a></li>{% endif %}
             {% if perms.core.ddt %}<li><a class="dropdown-item" href="{% url 'consegne:ddt' %}">DDT</a></li>{% endif %}
             {% if perms.core.importazione %}<li><a class="dropdown-item" href="{% url 'importazione:pagina' %}">Importazione ordini</a></li>{% endif %}
-            {% if perms.core.attiva_produzione %}<li><a class="dropdown-item" href="{% url 'ordini:attiva_produzione' %}">Attiva produzione</a></li>{% endif %}
           </ul></li>{% endif %}
         {% if perms.core.magazzino_richieste or perms.core.magazzino_inventario or perms.core.magazzino_distinte or perms.core.magazzino_ddt or perms.core.magazzino_anagrafiche %}
         <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Magazzino</a>
@@ -55,25 +54,17 @@
           <ul class="dropdown-menu">
             {% if perms.core.tracciabilita_registra %}
             <li><h6 class="dropdown-header">Registra</h6></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:batteria_nuova' %}">Batteria</a></li>
             <li><a class="dropdown-item" href="{% url 'tracciabilita:traccia_nuova' %}">Traccia generica</a></li>
             <li><a class="dropdown-item" href="{% url 'tracciabilita:qualita_nuovo' %}">Controllo qualità</a></li>
             <li><a class="dropdown-item" href="{% url 'tracciabilita:file_carica' %}">Foto per ordine</a></li>
             <li><hr class="dropdown-divider"></li>
             {% endif %}
             <li><h6 class="dropdown-header">Consulta</h6></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:batterie' %}">Batterie</a></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:cavi' %}">Cavi</a></li>
             {% if perms.core.tracciabilita_registra %}
             <li><a class="dropdown-item" href="{% url 'tracciabilita:tracce' %}">Tutte le tracce</a></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:work_order' %}">Work order batterie</a></li>
             <li><a class="dropdown-item" href="{% url 'tracciabilita:file_lista' %}">Foto e file</a></li>
             {% endif %}
             <li><a class="dropdown-item" href="{% url 'tracciabilita:qualita' %}">Controlli qualità</a></li>
-            {% if perms.core.tracciabilita_postazioni %}
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:postazioni' %}">Postazioni e token</a></li>
-            {% endif %}
           </ul>
         </li>
         {% endif %}

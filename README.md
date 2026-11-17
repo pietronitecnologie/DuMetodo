@@ -23,7 +23,7 @@ Tutte le funzioni dell'app `Prod` di Metodo sono state riscritte.
 | **Consegna** con bolla, **DDT** con file tecnico, **etichette** | ✅ |
 | **Anagrafica articoli**, **agenda** ordini e pulsanti, **pianificazione** con report email, **tabulati** | ✅ |
 | **Magazzino**: componenti, inventario, richieste materiali, distinte base, DDT in ingresso | ✅ |
-| **Tracciabilità e qualità**: batterie, cavi dai banchi, lotti, controllo qualità, foto | ✅ |
+| **Tracciabilità e qualità**: tracce, lotti/buste, controllo qualità, foto | ✅ |
 | **Report**: dashboard, analisi produttività, materiale per reparto/settimana, controllo prezzi | ✅ |
 | **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ✅ |
 | **Permessi granulari** per funzione, pagina Utenti e permessi | ✅ |
@@ -151,12 +151,7 @@ automaticamente**; sulla richiesta resta la riga del DDT che l'ha chiusa. La gia
 Menu **Tracciabilità e qualità** (app `dumetodo.tracciabilita`). La pagina di ogni ordine mostra
 tracce, lotto/busta, controlli qualità, foto e file dell'ordine.
 
-* **Elementi tracciati:** ogni elemento fisico (batteria, cavo, generico) ha un codice UNICO e un tipo
-  esplicito. In Metodo il tipo si esprimeva con righe d'ordine finte e ogni evento creava un nuovo item.
-* **Batterie:** primo ingresso (codice generato `prefisso + 6 caratteri esadecimali`, prefisso in
-  Configurazione, unicità garantita dal database) o ricarica (solo di batterie note). Una batteria
-  senza eventi da N giorni (default 115) riceve un **work order** di ricarica, chiuso dalla ricarica
-  stessa o a mano. Il controllo gira ogni giorno (Celery beat, `configura_pianificazioni`).
+* **Elementi tracciati:** ogni elemento fisico ha un codice UNICO; in Metodo ogni evento creava un nuovo item.
 * **Tracce generiche:** chiave = valore su un codice; a un codice esistente si aggiungono eventi.
 * **Lotto/busta** dalla pagina dell'ordine; un doppio invio non crea doppioni.
 * **Etichette:** Code128 generato nel browser (JsBarcode, in `static/vendor`), pagina di stampa.
@@ -169,50 +164,10 @@ tracce, lotto/busta, controlli qualità, foto e file dell'ordine.
   controlla i permessi.
 * **Liste:** filtri in GET, paginazione ed **esportazione xlsx degli stessi dati filtrati**; gli
   intervalli di date comprendono il giorno finale.
-* **Permessi:** il Fornitore registra; il Cliente consulta batterie, cavi, controlli qualità e quanto
-  collegato ai suoi ordini.
-* Reclami e test display di Metodo non sono stati riportati: funzioni non più usate.
-
-### Protocollo dei banchi di prova (API cavi)
-
-Sostituisce `insertTracciaCavi` di Metodo, che era una GET anonima e creava ordini vuoti.
-
-1. Un amministratore crea la **postazione** (Amministrazione → Postazioni, ex asset) e genera il
-   **token** da *Tracciabilità e qualità → Postazioni e token*. Il token si vede una volta sola; nel
-   database c'è solo la sua impronta SHA-256. Rigenerarlo o revocarlo disattiva il precedente.
-2. Il banco invia `POST /tracciabilita/api/cavi/` (form-urlencoded) con l'intestazione
-   `X-Postazione-Token: <token>`. Solo per banchi che non sanno impostare intestazioni: parametro
-   `token=<token>` (finisce nei log del server web: preferire l'intestazione). Le GET sono rifiutate,
-   a meno che il parametro *API postazioni: accetta GET* sia attivo.
-
-| Parametro | Obbligatorio | Significato |
-|---|---|---|
-| `ordine` | sì (oppure `serie`, `numero`, `anno`, `appendice`) | `serie.numero[.appendice]-anno`, es. `00040.0004300-2026` |
-| `prodotto` | sì | codice del cavo (chiave della traccia) |
-| `misura` | sì | lunghezza misurata (valore) |
-| `data` | sì | `AAAA/MM/GG,hh:mm:ss`, `AAAA/MM/GG` o ISO `AAAA-MM-GGThh:mm:ss` (ora locale) |
-| `lotto` (o `lottoCavo`) | no | lotto della bobina |
-| `reparto` (o `location`) | no | codice reparto; default il reparto della postazione |
-| `asset` | no | se presente deve coincidere con il codice della postazione del token |
-
-Risposte JSON:
-
-| Stato | Quando | Corpo |
-|---|---|---|
-| 201 | traccia creata | `{"esito": "creata", "id": 12, "codice": "CV3F9A1C", "ordine": "00040.0004300-2026"}` |
-| 200 | stesso dato già ricevuto (stessa postazione, ordine, data, prodotto, misura) | come sopra, `"esito": "duplicata"` |
-| 400 | parametri non validi | `{"errore": "...", "campi": {...}}` |
-| 401 | token mancante, errato o postazione disattivata | `{"errore": "..."}` |
-| 404 | ordine inesistente (l'ordine **non** viene creato) | `{"errore": "Ordine ... non trovato.", ...}` |
-| 405 | metodo non ammesso | `{"errore": "..."}` |
-
-```bash
-curl -X POST https://dumetodo.esempio.it/tracciabilita/api/cavi/ -H "X-Postazione-Token: $TOKEN" \
-  -d ordine=00040.0004300-2026 -d prodotto=CV-AWG18 -d misura=1250 -d lotto=L-9 -d "data=2026/03/01,10:15:30"
-```
-
-Il pulsante **Intestato** della lista cavi registra l'evento sullo stesso cavo, una volta sola (in
-Metodo creava un nuovo codice a ogni clic).
+* **Permessi:** il Fornitore registra; il Cliente consulta i controlli qualità e quanto è collegato
+  ai suoi ordini.
+* Non riportati da Metodo perché non più usati: reclami, test display, batterie (con i work order di
+  ricarica), cavi e postazioni dei banchi di prova (API `insertTracciaCavi`), *Attiva produzione*.
 
 ## Permessi
 

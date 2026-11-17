@@ -10,14 +10,16 @@ from django_celery_beat.models import CrontabSchedule, IntervalSchedule, Periodi
 LAVORI = [
     ("Lettura casella ordini", "dumetodo.importazione.tasks.leggi_casella_ordini", 30),
     ("Ritenta email in coda", "dumetodo.comunicazioni.tasks.ritenta_email_in_coda", 5),
-    ("Work order batterie", "dumetodo.tracciabilita.tasks.genera_work_order_batterie", 24 * 60),
 ]
+# Lavori di versioni precedenti, da togliere se ancora presenti.
+OBSOLETI = ["Work order batterie"]
 
 
 class Command(BaseCommand):
     help = "Configura i lavori periodici (lettura ordini, coda email)."
 
     def handle(self, *args: object, **options: object) -> None:
+        PeriodicTask.objects.filter(name__in=OBSOLETI).delete()
         for nome, task, minuti in LAVORI:
             intervallo, _ = IntervalSchedule.objects.get_or_create(every=minuti, period=IntervalSchedule.MINUTES)
             _, creato = PeriodicTask.objects.update_or_create(

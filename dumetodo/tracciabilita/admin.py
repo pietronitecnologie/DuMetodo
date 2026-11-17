@@ -7,24 +7,9 @@ from .models import (
     Elemento,
     EsitoControllo,
     FileOrdine,
-    Postazione,
     Test,
     Traccia,
-    WorkOrderBatteria,
 )
-
-
-@admin.register(Postazione)
-class PostazioneAdmin(SimpleHistoryAdmin):
-    list_display = ("codice", "nome", "reparto", "attiva", "ha_token", "token_generato_il")
-    list_filter = ("attiva", "reparto")
-    search_fields = ("codice", "nome")
-    # Il token si genera dalla pagina Postazioni (viene mostrato una sola volta); qui non si vede.
-    readonly_fields = ("token_generato_il",)
-
-    @admin.display(boolean=True, description="token")
-    def ha_token(self, obj: Postazione) -> bool:
-        return obj.ha_token
 
 
 @admin.register(Controllo)
@@ -54,25 +39,18 @@ class SoloLettura(admin.ModelAdmin):
 
 @admin.register(Elemento)
 class ElementoAdmin(admin.ModelAdmin):
-    list_display = ("codice", "tipo", "lotto", "creato_il")
-    list_filter = ("tipo",)
-    search_fields = ("codice", "lotto")
+    list_display = ("codice", "creato_il")
+    search_fields = ("codice",)
     readonly_fields = ("creato_da",)
 
 
 @admin.register(Traccia)
 class TracciaAdmin(SoloLettura):
-    list_display = ("data", "elemento", "ordine", "chiave", "valore", "reparto", "postazione")
-    list_filter = ("chiave", "reparto", "postazione")
+    list_display = ("data", "elemento", "ordine", "chiave", "valore", "reparto")
+    list_filter = ("chiave", "reparto")
     search_fields = ("elemento__codice", "ordine__numero", "valore")
-    list_select_related = ("elemento", "ordine", "reparto", "postazione")
+    list_select_related = ("elemento", "ordine", "reparto")
     date_hierarchy = "data"
-
-
-@admin.register(WorkOrderBatteria)
-class WorkOrderBatteriaAdmin(SoloLettura):
-    list_display = ("elemento", "stato", "aperto_il", "chiuso_il", "chiuso_da")
-    list_filter = ("stato",)
 
 
 class EsitoInline(admin.TabularInline):
