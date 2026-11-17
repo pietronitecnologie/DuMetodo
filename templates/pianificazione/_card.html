@@ -1,0 +1,6 @@
+<a href="{{ o.get_absolute_url }}" class="card card-agenda {{ o.stato }} mb-1 p-1 small text-decoration-none text-body" data-cerca="{{ o.codice|lower }} {{ o.codice_breve|lower }}">
+  <div class="d-flex"><strong class="me-auto">{{ o.codice_breve }}</strong><span>{{ o.data_scadenza|date:"d/m" }}</span></div>
+  <div><span class="badge text-bg-light border">{{ o.pezzi|floatformat:"-3" }} pz</span>
+    {% if o.n_note %}<span class="badge text-bg-info">{{ o.n_note }} note</span>{% endif %}
+    <span class="badge text-bg-secondary">{{ o.get_stato_display }}</span></div>
+</a>

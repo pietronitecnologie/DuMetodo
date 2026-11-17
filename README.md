@@ -19,7 +19,7 @@ L'analisi funzionale del codice originale, che fa da specifica per la riscrittur
 | **Note / comunicazione con il cliente** | ✅ fase 1 |
 | **Tracciati**: formato dei file per il gestionale definibile in Configurazione (default ReadyPro) | ✅ fase 2 |
 | **Consegna** con bolla, **DDT** con file tecnico, **etichette** | ✅ fase 2 |
-| Agenda ordini, pianificazione, tabulati | ⏳ fase 3 |
+| **Anagrafica articoli**, **agenda** ordini e pulsanti, **pianificazione** con report email giornaliero, **tabulati** | ✅ fase 3 |
 | Magazzino, distinte base, richieste materiali, DDT in ingresso | ⏳ fase 4 |
 | Tracciabilità, controllo qualità, reclami, annunci | ⏳ fase 5 |
 | **Migrazione dei dati da Metodo** | ✅ fase 2 |

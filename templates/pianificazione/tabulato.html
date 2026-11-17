@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titolo %}Tabulato {{ tipo }}{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Tabulato {% if tipo == "scorte" %}scorte <small class="text-muted">(solo commesse piccole)</small>{% else %}settimanale{% endif %}</h1>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+  <div><label class="form-label small mb-0">Reparto</label><select name="reparto" class="form-select form-select-sm" onchange="this.form.submit()">
+    <option value="">— scegli —</option>{% for r in reparti %}<option value="{{ r.pk }}" {% if r == reparto %}selected{% endif %}>{{ r.nome }}</option>{% endfor %}</select></div>
+  <div><label class="form-label small mb-0">Settimana del</label><input type="date" name="settimana" class="form-control form-control-sm" value="{{ lunedi|date:'Y-m-d' }}" onchange="this.form.submit()"></div>
+  {% if reparto %}<a class="btn btn-sm btn-outline-secondary" href="?reparto={{ reparto.pk }}&settimana={{ precedente|date:'Y-m-d' }}">‹ precedente</a>
+  <a class="btn btn-sm btn-outline-secondary" href="?reparto={{ reparto.pk }}&settimana={{ successiva|date:'Y-m-d' }}">successiva ›</a>
+  <a class="btn btn-sm btn-outline-primary" target="_blank" href="?reparto={{ reparto.pk }}&settimana={{ lunedi|date:'Y-m-d' }}&formato=stampa">Stampa</a>
+  <a class="btn btn-sm btn-outline-primary" href="?reparto={{ reparto.pk }}&settimana={{ lunedi|date:'Y-m-d' }}&formato=xlsx">Excel</a>{% endif %}
+</form>
+{% if reparto %}{% include "pianificazione/_tabella_tabulato.html" %}{% endif %}
+{% endblock %}

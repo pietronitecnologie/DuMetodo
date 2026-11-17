@@ -45,6 +45,7 @@ class Gruppo(StrEnum):
     EMAIL = "Indirizzi email"
     TRACCIABILITA = "Tracciabilità"
     CONSEGNA = "Consegna e file per il gestionale"
+    PIANIFICAZIONE = "Pianificazione e tabulati"
 
 
 @dataclass(frozen=True)
@@ -306,6 +307,86 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Report pianificazione: CC",
         "Destinatari in copia del report di pianificazione.",
         legacy=("EMAIL_REPORT_PRODUZIONE_CC",),
+    ),
+    # --- Pianificazione ----------------------------------------------------------------
+    Parametro(
+        "pianificazione.settimane",
+        Tipo.INTERO,
+        Gruppo.PIANIFICAZIONE,
+        "Settimane pianificate",
+        "Numero di settimane mostrate nel piano (corrente compresa).",
+        default=4,
+        minimo=1,
+    ),
+    Parametro(
+        "pianificazione.settimane_arretrato",
+        Tipo.INTERO,
+        Gruppo.PIANIFICAZIONE,
+        "Settimane di arretrato",
+        "Quante settimane passate considerare come arretrato (in Metodo: 8).",
+        default=8,
+        minimo=1,
+    ),
+    Parametro(
+        "pianificazione.ora_inizio",
+        Tipo.INTERO,
+        Gruppo.PIANIFICAZIONE,
+        "Inizio turno (ora)",
+        "Ora di inizio lavoro, lunedì-venerdì: serve a calcolare la capacità residua della settimana.",
+        default=8,
+        minimo=0,
+    ),
+    Parametro(
+        "pianificazione.ora_fine",
+        Tipo.INTERO,
+        Gruppo.PIANIFICAZIONE,
+        "Fine turno (ora)",
+        "Ora di fine lavoro, lunedì-venerdì.",
+        default=17,
+        minimo=1,
+    ),
+    Parametro(
+        "pianificazione.soglia_attenzione",
+        Tipo.INTERO,
+        Gruppo.PIANIFICAZIONE,
+        "Soglia di attenzione (%)",
+        "Saturazione oltre la quale il reparto è in giallo (oltre 100% è rosso).",
+        default=80,
+        minimo=1,
+    ),
+    Parametro(
+        "pianificazione.solo_ordini_con_appendice",
+        Tipo.BOOLEANO,
+        Gruppo.PIANIFICAZIONE,
+        "Pianifica solo ordini con appendice",
+        "Come in Metodo: si pianificano le commesse interne (T, R, CL...), non gli ordini del Cliente senza appendice.",
+        default=True,
+    ),
+    Parametro(
+        "pianificazione.parole_bloccanti",
+        Tipo.TESTO,
+        Gruppo.PIANIFICAZIONE,
+        "Parole delle note bloccanti",
+        "Una commessa con una nota che contiene una di queste parole (separate da virgola) compare tra le "
+        "'Commesse bloccate' del report.",
+        default="manca, bloccat",
+    ),
+    Parametro(
+        "pianificazione.report_automatico",
+        Tipo.BOOLEANO,
+        Gruppo.PIANIFICAZIONE,
+        "Invio automatico del report",
+        "Invia ogni giorno lavorativo alle 6:00 il report ai destinatari configurati negli indirizzi email.",
+        default=True,
+    ),
+    Parametro(
+        "pianificazione.soglia_pezzi_scorte",
+        Tipo.INTERO,
+        Gruppo.PIANIFICAZIONE,
+        "Pezzi massimi tabulato scorte",
+        "Il tabulato scorte considera solo le commesse con al massimo questi pezzi (in Metodo: 60).",
+        default=60,
+        minimo=1,
     ),
     # --- Consegna --------------------------------------------------------------------
     Parametro(

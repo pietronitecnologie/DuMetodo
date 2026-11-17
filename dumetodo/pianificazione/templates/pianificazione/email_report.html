@@ -1,0 +1,5 @@
+<!doctype html><html lang="it"><body style="font-family:Arial,sans-serif;font-size:14px">
+{% if messaggio %}<p style="white-space:pre-wrap">{{ messaggio }}</p>{% endif %}
+<p>In allegato il report di pianificazione della produzione per il periodo <strong>{{ piano.settimane.0.0|date:"d/m/Y" }} - {% with ultima=piano.settimane|last %}{{ ultima.1|date:"d/m/Y" }}{% endwith %}</strong>, generato il <strong>{{ piano.generato_il|date:"d/m/Y H:i" }}</strong>.</p>
+<p><a href="{{ url }}">Apri la pianificazione in DuMetodo</a></p>
+<p style="color:#888">-- DuMetodo</p></body></html>

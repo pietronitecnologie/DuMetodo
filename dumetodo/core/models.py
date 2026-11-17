@@ -23,6 +23,14 @@ class Reparto(ModelloTemporale):
         "capacità settimanale (ore)", max_digits=8, decimal_places=2, null=True, blank=True
     )
     attivo = models.BooleanField("attivo", default=True)
+    gruppo_report = models.CharField(
+        "gruppo nel report di pianificazione",
+        max_length=80,
+        blank=True,
+        default="",
+        help_text="Reparti con lo stesso gruppo vengono sommati in un'unica riga nel report Excel/email "
+        "(in Metodo: 'Area Quadristica', con 6 nomi di reparto scritti nel codice).",
+    )
 
     history = HistoricalRecords()
 

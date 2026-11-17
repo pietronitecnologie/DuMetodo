@@ -1,0 +1,9 @@
+{% with l=cella|default:None %}{% if solo_stato %}
+{% if cella.percentuale is None %}<span class="badge text-bg-secondary">N/D</span>
+{% elif cella.percentuale > 100 %}<span class="badge text-bg-danger">Critico {{ cella.percentuale }}%</span>
+{% elif cella.percentuale > piano.soglia_attenzione %}<span class="badge text-bg-warning">Attenzione {{ cella.percentuale }}%</span>
+{% else %}<span class="badge text-bg-success">OK {{ cella.percentuale }}%</span>{% endif %}
+{% else %}
+<span class="badge {% if cella.percentuale is None %}text-bg-light border{% elif cella.percentuale > 100 %}text-bg-danger{% elif cella.percentuale > piano.soglia_attenzione %}text-bg-warning{% else %}text-bg-success{% endif %}"
+  title="{{ cella.n_ordini }} ordini{% if cella.capacita %} | {{ cella.percentuale }}% di {{ cella.capacita }} h{% endif %}">{{ cella.ore }} h</span>
+{% endif %}{% endwith %}

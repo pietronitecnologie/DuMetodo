@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titolo %}Commesse per tabulato{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Commesse per tabulato</h1>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+  <div><label class="form-label small mb-0">Tabulato</label><select name="tabulato" class="form-select form-select-sm">{% for t in tabulati %}<option value="{{ t.value }}" {% if t.value == tabulato %}selected{% endif %}>{{ t.label }}</option>{% endfor %}</select></div>
+  <div><label class="form-label small mb-0">Scadenza dal</label><input type="date" name="dal" class="form-control form-control-sm" value="{{ dal|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small mb-0">al</label><input type="date" name="al" class="form-control form-control-sm" value="{{ al|date:'Y-m-d' }}"></div>
+  <button class="btn btn-sm btn-primary">Cerca</button>
+  {% if tabulato is not None %}<a class="btn btn-sm btn-outline-primary" href="?tabulato={{ tabulato }}&dal={{ dal|date:'Y-m-d' }}&al={{ al|date:'Y-m-d' }}&formato=xlsx">Excel</a>{% endif %}
+</form>
+<table class="table table-sm bg-white"><thead><tr><th>Ordine</th><th>Scadenza</th><th>Stato</th></tr></thead><tbody>
+{% for o in ordini %}<tr><td><a href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a></td><td>{{ o.data_scadenza|date:"d/m/Y" }}</td><td>{{ o.get_stato_display }}</td></tr>
+{% empty %}<tr><td colspan="3" class="text-muted text-center">Nessuna commessa.</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}

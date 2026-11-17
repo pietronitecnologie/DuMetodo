@@ -1,0 +1,5 @@
+<p><strong>{{ reparto.nome }}</strong> — settimana {{ lunedi|date:"d/m/Y" }} - {{ domenica|date:"d/m/Y" }} — totale <strong>{{ totale }} ore</strong></p>
+<table class="table table-sm bg-white"><thead><tr><th>Articolo</th><th>Variante</th><th>Ordine</th><th class="text-end">Quantità</th><th class="text-end">Tempo (h)</th></tr></thead><tbody>
+{% for v in voci %}<tr><td>{{ v.articolo }}</td><td>{{ v.variante }}</td><td>{{ v.ordine.codice_breve|default:"" }}</td><td class="text-end">{{ v.qta|floatformat:"-3" }}</td><td class="text-end">{{ v.ore|default_if_none:"—" }}</td></tr>
+{% empty %}<tr><td colspan="5" class="text-muted text-center">Nessun articolo.</td></tr>{% endfor %}
+</tbody><tfoot><tr><th colspan="4" class="text-end">Totale</th><th class="text-end">{{ totale }}</th></tr></tfoot></table>

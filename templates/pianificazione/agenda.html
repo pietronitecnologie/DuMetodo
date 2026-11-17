@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titolo %}{{ titolo }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><h1 class="h4 me-auto mb-0">{{ titolo }}</h1>
+  <input id="cerca" type="search" class="form-control form-control-sm w-auto" placeholder="Cerca nella pagina (Esc per pulire)">
+</div>
+<form method="get" class="d-flex flex-wrap gap-2 mb-3 small">
+  <input class="form-control form-control-sm w-auto" name="q" placeholder="Ordine" value="{{ request.GET.q }}">
+  <input class="form-control form-control-sm w-auto" name="serie" placeholder="Serie" value="{{ request.GET.serie }}">
+  {% if not pulsanti %}<input class="form-control form-control-sm w-auto" name="appendice" placeholder="Appendice" value="{{ request.GET.appendice }}">{% endif %}
+  <input class="form-control form-control-sm w-auto" name="anno" placeholder="Anno" value="{{ request.GET.anno }}">
+  <button class="btn btn-sm btn-primary">Filtra</button>
+  {% if not pulsanti %}<a class="btn btn-sm btn-outline-secondary" href="?appendice=T">Pulsanti</a><a class="btn btn-sm btn-outline-secondary" href="?appendice=R">Elettronica</a><a class="btn btn-sm btn-outline-secondary" href="?appendice=CL">Conto lavoro</a>{% endif %}
+  <a class="btn btn-sm btn-link" href="?">Tutti</a>
+</form>
+<div class="row g-2">
+{% for col in colonne %}<div class="col-md-6 col-xl">
+  <div class="card h-100"><div class="card-header small"><strong>{{ col.titolo }}</strong> <span class="badge text-bg-secondary">{{ col.ordini|length }}</span></div>
+  <div class="card-body p-2">
+    {% if pulsanti %}
+      <div class="small fw-bold text-muted">Commesse grandi</div>{% for o in col.grandi %}{% include "pianificazione/_card.html" %}{% empty %}<div class="small text-muted">—</div>{% endfor %}
+      <div class="small fw-bold text-muted mt-2">Commesse piccole</div>{% for o in col.piccole %}{% include "pianificazione/_card.html" %}{% empty %}<div class="small text-muted">—</div>{% endfor %}
+    {% else %}{% for o in col.ordini %}{% include "pianificazione/_card.html" %}{% empty %}<div class="small text-muted">Nessun ordine.</div>{% endfor %}{% endif %}
+  </div></div>
+</div>{% endfor %}
+</div>
+<style>.card-agenda{border-left:4px solid #212529}.card-agenda.LAV{border-left-color:#0dcaf0}.card-agenda.SPP{border-left-color:#fd7e14}.card-agenda.trovata{outline:3px solid #ffc107}</style>
+<script>
+document.getElementById('cerca').addEventListener('input', e => {
+  const t = e.target.value.trim().toLowerCase(); let primo = null;
+  document.querySelectorAll('.card-agenda').forEach(c => { const ok = t && c.dataset.cerca.includes(t); c.classList.toggle('trovata', ok); if (ok && !primo) primo = c; });
+  if (primo) primo.scrollIntoView({behavior: 'smooth', block: 'center'});
+});
+document.getElementById('cerca').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; e.target.dispatchEvent(new Event('input')); } });
+</script>
+{% endblock %}

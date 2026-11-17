@@ -5,7 +5,7 @@ la lettura della posta e il report giravano più volte in parallelo.
 """
 
 from django.core.management.base import BaseCommand
-from django_celery_beat.models import IntervalSchedule, PeriodicTask
+from django_celery_beat.models import CrontabSchedule, IntervalSchedule, PeriodicTask
 
 LAVORI = [
     ("Lettura casella ordini", "dumetodo.importazione.tasks.leggi_casella_ordini", 30),
@@ -23,3 +23,15 @@ class Command(BaseCommand):
                 name=nome, defaults={"task": task, "interval": intervallo}
             )
             self.stdout.write(f"{'creato' if creato else 'aggiornato'}: {nome} ogni {minuti} minuti")
+        alle_sei, _ = CrontabSchedule.objects.get_or_create(
+            minute="0", hour="6", day_of_week="1-5", day_of_month="*", month_of_year="*", timezone="Europe/Rome"
+        )
+        PeriodicTask.objects.update_or_create(
+            name="Report pianificazione",
+            defaults={
+                "task": "dumetodo.pianificazione.tasks.invia_report_pianificazione",
+                "crontab": alle_sei,
+                "interval": None,
+            },
+        )
+        self.stdout.write("configurato: Report pianificazione, lun-ven alle 6:00")
