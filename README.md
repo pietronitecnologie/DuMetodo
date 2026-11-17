@@ -231,6 +231,11 @@ Lo script crea l'ambiente Python, genera `.env` con segreti casuali, usa un data
 crea l'utente `admin` (password stampata una sola volta) e avvia il server (waitress) su
 `http://localhost:8000`: la finestra resta aperta finché DuMetodo è attivo. Per riavviarlo, rilancia lo script.
 
+Per provarlo con **dati di prova realistici** (48 ordini importati da un file del Cliente, consegne,
+DDT, note, tracce, controlli qualità, magazzino, annunci, ore lavorate e utenti `operatore`,
+`caporeparto`, `cliente`) aggiungi `-DatiDiProva` (`--dati-di-prova` con lo script .sh), oppure
+`python manage.py carica_dati_demo`. Funziona solo su un database senza ordini.
+
 Limiti rispetto all'installazione Docker: niente lavori periodici (lettura automatica della casella
 ordini e nuovi tentativi automatici delle email non riuscite; la casella si legge col pulsante in Importazione),
 e un solo PC fa da server.

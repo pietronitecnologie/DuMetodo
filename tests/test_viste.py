@@ -59,3 +59,31 @@ def test_segna_gestito_non_permette_redirect_esterni(client, operatore, torna):
     p = f.problemi.get()
     r = client.post(f"/importazione/problemi/{p.pk}/gestito/", {"torna": torna})
     assert r["Location"] == "/importazione/problemi/"
+
+
+@pytest.mark.django_db
+def test_dati_demo_si_caricano_e_le_pagine_rispondono(client):
+    from io import StringIO
+
+    from django.contrib.auth.models import User
+    from django.core.management import call_command
+    from django.urls import reverse
+
+    from dumetodo.ordini.models import Ordine
+
+    call_command("crea_amministratore", stdout=StringIO())
+    out = StringIO()
+    call_command("carica_dati_demo", stdout=out, stderr=StringIO())
+    assert "Dati di prova caricati" in out.getvalue()
+    assert Ordine.objects.count() == 48 and Ordine.objects.filter(stato="CON").exists()
+    client.force_login(User.objects.get(username="admin"))
+    for nome in [
+        "ordini:lista",
+        "report:dashboard",
+        "pianificazione:agenda",
+        "consegne:pagina",
+        "tracciabilita:tracce",
+    ]:
+        assert client.get(reverse(nome)).status_code == 200, nome
+    with pytest.raises(Exception, match="già ordini"):
+        call_command("carica_dati_demo", stdout=StringIO())

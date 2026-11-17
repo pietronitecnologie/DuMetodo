@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Avvia DuMetodo su questo computer con Docker (Linux/macOS). Uso: ./avvia-dumetodo.sh
+# Avvia DuMetodo su questo computer con Docker (Linux/macOS). Uso: ./avvia-dumetodo.sh [--dati-di-prova]
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -49,6 +49,7 @@ done
 curl -fsS -o /dev/null http://localhost:8000/accesso/ || { echo; echo "DuMetodo non risponde: docker compose logs web" >&2; exit 1; }
 
 docker compose exec -T web python manage.py crea_amministratore
+if [ "${1:-}" = "--dati-di-prova" ]; then docker compose exec -T web python manage.py carica_dati_demo; fi
 
 CONF_CLIENT="${XDG_CONFIG_HOME:-$HOME/.config}/dumetodoclient/client.toml"
 if [ ! -f "$CONF_CLIENT" ] || grep -q '^url = ""' "$CONF_CLIENT"; then

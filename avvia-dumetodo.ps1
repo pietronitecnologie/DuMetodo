@@ -1,5 +1,7 @@
 ﻿# Avvia DuMetodo su questo PC Windows con Docker Desktop.
 # Uso (PowerShell, nella cartella di DuMetodo):  powershell -ExecutionPolicy Bypass -File .\avvia-dumetodo.ps1
+# Con dati di prova (solo su un database vuoto):  ... -File .\avvia-dumetodo.ps1 -DatiDiProva
+param([switch]$DatiDiProva)
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
@@ -63,6 +65,7 @@ if (-not $pronto) { Write-Host ""; Write-Host "DuMetodo non risponde: docker com
 Write-Host " pronto."
 
 docker compose exec -T web python manage.py crea_amministratore
+if ($DatiDiProva) { docker compose exec -T web python manage.py carica_dati_demo }
 
 # Collega il client desktop a questo server (solo se non ha già un indirizzo).
 $confClient = Join-Path $env:APPDATA "DuMetodo\DuMetodo Client\config\client.toml"

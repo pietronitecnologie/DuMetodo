@@ -1,6 +1,8 @@
 ﻿# Avvia DuMetodo su questo PC Windows SENZA Docker: serve solo Python 3.12 o più recente.
 # Usa un database SQLite in .\dati: adatto a provarlo o a un piccolo ufficio su un solo PC server.
 # Uso (PowerShell, nella cartella di DuMetodo):  powershell -ExecutionPolicy Bypass -File .\avvia-dumetodo-semplice.ps1
+# Con dati di prova (solo su un database vuoto):  ... -File .\avvia-dumetodo-semplice.ps1 -DatiDiProva
+param([switch]$DatiDiProva)
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
@@ -79,6 +81,7 @@ if ($LASTEXITCODE -ne 0) { Write-Host "Migrazione del database non riuscita." -F
 & $py manage.py collectstatic --noinput | Out-Null
 & $py manage.py crea_ruoli
 & $py manage.py crea_amministratore
+if ($DatiDiProva) { & $py manage.py carica_dati_demo }
 
 # 5. Collega il client desktop (solo se non ha già un indirizzo)
 $confClient = Join-Path $env:APPDATA "DuMetodo\DuMetodo Client\config\client.toml"

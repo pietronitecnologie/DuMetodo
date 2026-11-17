@@ -23,6 +23,9 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(elimina_batterie_e_cavi, migrations.RunPython.noop),
+        migrations.DeleteModel(
+            name="WorkOrderBatteria",
+        ),
         migrations.RemoveConstraint(
             model_name="traccia",
             name="traccia_postazione_unica",
@@ -36,32 +39,8 @@ class Migration(migrations.Migration):
             name="traccia_intestatura_unica",
         ),
         migrations.RemoveField(
-            model_name="historicalpostazione",
-            name="history_user",
-        ),
-        migrations.RemoveField(
-            model_name="historicalpostazione",
-            name="reparto",
-        ),
-        migrations.RemoveField(
-            model_name="postazione",
-            name="reparto",
-        ),
-        migrations.RemoveField(
             model_name="traccia",
             name="postazione",
-        ),
-        migrations.RemoveField(
-            model_name="workorderbatteria",
-            name="chiuso_da",
-        ),
-        migrations.RemoveField(
-            model_name="workorderbatteria",
-            name="elemento",
-        ),
-        migrations.RemoveField(
-            model_name="workorderbatteria",
-            name="ultima_traccia",
         ),
         migrations.RemoveField(
             model_name="elemento",
@@ -76,8 +55,5 @@ class Migration(migrations.Migration):
         ),
         migrations.DeleteModel(
             name="Postazione",
-        ),
-        migrations.DeleteModel(
-            name="WorkOrderBatteria",
         ),
     ]
