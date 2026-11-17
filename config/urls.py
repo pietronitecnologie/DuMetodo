@@ -13,6 +13,7 @@ class FaviconView(RedirectView):
     def get_redirect_url(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         return static("img/favicon.ico")  # calcolato alla richiesta: il manifest dei file statici esiste già
 
+
 urlpatterns = [
     path("", core_views.home, name="home"),
     # I browser chiedono /favicon.ico anche senza <link>: si rimanda all'icona statica.

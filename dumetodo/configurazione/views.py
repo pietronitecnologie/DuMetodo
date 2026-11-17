@@ -1,7 +1,7 @@
 from django.contrib import messages
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotModified
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from dumetodo.core.permessi import F, richiede_permesso
 
@@ -87,3 +87,22 @@ def prova_casella(request: HttpRequest) -> HttpResponse:
     dati = {k.removeprefix(f"{prefisso}-"): v for k, v in request.POST.items() if k.startswith(f"{prefisso}-")}
     esito = posta.prova_connessione(posta.parametri_casella(modulo=dati))
     return render(request, "configurazione/_esito_prova.html", {"esito": esito})
+
+
+@require_GET
+def logo(request: HttpRequest) -> HttpResponse:
+    """Logo dell'azienda (PNG già normalizzato al caricamento). Pubblico: compare anche nella pagina di accesso."""
+    import base64
+    import hashlib
+
+    dati = servizi.leggi("azienda.logo")
+    if not dati:
+        raise Http404
+    etag = '"' + hashlib.sha256(dati.encode()).hexdigest()[:16] + '"'
+    if request.headers.get("If-None-Match") == etag:
+        return HttpResponseNotModified()
+    r = HttpResponse(base64.b64decode(dati), content_type="image/png")
+    r["ETag"] = etag
+    r["Cache-Control"] = "public, max-age=86400"
+    r["X-Content-Type-Options"] = "nosniff"
+    return r

@@ -10,6 +10,7 @@ PUBBLICHE = {
     "login",
     "logout",
     "utilita:annunci_attivi",  # frammento vuoto per chi non è del Fornitore
+    "configurazione:logo",  # il logo compare anche nella pagina di accesso (404 se non caricato)
 }
 # Solo login: servono a ogni utente collegato e restituiscono dati già filtrati per i suoi permessi.
 SOLO_LOGIN = {"client:configurazione"}

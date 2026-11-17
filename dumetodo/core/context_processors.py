@@ -1,3 +1,5 @@
+import hashlib
+
 from django.http import HttpRequest
 
 from .permessi import is_cliente, is_fornitore
@@ -13,7 +15,10 @@ def azienda(request: HttpRequest) -> dict[str, object]:
 
     from .versione import versione
 
+    logo = config.leggi("azienda.logo")
     return {
+        # Parte dell'impronta del logo nell'indirizzo: cambiato il logo, il browser non usa quello vecchio.
+        "logo_azienda": (hashlib.sha256(logo.encode()).hexdigest()[:10] if logo else ""),
         "versione_dumetodo": versione(),
         "nome_fornitore": config.leggi("azienda.nome_fornitore") or "Fornitore",
         "nome_cliente": config.leggi("azienda.nome_cliente") or "Cliente",

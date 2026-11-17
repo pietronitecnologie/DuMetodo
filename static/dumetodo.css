@@ -48,6 +48,9 @@ a:hover { text-decoration: underline; }
 .dm-marchio-logo { width: 30px; height: 30px; flex: 0 0 30px; display: block; }
 .dm-marchio-testo { display: flex; flex-direction: column; line-height: 1.1; }
 .dm-marchio-testo b { font-size: 14px; letter-spacing: .2px; }
+.dm-logo-azienda { display: flex; align-items: center; height: 32px; padding: 3px 8px; margin-right: 10px; flex: 0 0 auto;
+  background: #fff; border-radius: 7px; }
+.dm-logo-azienda img { display: block; max-height: 26px; max-width: 120px; object-fit: contain; }
 .dm-marchio-testo small { color: var(--dm-barra-testo); font-size: 11px; white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 
 .dm-menu { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; }

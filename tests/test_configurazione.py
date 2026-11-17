@@ -241,6 +241,12 @@ def test_logo_caricato_normalizzato_e_nel_menu_del_client(client, amministratore
     salvato = Image.open(io.BytesIO(base64.b64decode(config.leggi("azienda.logo"))))
     assert salvato.format == "PNG" and max(salvato.size) <= 256
 
+    pagina = client.get("/ordini/").content.decode()
+    assert 'class="dm-logo-azienda"' in pagina and "/configurazione/logo.png?v=" in pagina
+    r = client.get("/configurazione/logo.png")
+    assert r["Content-Type"] == "image/png" and r.content.startswith(b"\x89PNG")
+    assert client.get("/configurazione/logo.png", HTTP_IF_NONE_MATCH=r["ETag"]).status_code == 304
+
     dati = client.get("/client/configurazione.json").json()
     assert dati["intestazione"]["titolo"] == "Officine Rossi"
     for lato in ("16", "24", "32"):
@@ -255,6 +261,8 @@ def test_logo_caricato_normalizzato_e_nel_menu_del_client(client, amministratore
     config.invalida_cache()
     assert config.leggi("azienda.logo") is None
     assert client.get("/client/configurazione.json").json()["intestazione"] is None
+    assert client.get("/configurazione/logo.png").status_code == 404
+    assert "dm-logo-azienda" not in client.get("/ordini/").content.decode()
 
 
 @pytest.mark.django_db

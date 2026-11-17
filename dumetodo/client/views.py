@@ -18,9 +18,7 @@ def configurazione(request: HttpRequest) -> JsonResponse:
         dati = menu.valida(config.leggi("client.menu"))
     except menu.MenuNonValido:
         dati = menu.PREDEFINITO
-    r = JsonResponse(
-        {"versione": 1, "menu": menu.per_utente(dati, request.user), "intestazione": intestazione_menu()}
-    )
+    r = JsonResponse({"versione": 1, "menu": menu.per_utente(dati, request.user), "intestazione": intestazione_menu()})
     r["Cache-Control"] = "private, no-store"
     return r
 
