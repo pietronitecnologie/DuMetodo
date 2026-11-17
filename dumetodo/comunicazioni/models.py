@@ -120,3 +120,17 @@ class EmailInUscita(models.Model):
 
     def __str__(self) -> str:
         return f"[{self.get_stato_display()}] {self.oggetto}"
+
+
+class AllegatoEmail(models.Model):
+    email = models.ForeignKey(EmailInUscita, on_delete=models.CASCADE, related_name="allegati")
+    nome = models.CharField(max_length=255)
+    contenuto = models.BinaryField()
+    tipo_mime = models.CharField(max_length=100, default="application/octet-stream")
+
+    class Meta:
+        verbose_name = "allegato email"
+        verbose_name_plural = "allegati email"
+
+    def __str__(self) -> str:
+        return self.nome

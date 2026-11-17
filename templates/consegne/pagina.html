@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titolo %}Consegna{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Consegna</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'consegne:storico' %}">Consegne effettuate</a></div>
+<div class="row g-3">
+<div class="col-lg-9">
+  <div class="table-responsive"><table class="table table-sm bg-white align-middle">
+    <thead><tr><th>Ordine</th><th>Stato</th><th>Scadenza</th><th class="text-end">Righe da consegnare</th><th class="text-end">Pezzi</th><th></th></tr></thead>
+    <tbody>
+    {% for x in ordini %}{% with o=x.ordine %}
+      <tr class="{% if not x.n %}text-muted{% endif %}">
+        <td><a href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a></td>
+        <td>{{ o.get_stato_display }}</td><td>{{ o.data_scadenza|date:"d/m/Y" }}</td>
+        <td class="text-end">{{ x.n }}</td><td class="text-end">{{ x.pezzi|floatformat:"-3" }}</td>
+        <td class="text-end text-nowrap">
+          {% if x.n %}<form method="post" action="{% url 'consegne:consegna' %}" class="d-inline" onsubmit="return confirm('Consegnare {{ o.codice_breve|escapejs }}?')">{% csrf_token %}
+            <input type="hidden" name="ordine" value="{{ o.pk }}"><button class="btn btn-sm btn-success py-0">Consegna</button></form>{% endif %}
+          <form method="post" action="{% url 'consegne:rimuovi' o.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary py-0">Rimuovi</button></form>
+        </td>
+      </tr>{% endwith %}
+    {% empty %}<tr><td colspan="6" class="text-muted text-center py-4">Nessun ordine in spedizione.</td></tr>{% endfor %}
+    </tbody></table></div>
+</div>
+<div class="col-lg-3">
+  <form method="get" class="card mb-3">
+    <div class="card-header"><strong>Selezione</strong></div>
+    <div class="card-body">
+      {% for s in disponibili %}<div class="form-check"><input class="form-check-input" type="checkbox" name="serie" value="{{ s }}" id="s{{ s }}" {% if s in serie %}checked{% endif %} onchange="this.form.submit()">
+        <label class="form-check-label" for="s{{ s }}">Serie {{ s }}</label></div>{% empty %}<span class="text-muted small">Nessuna serie.</span>{% endfor %}
+      <div class="form-text">Nessuna selezione = tutti gli ordini.</div>
+    </div>
+  </form>
+  <div class="card mb-3"><div class="card-header"><strong>1. Etichette</strong></div><div class="card-body d-grid gap-2">
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'consegne:etichette' %}?{% for s in serie %}serie={{ s }}&{% endfor %}">Etichette (xlsx)</a>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'consegne:etichette' %}?{% for s in serie %}serie={{ s }}&{% endfor %}pulsanti=1">Etichette solo pulsanti (T)</a>
+  </div></div>
+  <form method="post" action="{% url 'consegne:consegna' %}" class="card" onsubmit="return confirm('Generare la bolla e segnare come consegnate {{ totale_righe }} righe?')">{% csrf_token %}
+    <div class="card-header"><strong>2. Bolla e consegna</strong></div>
+    <div class="card-body">
+      {% for s in serie %}<input type="hidden" name="serie" value="{{ s }}">{% empty %}<input type="hidden" name="tutto" value="1">{% endfor %}
+      <p class="small mb-2">{{ totale_righe }} righe di {{ ordini|length }} ordini{% if serie %} (serie {{ serie|join:", " }}){% endif %}. Il file viene creato con il tracciato configurato e resta scaricabile dallo storico.</p>
+      <button class="btn btn-success w-100" {% if not totale_righe %}disabled{% endif %}>Genera bolla e consegna</button>
+    </div>
+  </form>
+</div>
+</div>
+{% endblock %}

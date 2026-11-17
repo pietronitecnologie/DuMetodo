@@ -10,7 +10,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.utils import timezone
 
-from .models import EmailInUscita, StatoEmail
+from .models import AllegatoEmail, EmailInUscita, StatoEmail
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ def accoda(
     cc: Sequence[str] = (),
     rispondi_a: Sequence[str] = (),
     riferimento: str = "",
+    allegati: Sequence[tuple[str, bytes, str]] = (),
 ) -> EmailInUscita | None:
     """Salva l'email nella coda. Va chiamata DENTRO la transazione dell'operazione che la genera:
     se l'operazione fallisce, l'email non parte; se riesce, l'email partirà di sicuro."""
@@ -44,6 +45,8 @@ def accoda(
         rispondi_a=list(rispondi_a),
         riferimento=riferimento[:100],
     )
+    for nome, contenuto, tipo_mime in allegati:
+        AllegatoEmail.objects.create(email=email, nome=nome[:255], contenuto=contenuto, tipo_mime=tipo_mime)
 
     def _avvia() -> None:
         from .tasks import invia_email
@@ -77,6 +80,8 @@ def invia(email_id: int) -> bool:
         )
         if email.corpo_html:
             messaggio.attach_alternative(email.corpo_html, "text/html")
+        for allegato in email.allegati.all():
+            messaggio.attach(allegato.nome, bytes(allegato.contenuto), allegato.tipo_mime)
         email.tentativi += 1
         try:
             messaggio.send(fail_silently=False)

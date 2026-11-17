@@ -27,9 +27,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
         else:
             form = ParametriGruppoForm(gruppo)
         forms.append(form)
-    from dumetodo.tracciati.esempi import READYPRO_BOLLA
-
-    return render(request, "configurazione/pagina.html", {"forms": forms, "esempio_readypro": READYPRO_BOLLA})
+    return render(request, "configurazione/pagina.html", {"forms": forms})
 
 
 @richiede_ruolo(Ruolo.AMMINISTRATORE)
@@ -44,7 +42,8 @@ def anteprima_tracciato(request: HttpRequest) -> HttpResponse:
     """Genera il file d'esempio con il tracciato scritto nel form (non ancora salvato)."""
     from dumetodo.tracciati import esempi, linguaggio
 
-    sorgente = next((v for k, v in request.POST.items() if k.endswith("tracciato_bolla")), "")
+    campo = request.POST.get("campo", "")
+    sorgente = request.POST.get(campo, "") if "tracciato" in campo else ""
     contesto: dict[str, object] = {}
     try:
         tracciato = linguaggio.compila(sorgente)

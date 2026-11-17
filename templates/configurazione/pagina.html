@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block titolo %}Configurazione<template id="esempio-readypro">{{ esempio_readypro }}</template>
-{% endblock %}
+{% load dumetodo %}
+{% block titolo %}Configurazione{% endblock %}
 {% block contenuto %}
 <div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Configurazione</h1>
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'configurazione:storico' %}">Storico modifiche</a></div>
@@ -19,9 +19,10 @@ La <strong>capacità settimanale</strong> di ogni reparto si imposta nella sched
           {% if "tracciato" in campo.name %}
           <div class="d-flex gap-2 mb-2">
             <button type="button" class="btn btn-sm btn-outline-primary" hx-post="{% url 'configurazione:anteprima_tracciato' %}"
-                    hx-include="closest form" hx-target="next .anteprima">Anteprima con dati d'esempio</button>
+                    hx-include="closest form" hx-vals='{"campo": "{{ campo.html_name }}"}' hx-target="next .anteprima">Anteprima con dati d'esempio</button>
             <button type="button" class="btn btn-sm btn-outline-secondary"
-                    onclick="if (confirm('Sostituire il testo con l\'esempio ReadyPro? Dovrai poi salvare.')) document.getElementById('{{ campo.id_for_label }}').value = document.getElementById('esempio-readypro').content.textContent">Ripristina esempio ReadyPro</button>
+                    onclick="if (confirm('Sostituire il testo con il tracciato predefinito? Dovrai poi salvare.')) document.getElementById('{{ campo.id_for_label }}').value = document.getElementById('predefinito-{{ campo.id_for_label }}').content.textContent">Ripristina predefinito</button>
+            <template id="predefinito-{{ campo.id_for_label }}">{{ form.predefiniti|get_item:campo.name }}</template>
             <a class="btn btn-sm btn-link" href="{% url 'configurazione:guida_tracciati' %}" target="_blank">Guida al linguaggio</a>
           </div>
           <div class="anteprima"></div>

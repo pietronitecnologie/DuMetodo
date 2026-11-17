@@ -17,11 +17,13 @@ L'analisi funzionale del codice originale, che fa da specifica per la riscrittur
 | **Ordini**: modello, macchina a stati, azioni sulle righe, divisione, scadenze | ✅ fase 1 |
 | **Importazione ordini**: file TXT, casella email, problemi da gestire | ✅ fase 1 |
 | **Note / comunicazione con il cliente** | ✅ fase 1 |
-| Consegna, bolla ReadyPro, DDT file tecnico, etichette | ⏳ fase 2 |
+| **Tracciati**: formato dei file per il gestionale definibile in Configurazione (default ReadyPro) | ✅ fase 2 |
+| **Consegna** con bolla, **DDT** con file tecnico, **etichette** | ✅ fase 2 |
 | Agenda ordini, pianificazione, tabulati | ⏳ fase 3 |
 | Magazzino, distinte base, richieste materiali, DDT in ingresso | ⏳ fase 4 |
 | Tracciabilità, controllo qualità, reclami, annunci | ⏳ fase 5 |
-| Migrazione dei dati da Metodo | ⏳ con la fase 2 |
+| Migrazione dei dati da Metodo | ⏳ fase 2 |
+| **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ⏳ fase finale |
 
 ## Regole di progetto
 
@@ -92,6 +94,45 @@ Le password non vengono importate: il comando dice in quale variabile d'ambiente
   l'utente non vede errori.
 * Elenco ordini: un badge mostra le note non lette.
 * Eliminazione: logica, ammessa solo all'autore o a un amministratore.
+
+## Tracciati (file per il gestionale)
+
+Il formato dei file esportati non è più scritto nel codice: si definisce in **Configurazione**
+con un piccolo linguaggio, controllato al salvataggio, con anteprima e guida integrata.
+
+```
+nome: ReadyPro
+codifica: cp1252
+fine_riga: CRLF
+nome_file: consegna{documento.selezione}-{documento.oggi|data:AAAAMMGG}
+
+[ordine]
+Riferimento |ordine {ordine.serie}.{ordine.numero}
+
+[riga]
+{riga.articolo}{riga.variante|senza:_|prefisso:.}||{riga.qta|intero}|PZ|{riga.prezzo|compatto|virgola}
+```
+
+Il linguaggio si usa oggi per:
+
+* il **file bolla** della consegna (predefinito: ReadyPro, identico a Metodo);
+* il **file tecnico DDT** (predefinito: formato di Metodo con codice Fornitore 3649, quantità
+  decimali corrette).
+
+## Consegna e DDT
+
+* **Consegna:** è un'operazione POST, in una transazione con le righe bloccate durante
+  l'operazione, quindi un doppio clic non consegna due volte.
+  * Il file bolla è conservato e riscaricabile dallo storico.
+  * Se il file non si può generare (es. un carattere non rappresentabile), non viene consegnato nulla.
+* **Righe consegnate:** sono collegate alla riga d'ordine e quindi all'ordine. Restano in attesa di DDT.
+* **DDT:**
+  * numero + anno sono univoci;
+  * il file tecnico è generato con il tracciato, conservato e inviato tramite la coda email
+    con allegato;
+  * l'amministratore può reinviarlo.
+* **Etichette:** stesso xlsx di Metodo. Il codice Fornitore della colonna I si configura e le date
+  sono vere date.
 
 ## Ruoli
 

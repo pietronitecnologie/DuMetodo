@@ -22,11 +22,28 @@ Riferimento |ordine {ordine.serie}.{ordine.numero}
 {riga.articolo}{riga.variante|senza:_|prefisso:.}||{riga.qta|intero}|PZ|{riga.prezzo|compatto|virgola}
 """
 
+# File tecnico DDT per il cliente (stesso formato di Metodo, ddt.py). Correzioni rispetto a Metodo:
+# quantità 100,05 scritta "100,05" (Metodo scriveva "1005") e anno del nome file = anno del DDT.
+FILE_TECNICO_DDT = """\
+# File tecnico DDT (stesso formato generato da Metodo).
+# Primo record "T+R", i successivi "RIG"; 3649 è il codice del Fornitore presso il Cliente.
+nome: File tecnico DDT
+estensione: txt
+codifica: cp1252
+fine_riga: CRLF
+nome_file: DDT_3649_{documento.data|data:AAAA}_{documento.numero}
+
+[riga]
+{riga.progressivo_file|uguale:1,T+R,RIG}@3649@{documento.data|data:GG/MM/AAAA}@{documento.numero}@{riga.articolo}@{riga.variante}@{riga.qta|compatto|virgola}@{ordine.anno}.{ordine.serie|senza_zeri}.{ordine.numero|senza_zeri}{ordine.appendice|prefisso:.}.{riga.n_riga|senza_zeri},00@1
+"""
+
 DOCUMENTO_ESEMPIO = {
     "oggi": dt.date(2026, 4, 2),
     "ora": dt.datetime(2026, 4, 2, 15, 30),
     "selezione": "40",
     "utente": "Mario Rossi",
+    "numero": "123",
+    "data": dt.date(2026, 4, 2),
 }
 
 ORDINI_ESEMPIO = [

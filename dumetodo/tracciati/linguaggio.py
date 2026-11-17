@@ -53,6 +53,8 @@ CAMPI: dict[str, dict[str, Campo]] = {
         "ora": Campo(DATA, "Data e ora di generazione del file"),
         "selezione": Campo(TESTO, "Selezione della consegna, es. 'Tutto' o '40'"),
         "utente": Campo(TESTO, "Utente che genera il file"),
+        "numero": Campo(TESTO, "Numero del documento (es. numero DDT); vuoto se non previsto"),
+        "data": Campo(DATA, "Data del documento (es. data DDT); se non prevista è la data di oggi"),
         "numero_ordini": Campo(NUMERO, "Numero di ordini nel file"),
         "numero_righe": Campo(NUMERO, "Numero di righe nel file"),
     },
@@ -238,6 +240,14 @@ FILTRI: dict[str, Filtro] = {
         "Usa questo testo se il valore è vuoto",
         "predefinito:- : vuoto → -",
         lambda v, d: _testo(v) or d,
+    ),
+    "uguale": Filtro(
+        _TUTTI,
+        TESTO,
+        (3, 3),
+        "Se il valore è uguale al primo argomento scrive il secondo, altrimenti il terzo",
+        "uguale:1,T+R,RIG : 1 → T+R ; 2 → RIG",
+        lambda v, x, si, no: si if _testo(v) == x else no,
     ),
     "senza_zeri": Filtro(_TUTTI, TESTO, (0, 0), "Toglie gli zeri iniziali", "0004300 → 4300", _senza_zeri),
     # numeri

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titolo %}Consegna {{ consegna.pk }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center gap-2 mb-3"><h1 class="h4 mb-0 me-auto">Consegna n. {{ consegna.pk }} — {{ consegna.creata_il|date:"d/m/Y H:i" }}</h1>
+  <a class="btn btn-primary" href="{% url 'consegne:file' consegna.pk %}">Scarica {{ consegna.file_nome }}</a></div>
+<p class="text-muted small">Registrata da {{ consegna.creata_da|default:"—" }} · selezione {{ consegna.selezione }} · tracciato {{ consegna.tracciato|default:"—" }}</p>
+<table class="table table-sm bg-white"><thead><tr><th>Ordine</th><th>Riga</th><th>Articolo</th><th>Var.</th><th class="text-end">Qtà</th><th>DDT</th></tr></thead><tbody>
+{% for rc in righe %}<tr><td><a href="{{ rc.riga.ordine.get_absolute_url }}">{{ rc.riga.ordine.codice_breve }}</a></td><td>{{ rc.riga.n_riga }}</td><td>{{ rc.riga.articolo }}</td><td>{{ rc.riga.variante }}</td>
+  <td class="text-end">{{ rc.qta|floatformat:"-3" }}</td><td>{{ rc.ddt|default:"in attesa" }}</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}

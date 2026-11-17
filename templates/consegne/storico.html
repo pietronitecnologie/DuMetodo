@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titolo %}Consegne effettuate{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Consegne effettuate</h1>
+<table class="table table-sm bg-white align-middle"><thead><tr><th>N.</th><th>Quando</th><th>Chi</th><th>Selezione</th><th class="text-end">Righe</th><th>File</th></tr></thead><tbody>
+{% for c in pagina %}<tr><td><a href="{{ c.get_absolute_url }}">{{ c.pk }}</a></td><td>{{ c.creata_il|date:"d/m/Y H:i" }}</td><td>{{ c.creata_da|default:"" }}</td><td>{{ c.selezione }}</td><td class="text-end">{{ c.n_righe }}</td>
+  <td><a href="{% url 'consegne:file' c.pk %}">{{ c.file_nome }}</a></td></tr>
+{% empty %}<tr><td colspan="6" class="text-muted text-center">Nessuna consegna.</td></tr>{% endfor %}
+</tbody></table>
+{% include "_paginazione.html" %}
+{% endblock %}

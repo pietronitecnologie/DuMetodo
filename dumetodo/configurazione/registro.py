@@ -150,7 +150,7 @@ class Parametro:
         return str(valore)
 
 
-from dumetodo.tracciati.esempi import READYPRO_BOLLA  # noqa: E402
+from dumetodo.tracciati.esempi import FILE_TECNICO_DDT, READYPRO_BOLLA  # noqa: E402
 
 PARAMETRI: tuple[Parametro, ...] = (
     # --- Produzione -----------------------------------------------------------------
@@ -308,6 +308,24 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Predefinito: ReadyPro (identico a Metodo). Vedi la guida al linguaggio dei tracciati.",
         default=READYPRO_BOLLA,
         obbligatorio=True,
+    ),
+    Parametro(
+        "consegna.tracciato_file_tecnico_ddt",
+        Tipo.TRACCIATO,
+        Gruppo.CONSEGNA,
+        "Tracciato del file tecnico DDT",
+        "Formato del file inviato al Cliente quando si registra un DDT. Predefinito: formato di Metodo "
+        "(codice Fornitore 3649). I campi documento.numero e documento.data sono numero e data del DDT.",
+        default=FILE_TECNICO_DDT,
+        obbligatorio=True,
+    ),
+    Parametro(
+        "consegna.codice_fornitore_etichette",
+        Tipo.TESTO,
+        Gruppo.CONSEGNA,
+        "Codice Fornitore sulle etichette",
+        "Valore della colonna I del file etichette (in Metodo era fisso: 0003659).",
+        default="0003659",
     ),
     # --- Tracciabilità ------------------------------------------------------------------
     Parametro(

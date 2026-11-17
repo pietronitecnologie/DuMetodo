@@ -41,6 +41,7 @@ class ParametriGruppoForm(forms.Form):
         super().__init__(*args, initial=initial, prefix=gruppo.name.lower(), **kwargs)
         for p in self.parametri:
             self.fields[p.chiave] = _campo(p)
+        self.predefiniti = {p.chiave: p.come_testo(p.valore_default()) for p in self.parametri}
 
     def clean(self) -> dict[str, Any]:
         dati = super().clean()

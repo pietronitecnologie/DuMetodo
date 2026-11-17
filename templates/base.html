@@ -19,6 +19,8 @@
       <ul class="navbar-nav me-auto">
         <li class="nav-item"><a class="nav-link" href="{% url 'ordini:lista' %}">Ordini</a></li>
         {% if is_operatore %}
+        <li class="nav-item"><a class="nav-link" href="{% url 'consegne:pagina' %}">Consegna</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'consegne:ddt' %}">DDT</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'importazione:pagina' %}">Importazione</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'ordini:attiva_produzione' %}">Attiva produzione</a></li>
         {% endif %}

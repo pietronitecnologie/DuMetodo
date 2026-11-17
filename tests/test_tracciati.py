@@ -114,12 +114,16 @@ def test_parametro_predefinito_e_validazione():
 def test_anteprima_e_guida(client, amministratore, operatore):
     client.force_login(amministratore)
     r = client.post(
-        "/configurazione/tracciati/anteprima/", {"consegna-consegna.tracciato_bolla": esempi.READYPRO_BOLLA}
+        "/configurazione/tracciati/anteprima/",
+        {"campo": "consegna-consegna.tracciato_bolla", "consegna-consegna.tracciato_bolla": esempi.READYPRO_BOLLA},
     )
     assert b"consegna40-20260402.txt" in r.content and b"18090054BR.0||2|PZ|0,2596" in r.content
-    r = client.post("/configurazione/tracciati/anteprima/", {"consegna-consegna.tracciato_bolla": "[riga]\n{x.y}"})
+    r = client.post(
+        "/configurazione/tracciati/anteprima/",
+        {"campo": "consegna-consegna.tracciato_bolla", "consegna-consegna.tracciato_bolla": "[riga]\n{x.y}"},
+    )
     assert b"campo sconosciuto" in r.content
     assert client.get("/configurazione/tracciati/guida/").status_code == 200
-    assert b"Ripristina esempio ReadyPro" in client.get("/configurazione/").content
+    assert b"Ripristina predefinito" in client.get("/configurazione/").content
     client.force_login(operatore)
     assert client.post("/configurazione/tracciati/anteprima/", {}).status_code == 403

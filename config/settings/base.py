@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "dumetodo.ordini",
     "dumetodo.comunicazioni",
     "dumetodo.importazione",
+    "dumetodo.consegne",
 ]
 
 MIDDLEWARE = [

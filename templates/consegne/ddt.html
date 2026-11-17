@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titolo %}DDT{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Registra DDT e invia il file tecnico</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'consegne:ddt_storico' %}">DDT registrati</a></div>
+<form method="post" class="row g-3">{% csrf_token %}
+<div class="col-lg-9">
+  <table class="table table-sm bg-white align-middle"><thead><tr>
+    <th><input type="checkbox" class="form-check-input" checked onclick="document.querySelectorAll('input[name=riga]').forEach(c => c.checked = this.checked)"></th>
+    <th>Ordine</th><th>Riga</th><th>Articolo</th><th>Var.</th><th class="text-end">Qtà</th><th>Consegnata il</th></tr></thead><tbody>
+  {% for rc in righe %}<tr><td><input type="checkbox" class="form-check-input" name="riga" value="{{ rc.pk }}" checked></td>
+    <td>{{ rc.riga.ordine.codice_breve }}</td><td>{{ rc.riga.n_riga }}</td><td>{{ rc.riga.articolo }}</td><td>{{ rc.riga.variante }}</td>
+    <td class="text-end">{{ rc.qta|floatformat:"-3" }}</td><td>{{ rc.consegna.creata_il|date:"d/m/Y" }}</td></tr>
+  {% empty %}<tr><td colspan="7" class="text-muted text-center py-4">Nessuna riga consegnata in attesa di DDT.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+<div class="col-lg-3"><div class="card"><div class="card-body">
+  <label class="form-label" for="numero">Numero DDT (dal gestionale)</label>
+  <input class="form-control mb-2" id="numero" name="numero" value="{{ numero }}" required maxlength="20" pattern="[A-Za-z0-9/_\-]+">
+  <label class="form-label" for="data">Data DDT</label>
+  <input class="form-control mb-3" id="data" name="data" type="date" value="{{ data }}" required>
+  <button class="btn btn-primary w-100" {% if not righe %}disabled{% endif %} onclick="return confirm('Registrare il DDT e inviare il file tecnico?')">Registra e invia</button>
+  <div class="form-text">Numero + anno devono essere unici. Il file è generato con il tracciato in Configurazione.</div>
+</div></div></div>
+</form>
+{% endblock %}

@@ -8,6 +8,7 @@ urlpatterns = [
     path("accesso/", auth_views.LoginView.as_view(), name="login"),
     path("uscita/", auth_views.LogoutView.as_view(), name="logout"),
     path("ordini/", include("dumetodo.ordini.urls")),
+    path("consegne/", include("dumetodo.consegne.urls")),
     path("note/", include("dumetodo.comunicazioni.urls")),
     path("importazione/", include("dumetodo.importazione.urls")),
     path("configurazione/", include("dumetodo.configurazione.urls")),
