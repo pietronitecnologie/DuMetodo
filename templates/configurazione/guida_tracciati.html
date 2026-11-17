@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titolo %}Guida ai tracciati{% endblock %}
+{% block contenuto %}
+<div class="col-xl-10">
+<h1 class="h4">Guida al linguaggio dei tracciati</h1>
+<p>Un tracciato descrive il formato di un file esportato da DuMetodo, ad esempio la bolla da importare nel gestionale.
+È formato da <strong>impostazioni</strong> in testa e da <strong>sezioni</strong> con le righe di testo da scrivere.
+Nel testo, <code>{gruppo.campo|filtro|filtro:argomento}</code> viene sostituito dal valore del campo, trasformato dai filtri
+da sinistra a destra. <code>{"testo"}</code> è un testo fisso, <code>{% templatetag openvariable %}</code> e <code>{% templatetag closevariable %}</code> scrivono le graffe.
+Le righe che iniziano con <code>#</code> sono commenti; le righe vuote vengono ignorate.
+Un errore viene segnalato quando salvi, con il numero di riga: un tracciato sbagliato non può bloccare una consegna.</p>
+
+<h2 class="h5 mt-4">Esempio: ReadyPro</h2>
+<pre class="bg-white border p-2 small">{{ esempio }}</pre>
+
+<h2 class="h5 mt-4">Impostazioni</h2>
+<table class="table table-sm bg-white"><tbody>{% for k, d in impostazioni.items %}<tr><td><code>{{ k }}:</code></td><td>{{ d }}</td></tr>{% endfor %}</tbody></table>
+
+<h2 class="h5 mt-4">Sezioni</h2>
+<table class="table table-sm bg-white"><thead><tr><th>Sezione</th><th>Quando viene scritta</th><th>Campi utilizzabili</th></tr></thead><tbody>
+<tr><td><code>[intestazione]</code></td><td>una volta, all'inizio del file</td><td>{{ sezioni.intestazione|join:", " }}</td></tr>
+<tr><td><code>[ordine]</code></td><td>all'inizio di ogni ordine</td><td>{{ sezioni.ordine|join:", " }}</td></tr>
+<tr><td><code>[riga]</code> (obbligatoria)</td><td>per ogni riga consegnata</td><td>{{ sezioni.riga|join:", " }}</td></tr>
+<tr><td><code>[fine_ordine]</code></td><td>alla fine di ogni ordine</td><td>{{ sezioni.fine_ordine|join:", " }}</td></tr>
+<tr><td><code>[chiusura]</code></td><td>una volta, alla fine del file</td><td>{{ sezioni.chiusura|join:", " }}</td></tr>
+</tbody></table>
+
+<h2 class="h5 mt-4">Campi</h2>
+<table class="table table-sm bg-white"><thead><tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr></thead><tbody>
+{% for gruppo, campi in campi.items %}{% for nome, c in campi.items %}<tr><td><code>{{ gruppo }}.{{ nome }}</code></td><td>{{ c.tipo }}</td><td>{{ c.descrizione }}</td></tr>{% endfor %}{% endfor %}
+</tbody></table>
+<p class="small text-muted">I numeri senza filtri vengono scritti con il punto e tutti i decimali memorizzati (es. quantità 2.000):
+usa <code>intero</code>, <code>compatto</code> o <code>arrotonda:N</code>, e <code>virgola</code> per la virgola decimale.
+Le date senza filtri sono scritte GG/MM/AAAA.</p>
+
+<h2 class="h5 mt-4">Filtri</h2>
+<table class="table table-sm bg-white"><thead><tr><th>Filtro</th><th>Si applica a</th><th>Cosa fa</th><th>Esempio</th></tr></thead><tbody>
+{% for nome, f in filtri.items %}<tr><td><code>{{ nome }}</code></td><td>{{ f.accetta|join:", " }}</td><td>{{ f.descrizione }}</td><td class="small"><code>{{ f.esempio }}</code></td></tr>{% endfor %}
+</tbody></table>
+<p class="small text-muted">Gli argomenti si separano con la virgola; per usare una virgola, i due punti o la barra verticale dentro un argomento mettilo tra virgolette, es. <code>sostituisci:",",";"</code>.</p>
+</div>
+{% endblock %}

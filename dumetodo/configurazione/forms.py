@@ -18,6 +18,9 @@ def _campo(p: Parametro) -> forms.Field:
             return forms.CharField(**comuni, widget=forms.TextInput(attrs={"inputmode": "decimal"}))
         case Tipo.EMAIL:
             return forms.EmailField(**comuni)
+        case Tipo.TRACCIATO:
+            attrs = {"rows": 14, "class": "font-monospace", "spellcheck": "false", "data-tracciato": p.chiave}
+            return forms.CharField(**comuni, strip=False, widget=forms.Textarea(attrs=attrs))
         case Tipo.LISTA_EMAIL:
             comuni["help_text"] = f"{p.descrizione} Più indirizzi separati da virgola."
             return forms.CharField(**comuni, widget=forms.Textarea(attrs={"rows": 2}))

@@ -34,6 +34,7 @@ class Tipo(StrEnum):
     BOOLEANO = "booleano"
     EMAIL = "email"
     LISTA_EMAIL = "lista_email"
+    TRACCIATO = "tracciato"  # formato di un file esportato, nel linguaggio di dumetodo.tracciati
 
 
 class Gruppo(StrEnum):
@@ -43,6 +44,7 @@ class Gruppo(StrEnum):
     COMUNICAZIONI = "Note e comunicazioni"
     EMAIL = "Indirizzi email"
     TRACCIABILITA = "Tracciabilità"
+    CONSEGNA = "Consegna e file per il gestionale"
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,15 @@ class Parametro:
                 v = str(valore).strip()
                 validate_email(v)
                 return v
+            case Tipo.TRACCIATO:
+                from dumetodo.tracciati.linguaggio import ErroreTracciato, compila
+
+                testo = str(valore).replace("\r\n", "\n")
+                try:
+                    compila(testo)
+                except ErroreTracciato as exc:
+                    raise ValidationError(f"{self.etichetta}: {exc}") from exc
+                return testo
             case Tipo.LISTA_EMAIL:
                 voci = valore if isinstance(valore, list | tuple) else str(valore).replace(";", ",").split(",")
                 indirizzi = []
@@ -138,6 +149,8 @@ class Parametro:
             return "Sì" if valore else "No"
         return str(valore)
 
+
+from dumetodo.tracciati.esempi import READYPRO_BOLLA  # noqa: E402
 
 PARAMETRI: tuple[Parametro, ...] = (
     # --- Produzione -----------------------------------------------------------------
@@ -284,6 +297,17 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Report pianificazione: CC",
         "Destinatari in copia del report di pianificazione.",
         legacy=("EMAIL_REPORT_PRODUZIONE_CC",),
+    ),
+    # --- Consegna --------------------------------------------------------------------
+    Parametro(
+        "consegna.tracciato_bolla",
+        Tipo.TRACCIATO,
+        Gruppo.CONSEGNA,
+        "Tracciato del file bolla",
+        "Formato del file generato alla consegna, da importare nel gestionale. "
+        "Predefinito: ReadyPro (identico a Metodo). Vedi la guida al linguaggio dei tracciati.",
+        default=READYPRO_BOLLA,
+        obbligatorio=True,
     ),
     # --- Tracciabilità ------------------------------------------------------------------
     Parametro(

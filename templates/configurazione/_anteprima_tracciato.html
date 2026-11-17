@@ -1,0 +1,3 @@
+{% if errore %}<div class="alert alert-danger py-1 small">{{ errore }}</div>
+{% else %}<div class="small text-muted mb-1">File <code>{{ file.nome }}</code> — {{ file.contenuto|length }} byte (⏎ = fine riga)</div>
+<pre class="bg-dark text-light p-2 rounded small mb-2">{{ visibile }}</pre>{% endif %}
