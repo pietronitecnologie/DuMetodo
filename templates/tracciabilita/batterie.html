@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load tracciabilita %}
+{% block titolo %}Batterie{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-2 gap-2">
+  <h1 class="h4 me-auto mb-0">Batterie</h1>
+  {% if is_operatore %}<a class="btn btn-sm btn-primary" href="{% url 'tracciabilita:batteria_nuova' %}">Nuova batteria / ricarica</a>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciabilita:work_order' %}">Work order</a>{% endif %}
+</div>
+{% filtri form "codice ordine chiave reparto dal al inserita_dal inserita_al" %}
+<div class="table-responsive">
+<table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Codice</th><th>Ordine</th><th>Inserita</th><th>Data</th><th>Azione</th><th>Reparto</th><th></th></tr></thead>
+  <tbody>
+  {% for t in pagina %}
+  <tr>
+    <td><a href="{{ t.get_absolute_url }}">{{ t.elemento.codice }}</a></td>
+    <td>{% if t.ordine %}<a href="{{ t.ordine.get_absolute_url }}">{{ t.ordine.codice_breve }}</a>{% endif %}</td>
+    <td>{{ t.inserita_il|date:"d/m/Y H:i" }}</td>
+    <td>{{ t.data|date:"d/m/Y" }}</td>
+    <td>{{ t.chiave_leggibile }}</td>
+    <td>{{ t.reparto|default:"" }}</td>
+    <td>{% if is_operatore %}<a class="btn btn-sm btn-outline-primary py-0" href="{% url 'tracciabilita:batteria_nuova' %}?codice={{ t.elemento.codice|urlencode }}">Ricarica</a>{% endif %}</td>
+  </tr>
+  {% empty %}<tr><td colspan="7" class="text-muted text-center">Nessuna batteria.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "tracciabilita/_paginazione.html" %}
+{% endblock %}

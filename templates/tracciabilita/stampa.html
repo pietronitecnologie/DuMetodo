@@ -1,0 +1,18 @@
+{% load static %}<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Etichetta {{ barcode }}</title>
+  <style>
+    body { font-family: sans-serif; margin: 1rem; }
+    .comandi { margin-bottom: 1rem; }
+    @media print { .comandi { display: none; } body { margin: 0; } }
+  </style>
+  <script src="{% static 'vendor/JsBarcode.all.min.js' %}" defer></script>
+  <script src="{% static 'tracciabilita/barcode.js' %}" defer></script>
+</head>
+<body>
+  <div class="comandi"><button type="button" id="stampa-etichetta">Stampa</button></div>
+  <svg class="barcode" jsbarcode-format="CODE128" jsbarcode-value="{{ barcode }}" jsbarcode-height="60" jsbarcode-fontsize="14"></svg>
+</body>
+</html>

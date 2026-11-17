@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "dumetodo.comunicazioni",
     "dumetodo.importazione",
     "dumetodo.consegne",
+    "dumetodo.tracciabilita",
 ]
 
 MIDDLEWARE = [

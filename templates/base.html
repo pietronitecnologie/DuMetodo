@@ -24,6 +24,38 @@
         <li class="nav-item"><a class="nav-link" href="{% url 'importazione:pagina' %}">Importazione</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'ordini:attiva_produzione' %}">Attiva produzione</a></li>
         {% endif %}
+        {% if is_operatore or is_cliente %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Tracciabilità e qualità</a>
+          <ul class="dropdown-menu">
+            {% if is_operatore %}
+            <li><h6 class="dropdown-header">Registra</h6></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:batteria_nuova' %}">Batteria</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:traccia_nuova' %}">Traccia generica</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:qualita_nuovo' %}">Controllo qualità</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:reclamo_nuovo' %}">Reclamo</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:display_nuovo' %}">Test display</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:file_carica' %}">Foto per ordine</a></li>
+            <li><hr class="dropdown-divider"></li>
+            {% endif %}
+            <li><h6 class="dropdown-header">Consulta</h6></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:batterie' %}">Batterie</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:cavi' %}">Cavi</a></li>
+            {% if is_operatore %}
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:tracce' %}">Tutte le tracce</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:work_order' %}">Work order batterie</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:file_lista' %}">Foto e file</a></li>
+            {% endif %}
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:qualita' %}">Controlli qualità</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:reclami' %}">Reclami</a></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:display' %}">Test display</a></li>
+            {% if is_amministratore %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'tracciabilita:postazioni' %}">Postazioni e token</a></li>
+            {% endif %}
+          </ul>
+        </li>
+        {% endif %}
         {% if is_amministratore %}
         <li class="nav-item"><a class="nav-link" href="{% url 'configurazione:pagina' %}">Configurazione</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Amministrazione</a></li>

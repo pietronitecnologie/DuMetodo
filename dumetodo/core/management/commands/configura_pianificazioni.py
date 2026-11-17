@@ -10,6 +10,7 @@ from django_celery_beat.models import IntervalSchedule, PeriodicTask
 LAVORI = [
     ("Lettura casella ordini", "dumetodo.importazione.tasks.leggi_casella_ordini", 30),
     ("Ritenta email in coda", "dumetodo.comunicazioni.tasks.ritenta_email_in_coda", 5),
+    ("Work order batterie", "dumetodo.tracciabilita.tasks.genera_work_order_batterie", 24 * 60),
 ]
 
 

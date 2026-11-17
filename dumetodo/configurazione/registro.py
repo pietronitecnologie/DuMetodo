@@ -361,6 +361,60 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Prefisso dei codici generati per i cavi.",
         legacy=("ITEM_CODE_CAVI",),
     ),
+    # --- Tracciabilità e qualità --------------------------------------------------------
+    Parametro(
+        "tracciabilita.prefisso_codice_batterie",
+        Tipo.TESTO,
+        Gruppo.TRACCIABILITA,
+        "Prefisso codice batterie",
+        "Prefisso dei codici generati per le batterie (seguito da 6 caratteri esadecimali).",
+        default="BT",
+        obbligatorio=True,
+    ),
+    Parametro(
+        "tracciabilita.reparto_lotti",
+        Tipo.TESTO,
+        Gruppo.TRACCIABILITA,
+        "Reparto di lotto e busta",
+        "Codice del reparto registrato sulle tracce lotto/busta inserite dalla pagina dell'ordine "
+        "(in Metodo: GK01-PLS, Pulsanti). Se il reparto non esiste la traccia resta senza reparto.",
+        default="GK01-PLS",
+    ),
+    Parametro(
+        "tracciabilita.giorni_ricarica_batterie",
+        Tipo.INTERO,
+        Gruppo.TRACCIABILITA,
+        "Giorni massimi senza ricarica",
+        "Una batteria senza eventi da più giorni di così riceve un work order di ricarica.",
+        default=115,
+        minimo=1,
+    ),
+    Parametro(
+        "tracciabilita.giorni_liste",
+        Tipo.INTERO,
+        Gruppo.TRACCIABILITA,
+        "Giorni mostrati di default nelle liste",
+        "Liste tracce e cavi: senza filtri mostrano gli eventi degli ultimi N giorni (oggi compreso).",
+        default=2,
+        minimo=0,
+    ),
+    Parametro(
+        "tracciabilita.api_consenti_get",
+        Tipo.BOOLEANO,
+        Gruppo.TRACCIABILITA,
+        "API postazioni: accetta GET",
+        "Solo per banchi che non sanno fare POST. Il token resta obbligatorio.",
+        default=False,
+    ),
+    Parametro(
+        "tracciabilita.dimensione_massima_file_mb",
+        Tipo.INTERO,
+        Gruppo.TRACCIABILITA,
+        "Dimensione massima foto/file (MB)",
+        "Foto e documenti allegati agli ordini e ai reclami.",
+        default=10,
+        minimo=1,
+    ),
 )
 
 REGISTRO: dict[str, Parametro] = {p.chiave: p for p in PARAMETRI}
