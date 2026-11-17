@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import email
 import email.policy
 import email.utils
@@ -20,6 +21,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 from django.utils import timezone
 
@@ -68,18 +70,75 @@ def _lock_esclusivo() -> Iterator[bool]:
                 cur.execute("SELECT pg_advisory_unlock(%s)", [_LOCK_ID])
 
 
+def parametri_casella(modulo: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Dati della casella ordini: quelli di Configurazione se il server è impostato, altrimenti il file .env.
+
+    ``modulo``: valori non ancora salvati (pulsante "Prova connessione"); password vuota = quella salvata.
+    """
+    m = modulo or {}
+
+    def valore(chiave: str) -> Any:
+        if f"casella.{chiave}" in m or (chiave == "ssl" and modulo is not None):
+            p = config.REGISTRO[f"casella.{chiave}"]
+            try:
+                return p.converti(m.get(f"casella.{chiave}"))
+            except ValidationError:
+                return config.leggi(f"casella.{chiave}")
+        return config.leggi(f"casella.{chiave}")
+
+    server = (valore("server") or "").strip()
+    if not server:
+        return {**settings.ORDINI_IMAP, "MITTENTI": config.leggi("casella.mittenti_ammessi"), "ORIGINE": ".env"}
+    return {
+        "HOST": server,
+        "PORT": valore("porta") or 993,
+        "SSL": bool(valore("ssl")),
+        "USER": (valore("utente") or "").strip(),
+        "PASSWORD": (m.get("casella.password") or "") or config.leggi("casella.password") or "",
+        "FOLDER": (valore("cartella") or "INBOX").strip(),
+        "MITTENTI": valore("mittenti_ammessi") or [],
+        "ORIGINE": "Configurazione",
+    }
+
+
 def casella_configurata() -> bool:
-    c = settings.ORDINI_IMAP
+    c = parametri_casella()
     return bool(c["HOST"] and c["USER"] and c["PASSWORD"])
 
 
-def _client() -> Any:
+def _client(c: dict[str, Any] | None = None) -> Any:
     from imapclient import IMAPClient
 
-    c = settings.ORDINI_IMAP
-    client = IMAPClient(c["HOST"], port=c["PORT"], ssl=c["SSL"], timeout=60)
+    c = c or parametri_casella()
+    client = IMAPClient(c["HOST"], port=c["PORT"], ssl=c["SSL"], timeout=30)
     client.login(c["USER"], c["PASSWORD"])
     return client
+
+
+@dataclass
+class EsitoProva:
+    ok: bool
+    messaggio: str
+
+
+def prova_connessione(c: dict[str, Any], *, client_factory: Any = None) -> EsitoProva:
+    """Accede alla casella e apre la cartella, senza leggere né modificare i messaggi."""
+    mancanti = [n for n, k in (("server", "HOST"), ("utente", "USER"), ("password", "PASSWORD")) if not c.get(k)]
+    if mancanti:
+        return EsitoProva(False, f"Mancano: {', '.join(mancanti)}.")
+    try:
+        client = (client_factory or _client)(c)
+    except Exception as exc:
+        return EsitoProva(False, f"Accesso non riuscito a {c['HOST']}:{c['PORT']}: {type(exc).__name__}: {exc}"[:500])
+    try:
+        info = client.select_folder(c["FOLDER"], readonly=True)
+        n = int(info.get(b"EXISTS", 0))
+        return EsitoProva(True, f"Connessione riuscita: cartella {c['FOLDER']} con {n} messaggi.")
+    except Exception as exc:
+        return EsitoProva(False, f"Accesso riuscito, ma la cartella {c['FOLDER']!r} non si apre: {exc}"[:500])
+    finally:
+        with contextlib.suppress(Exception):  # chiusura best effort
+            client.logout()
 
 
 def leggi_casella(*, client_factory: Any = None) -> EsitoLetturaCasella:
@@ -94,7 +153,7 @@ def leggi_casella(*, client_factory: Any = None) -> EsitoLetturaCasella:
 
 
 def _leggi(client_factory: Any) -> EsitoLetturaCasella:
-    c = settings.ORDINI_IMAP
+    c = parametri_casella()
     nome_casella = f"{c['USER']}@{c['HOST']}/{c['FOLDER']}"
     stato, _ = StatoCasella.objects.get_or_create(casella=nome_casella)
     esito = EsitoLetturaCasella(True)
@@ -123,7 +182,7 @@ def _leggi(client_factory: Any) -> EsitoLetturaCasella:
             else:
                 corpo = client.fetch([uid], ["BODY.PEEK[]"])[uid][b"BODY[]"]
                 esito.file += _elabora_messaggio(
-                    nome_casella, uidvalidity, uid, corpo, dati.get(b"INTERNALDATE"), max_byte
+                    nome_casella, uidvalidity, uid, corpo, dati.get(b"INTERNALDATE"), max_byte, c["MITTENTI"]
                 )
             esito.messaggi += 1
             stato.ultimo_uid = uid
@@ -161,8 +220,20 @@ def _registra(
     )
 
 
-def _elabora_messaggio(casella: str, uidvalidity: int, uid: int, raw: bytes, ricevuto: Any, max_byte: int) -> int:
+def _mittente(msg: Any) -> str:
+    return email.utils.parseaddr(str(msg.get("From", "")))[1].strip().lower()
+
+
+def _elabora_messaggio(
+    casella: str, uidvalidity: int, uid: int, raw: bytes, ricevuto: Any, max_byte: int, mittenti: Any = ()
+) -> int:
     msg = email.message_from_bytes(raw, policy=email.policy.default)
+    ammessi = {m.strip().lower() for m in (mittenti or [])}
+    if ammessi and _mittente(msg) not in ammessi:
+        _registra(
+            casella, uidvalidity, uid, msg, ricevuto, EsitoMessaggio.SCARTATO, f"mittente non ammesso: {_mittente(msg)}"
+        )
+        return 0
     message_id = str(msg.get("Message-ID", "")).strip()
     if message_id and MessaggioEmail.objects.filter(message_id=message_id, esito=EsitoMessaggio.ELABORATO).exists():
         _registra(casella, uidvalidity, uid, msg, ricevuto, EsitoMessaggio.DUPLICATO)

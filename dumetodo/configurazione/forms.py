@@ -21,6 +21,12 @@ def _campo(p: Parametro) -> forms.Field:
         case Tipo.TRACCIATO | Tipo.MENU_CLIENT:
             attrs = {"rows": 14, "class": "font-monospace", "spellcheck": "false", "data-tracciato": p.chiave}
             return forms.CharField(**comuni, strip=False, widget=forms.Textarea(attrs=attrs))
+        case Tipo.SEGRETO:
+            return forms.CharField(
+                **comuni,
+                strip=False,
+                widget=forms.PasswordInput(render_value=False, attrs={"autocomplete": "new-password"}),
+            )
         case Tipo.LISTA_EMAIL:
             comuni["help_text"] = f"{p.descrizione} Più indirizzi separati da virgola."
             return forms.CharField(**comuni, widget=forms.Textarea(attrs={"rows": 2}))
@@ -37,10 +43,23 @@ class ParametriGruppoForm(forms.Form):
         initial = {
             p.chiave: p.come_testo(servizi.leggi(p.chiave)) if p.tipo != Tipo.BOOLEANO else servizi.leggi(p.chiave)
             for p in self.parametri
+            if p.tipo != Tipo.SEGRETO  # le password non tornano mai nella pagina
         }
         super().__init__(*args, initial=initial, prefix=gruppo.name.lower(), **kwargs)
+        self.segreti_impostati: set[str] = set()
         for p in self.parametri:
             self.fields[p.chiave] = _campo(p)
+            if p.tipo == Tipo.SEGRETO:
+                if servizi.segreto_impostato(p.chiave):
+                    self.segreti_impostati.add(p.chiave)
+                    self.fields[p.chiave].widget.attrs["placeholder"] = (
+                        "•••••••• impostata: lascia vuoto per non cambiarla"
+                    )
+                    self.fields[f"{p.chiave}__cancella"] = forms.BooleanField(
+                        label=f"Cancella {p.etichetta.lower()}", required=False
+                    )
+                else:
+                    self.fields[p.chiave].widget.attrs["placeholder"] = "non impostata"
         self.predefiniti = {p.chiave: p.come_testo(p.valore_default()) for p in self.parametri}
 
     def clean(self) -> dict[str, Any]:

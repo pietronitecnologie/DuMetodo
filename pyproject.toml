@@ -16,6 +16,7 @@ dependencies = [
     "gunicorn>=23.0",
     "whitenoise>=6.7",
     "nh3>=0.2",
+    "cryptography>=43",
 ]
 
 [project.optional-dependencies]

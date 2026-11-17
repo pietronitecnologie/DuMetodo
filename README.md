@@ -55,7 +55,8 @@ La tabella chiave/valore `Configuration` di Metodo è stata divisa in quattro pa
 
 | Cosa | Dove sta ora | Esempi |
 |---|---|---|
-| Credenziali e infrastruttura | variabili d'ambiente | password SMTP e IMAP, database |
+| Credenziali e infrastruttura | variabili d'ambiente | password SMTP, database |
+| Casella ordini (IMAP) | Configurazione → Casella ordini | server, utente, password **cifrata** (mai mostrata né storicizzata), mittenti ammessi, pulsante *Prova connessione* |
 | Parametri di business | registro tipizzato `configurazione/registro.py`, modificabile dalla pagina **Configurazione** (solo amministratori), con validazione e storico | resa oraria, indirizzi email, serie Fast/Express |
 | Capacità dei reparti | campo `Reparto.soglia_ore_settimanali` | ex `SOGLIA_<AREA>` |
 | Cursori tecnici | tabelle dedicate | ex `ID_EMAIL` → `StatoCasella` |

@@ -14,8 +14,9 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from .models import ValoreParametro
-from .registro import REGISTRO, Parametro
+from . import segreti
+from .models import SegretoParametro, ValoreParametro
+from .registro import REGISTRO, Parametro, Tipo
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,10 @@ def invalida_cache() -> None:
 def leggi(chiave: str) -> Any:
     """Valore tipizzato del parametro (o il default). Non solleva errori se manca."""
     p = _parametro(chiave)
+    if p.tipo == Tipo.SEGRETO:
+        # Mai in cache (che può stare su Redis): si legge e decifra al momento.
+        s = SegretoParametro.objects.filter(chiave=chiave).first()
+        return segreti.decifra(s.cifrato) if s else None
     grezzi = _valori_grezzi()
     if chiave in grezzi:
         try:
@@ -74,10 +79,33 @@ def richiedi(chiave: str) -> Any:
     return valore
 
 
+def segreto_impostato(chiave: str) -> bool:
+    return SegretoParametro.objects.filter(chiave=chiave).exists()
+
+
+def _salva_segreto(chiave: str, valore: str | None, utente: Any) -> None:
+    """Vuoto = lascia la password com'è (il campo non viene mai precompilato)."""
+    if valore:
+        SegretoParametro.objects.update_or_create(
+            chiave=chiave, defaults={"cifrato": segreti.cifra(valore), "aggiornato_da": utente}
+        )
+
+
+@transaction.atomic
+def cancella_segreto(chiave: str, utente: Any = None) -> None:
+    if _parametro(chiave).tipo != Tipo.SEGRETO:
+        raise ValueError(f"{chiave} non è un parametro segreto")
+    SegretoParametro.objects.filter(chiave=chiave).delete()
+    logger.info("Parametro segreto %s cancellato da %s", chiave, utente)
+
+
 @transaction.atomic
 def scrivi(chiave: str, valore: Any, utente: Any = None) -> Any:
     p = _parametro(chiave)
     convertito = p.converti(valore)
+    if p.tipo == Tipo.SEGRETO:
+        _salva_segreto(chiave, convertito, utente)
+        return convertito
     ValoreParametro.objects.update_or_create(
         chiave=chiave, defaults={"valore": p.a_json(convertito), "aggiornato_da": utente}
     )
@@ -98,6 +126,9 @@ def scrivi_molti(valori: Mapping[str, Any], utente: Any = None) -> None:
     if errori:
         raise ValidationError(errori)
     for chiave, valore in convertiti.items():
+        if _parametro(chiave).tipo == Tipo.SEGRETO:
+            _salva_segreto(chiave, valore, utente)
+            continue
         attuale = ValoreParametro.objects.filter(chiave=chiave).first()
         nuovo = _parametro(chiave).a_json(valore)
         if attuale is not None and attuale.valore == nuovo:

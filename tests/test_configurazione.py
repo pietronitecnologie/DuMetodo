@@ -112,3 +112,99 @@ def test_mappatura_gruppi_metodo_coerente_con_la_migrazione():
 
     migrazione = importlib.import_module("dumetodo.core.migrations.0002_rinomina_gruppi_metodo")
     assert GRUPPI_METODO == migrazione.RINOMINE
+
+
+# =========================================================================== casella ordini (IMAP)
+@pytest.mark.django_db
+def test_password_casella_cifrata_mai_mostrata_ne_storicizzata(client, amministratore):
+    from dumetodo.configurazione.models import SegretoParametro, ValoreParametro
+
+    client.force_login(amministratore)
+    dati = {
+        "gruppo": "CASELLA",
+        "casella-casella.server": "imap.esempio.it",
+        "casella-casella.porta": "993",
+        "casella-casella.ssl": "on",
+        "casella-casella.utente": "ordini@esempio.it",
+        "casella-casella.password": "Segreta-123",
+        "casella-casella.cartella": "INBOX",
+        "casella-casella.mittenti_ammessi": "acquisti@cliente.it",
+    }
+    assert client.post("/configurazione/", dati).status_code == 302
+    s = SegretoParametro.objects.get(chiave="casella.password")
+    assert "Segreta-123" not in s.cifrato and config.leggi("casella.password") == "Segreta-123"
+    assert not ValoreParametro.objects.filter(chiave="casella.password").exists()
+    pagina = client.get("/configurazione/").content.decode()
+    assert "Segreta-123" not in pagina and "impostata" in pagina
+    # password vuota = invariata; "cancella" la toglie
+    client.post("/configurazione/", {**dati, "casella-casella.password": ""})
+    assert config.leggi("casella.password") == "Segreta-123"
+    client.post(
+        "/configurazione/", {**dati, "casella-casella.password": "", "casella-casella.password__cancella": "on"}
+    )
+    assert config.leggi("casella.password") is None
+
+
+@pytest.mark.django_db
+def test_parametri_casella_da_configurazione_o_env(settings):
+    from dumetodo.importazione import posta
+
+    settings.ORDINI_IMAP = {"HOST": "env.it", "PORT": 993, "USER": "u", "PASSWORD": "p", "FOLDER": "INBOX", "SSL": True}
+    assert posta.parametri_casella()["HOST"] == "env.it"  # nessun server in Configurazione: vale il .env
+    config.scrivi("casella.server", "imap.app.it")
+    config.scrivi("casella.utente", "ordini@app.it")
+    config.scrivi("casella.password", "pw")
+    config.invalida_cache()  # nei test la transazione non arriva al commit
+    c = posta.parametri_casella()
+    assert (c["HOST"], c["USER"], c["PASSWORD"], c["ORIGINE"]) == (
+        "imap.app.it",
+        "ordini@app.it",
+        "pw",
+        "Configurazione",
+    )
+    # valori del form non salvati: password vuota = quella salvata
+    c = posta.parametri_casella(modulo={"casella.server": "altro.it", "casella.password": ""})
+    assert c["HOST"] == "altro.it" and c["PASSWORD"] == "pw"
+
+
+@pytest.mark.django_db
+def test_prova_connessione(client, amministratore, operatore):
+    from dumetodo.importazione import posta
+
+    class Finto:
+        def __init__(self, c):
+            if c["PASSWORD"] != "giusta":
+                raise RuntimeError("authentication failed")
+
+        def select_folder(self, cartella, readonly):
+            return {b"EXISTS": 7}
+
+        def logout(self):
+            pass
+
+    base = {"HOST": "h", "PORT": 993, "SSL": True, "USER": "u", "FOLDER": "INBOX"}
+    assert posta.prova_connessione({**base, "PASSWORD": "giusta"}, client_factory=Finto).ok
+    esito = posta.prova_connessione({**base, "PASSWORD": "no"}, client_factory=Finto)
+    assert not esito.ok and "authentication failed" in esito.messaggio
+    assert "Mancano: password" in posta.prova_connessione({**base, "PASSWORD": ""}).messaggio
+    client.force_login(operatore)
+    assert client.post("/configurazione/casella/prova/").status_code == 403
+    client.force_login(amministratore)
+    r = client.post("/configurazione/casella/prova/", {"casella-casella.server": "x"})
+    assert r.status_code == 200 and "Mancano" in r.content.decode()
+
+
+def test_mittenti_non_ammessi_scartati(db):
+    from email.message import EmailMessage
+
+    from dumetodo.importazione import posta
+    from dumetodo.importazione.models import EsitoMessaggio, MessaggioEmail
+
+    m = EmailMessage()
+    m["From"] = "Sconosciuto <spam@altro.it>"
+    m["Message-ID"] = "<x1@altro.it>"
+    m.set_content("ciao")
+    n = posta._elabora_messaggio("c", 1, 1, m.as_bytes(), None, 10**6, ["acquisti@cliente.it"])
+    assert n == 0
+    r = MessaggioEmail.objects.get()
+    assert r.esito == EsitoMessaggio.SCARTATO and "mittente non ammesso" in r.dettaglio

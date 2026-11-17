@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
 from dumetodo.core.permessi import F, richiede_permesso
 
@@ -21,6 +21,9 @@ def pagina(request: HttpRequest) -> HttpResponse:
             form = ParametriGruppoForm(gruppo, request.POST)
             if form.is_valid():
                 servizi.scrivi_molti({p.chiave: form.cleaned_data[p.chiave] for p in form.parametri}, request.user)
+                for chiave in form.segreti_impostati:
+                    if form.cleaned_data.get(f"{chiave}__cancella"):
+                        servizi.cancella_segreto(chiave, request.user)
                 messages.success(request, f"Parametri '{gruppo.value}' salvati.")
                 return redirect("configurazione:pagina")
             messages.error(request, "Correggi gli errori evidenziati: nessun valore è stato salvato.")
@@ -69,3 +72,15 @@ def guida_tracciati(request: HttpRequest) -> HttpResponse:
             "esempio": esempi.READYPRO_BOLLA,
         },
     )
+
+
+@require_POST
+@richiede_permesso(F.CONFIGURAZIONE)
+def prova_casella(request: HttpRequest) -> HttpResponse:
+    """Prova la casella ordini con i valori scritti nel form (password vuota = quella salvata). Non salva nulla."""
+    from dumetodo.importazione import posta
+
+    prefisso = Gruppo.CASELLA.name.lower()
+    dati = {k.removeprefix(f"{prefisso}-"): v for k, v in request.POST.items() if k.startswith(f"{prefisso}-")}
+    esito = posta.prova_connessione(posta.parametri_casella(modulo=dati))
+    return render(request, "configurazione/_esito_prova.html", {"esito": esito})
