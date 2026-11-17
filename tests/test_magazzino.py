@@ -584,6 +584,35 @@ def test_accesso_pagine(client, cliente, operatore, url):
     assert client.get(url).status_code == 200
 
 
+def test_pagine_amministratore_con_dati(client, amministratore, pulsanti):
+    r, _ = servizi.richiedi_materiale(amministratore, pulsanti, "ABC123", urgente=True)
+    servizi.importa_file_ddt(amministratore, "d.xml", XML.encode("cp1252"))
+    d = servizi.crea_distinta(amministratore, "ART-1")
+    servizi.aggiungi_componente_distinta(amministratore, d.pk, "ABC123", "", "2")
+    servizi.registra_conteggio(amministratore, "ABC123", "", "5")
+    ddt = DDTIngresso.objects.get(numero="5")
+    client.force_login(amministratore)
+    for url in (
+        "/magazzino/richieste/",
+        "/magazzino/richieste/reparto/GK01-PLS/",
+        f"/magazzino/distinte/{d.pk}/",
+        f"/magazzino/ddt/{ddt.pk}/",
+        "/magazzino/inventario/?vista=storico",
+        "/magazzino/componenti/",
+        "/magazzino/articoli/",
+        "/magazzino/distinte/esporta/",
+    ):
+        assert client.get(url).status_code == 200, url
+    pagina = client.get(f"/magazzino/ddt/{ddt.pk}/").content.decode()
+    assert "Segna ricevuto" in pagina  # richiesta aperta per un codice arrivato con il DDT
+    assert "Mail Sollecito" in client.get("/magazzino/richieste/reparto/GK01-PLS/").content.decode()
+    r = client.get("/magazzino/richieste/reparto/GK01-PLS/email/?tipo=MANCANTE&tutte=1")
+    assert r.status_code == 200 and "ABC123 - Materiale in esaurimento." in r.content.decode()
+    riga = d.componenti.get()
+    client.post(f"/magazzino/distinte/componenti/{riga.pk}/sposta/", {"direzione": "giu"})
+    assert client.post(f"/magazzino/ddt/materiali/{ddt.materiali.first().pk}/elimina/").status_code == 302
+
+
 def test_menu_magazzino_solo_per_il_fornitore(client, cliente, operatore):
     client.force_login(operatore)
     assert b"Richiesta materiali" in client.get("/ordini/").content
@@ -596,3 +625,100 @@ def test_parametri_magazzino_registrati():
 
     assert REGISTRO["magazzino.reparti_richieste"].gruppo == Gruppo.MAGAZZINO
     assert REGISTRO["magazzino.dimensione_massima_file_ddt_mb"].default == 5
+
+
+# ----------------------------------------------------------------------------------------- migrazione da Metodo
+SCHEMA_MAGAZZINO = """
+CREATE TABLE "Prod_codicecomponente" (id int PRIMARY KEY, codice varchar, variante varchar, descrizione text,
+  um varchar, prezzo_medio float, fornitore varchar, note text, attivo bool, data_creazione timestamptz,
+  data_modifica timestamptz);
+CREATE TABLE "Prod_inventario" (id int PRIMARY KEY, componente_id int, articolo varchar, variante varchar, qta float,
+  data timestamptz);
+CREATE TABLE "Prod_richiestemateriali" (id int PRIMARY KEY, codice varchar, variante varchar, data_richiesta date,
+  data_ricezione date, numero_richieste int, mail_inviata_1 bool, mail_inviata_2 bool, mail_inviata_3 bool,
+  materiale_ricevuto bool, reparto_id int, materiale_urgente bool);
+CREATE TABLE "Prod_ddtingresso" (id int PRIMARY KEY, numero_ddt varchar, data_ddt date, fornitore varchar,
+  data_elaborazione timestamptz, foto_originale varchar, elaborato bool, utente_id int);
+CREATE TABLE "Prod_materialeingresso" (id int PRIMARY KEY, ddt_id int, codice varchar, variante varchar,
+  descrizione varchar, quantita float, unita_misura varchar, prezzo_unitario numeric, data_ingresso date,
+  verificato bool, note text);
+CREATE TABLE "Prod_distintabase" (id int PRIMARY KEY, codice_padre varchar, variante varchar, descrizione text,
+  data_creazione timestamptz, data_modifica timestamptz, utente_creazione_id int, utente_modifica_id int,
+  attiva bool, note text);
+CREATE TABLE "Prod_componentedistinta" (id int PRIMARY KEY, distinta_id int, componente_id int,
+  codice_componente varchar, variante varchar, quantita float, um varchar, posizione int, note text);
+"""
+
+DATI_MAGAZZINO = """
+INSERT INTO "Prod_codicecomponente" VALUES
+  (1,'VITE',null,'Vite M3','EA',0.1,'ACME','',true,'2024-01-01',null),
+  (2,'vite ',null,'','EA',null,'','',true,'2024-01-02',null),
+  (3,'CAVO','R','Cavo rosso','M',null,'','',false,'2024-01-03',null);
+INSERT INTO "Prod_inventario" VALUES (1,1,'VITE',null,10.5,'2024-02-01 10:00+01'),
+  (2,null,'NUOVO.X',null,3,'2024-02-02 10:00+01'),(3,2,'vite',null,-1,'2024-02-03 10:00+01');
+INSERT INTO "Prod_richiestemateriali" VALUES
+  (1,'VITE','','2024-03-01',null,null,true,false,false,false,1,false),
+  (2,'vite',null,'2024-03-05',null,2,false,false,true,false,1,true),
+  (3,'CAVO','R','2024-03-01',null,1,false,false,false,true,1,false);
+INSERT INTO "Prod_ddtingresso" VALUES (1,'33','2024-01-09','FORNITORE',now(),'',true,1),
+  (2,'33','2024-01-09','FORNITORE',now(),'',true,1),(3,null,null,null,'2024-01-10 08:00+01','',true,1);
+INSERT INTO "Prod_materialeingresso" VALUES (1,1,'VITE',null,'Vite',10,'NR',0.10,'2024-01-09',false,null),
+  (2,2,'VITE',null,'Vite',5,'NR',null,'2024-01-09',true,null),(3,3,'DADO',null,'Dado',0,'EA',null,null,true,null);
+INSERT INTO "Prod_distintabase" VALUES (1,'ART-A',null,'Vecchia','2024-01-01','2024-01-01',1,1,true,''),
+  (2,'ART-A','','Nuova','2024-02-01','2024-02-01',1,1,true,''),
+  (3,'ART-Z',null,'Eliminata','2024-01-01','2024-01-05',1,1,false,'');
+INSERT INTO "Prod_componentedistinta" VALUES (1,2,1,'VITE',null,2,'EA',1,''),(2,2,null,'VITE',null,3,'EA',2,''),
+  (3,2,null,'CAVO','R',0.5,'M',3,''),(4,3,null,'DADO',null,1,'EA',1,'');
+"""
+
+
+@pytest.fixture
+def metodo_magazzino_db():
+    import psycopg
+
+    from .test_migrazione import BASE, DATI, SCHEMA
+
+    nome = "metodo_legacy_magazzino_test"  # nome proprio: non interferisce con test_migrazione
+    with psycopg.connect(f"{BASE}/postgres", autocommit=True) as c:
+        c.execute(f"DROP DATABASE IF EXISTS {nome} WITH (FORCE)")
+        c.execute(f"CREATE DATABASE {nome}")
+    with psycopg.connect(f"{BASE}/{nome}", autocommit=True) as c:
+        c.execute(SCHEMA + SCHEMA_MAGAZZINO)
+        c.execute(DATI + DATI_MAGAZZINO)
+    yield f"{BASE}/{nome}"
+    with psycopg.connect(f"{BASE}/postgres", autocommit=True) as c:
+        c.execute(f"DROP DATABASE IF EXISTS {nome} WITH (FORCE)")
+
+
+@pytest.mark.django_db
+def test_migrazione_magazzino(metodo_magazzino_db):
+    from django.core.management import call_command
+
+    out = io.StringIO()
+    call_command("importa_da_metodo", "--db", metodo_magazzino_db, "--applica", stdout=out)
+    assert "Migrazione completata" in out.getvalue() and "componenti duplicati" in out.getvalue()
+    # (VITE, NULL) doppio in Metodo -> un solo componente, con la descrizione.
+    vite = Componente.objects.get(codice="VITE", variante="")
+    assert vite.descrizione == "Vite M3" and vite.creato_il.date() == dt.date(2024, 1, 1)
+    assert not Componente.objects.get(codice="CAVO", variante="R").attivo
+    assert Componente.objects.filter(codice="NUOVO.X").exists()  # creato dal campo legacy
+    assert sorted(ConteggioInventario.objects.values_list("qta", flat=True)) == [3, Decimal("10.5")]
+    # Richieste aperte doppie fuse (come elimina_duplicati_richieste); la ricevuta ha la sua data.
+    aperta = RichiestaMateriale.objects.get(ricevuta=False)
+    assert (aperta.numero_richieste, aperta.urgente, aperta.mail_mancante, aperta.mail_sollecito) == (
+        3,
+        True,
+        True,
+        True,
+    )
+    assert RichiestaMateriale.objects.get(ricevuta=True).ricevuta_il is not None
+    # DDT doppi uniti; numero vuoto -> METODO-<id>; quantità zero scartata.
+    ddt = DDTIngresso.objects.get(numero="33")
+    assert ddt.materiali.count() == 2 and ddt.origine == "MET"
+    assert DDTIngresso.objects.filter(numero="METODO-3").exists()
+    # Distinte: resta attiva la più recente; componenti ripetuti sommati.
+    attiva = DistintaBase.objects.attive().get(articolo__codice="ART-A")
+    assert attiva.descrizione == "Nuova"
+    assert DistintaBase.objects.filter(articolo__codice="ART-A", eliminata_il__isnull=False).count() == 1
+    assert dict(attiva.componenti.values_list("componente__codice", "quantita")) == {"VITE": 5, "CAVO": Decimal("0.5")}
+    assert DistintaBase.objects.get(articolo__codice="ART-Z").eliminata_il is not None
