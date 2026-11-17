@@ -7,9 +7,8 @@
   <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'dumetodo.css' %}">
   <script>
-    // Prima del disegno: niente "salto" della barra laterale e della modalità reparto.
+    // Prima del disegno: niente "salto" della modalità reparto.
     try {
-      if (localStorage.getItem("dm-barra") === "compatta") document.documentElement.classList.add("dm-barra-compatta");
       if (localStorage.getItem("dm-reparto") === "1") document.documentElement.classList.add("dm-modo-reparto");
     } catch (e) {}
   </script>
@@ -21,58 +20,46 @@
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' class="{% block classe_body %}{% if user.is_authenticated %}dm-app{% else %}dm-pubblica{% endif %}{% endblock %}">
 {% include "_icone.html" %}
 {% if user.is_authenticated %}
-<aside class="dm-barra" id="dm-barra" aria-label="Menu principale">
-  <div class="dm-barra-testa">
-    <a class="dm-marchio" href="{% url 'home' %}" title="DuMetodo">
-      <span class="dm-marchio-logo">D</span>
-      <span class="dm-marchio-testo"><b>DuMetodo</b><small>{{ nome_fornitore }}</small></span>
-    </a>
-  </div>
-  <nav class="dm-nav">
+<header class="dm-testata">
+  <a class="dm-marchio" href="{% url 'home' %}" title="DuMetodo">
+    <span class="dm-marchio-logo">D</span>
+    <span class="dm-marchio-testo"><b>DuMetodo</b><small>{{ nome_fornitore }}</small></span>
+  </a>
+  <button type="button" class="dm-pulsante-icona dm-solo-piccolo" data-dm-apri-menu aria-controls="dm-menu" title="Menu">
+    <svg class="dm-icona"><use href="#i-menu"/></svg></button>
+  <nav class="dm-menu" id="dm-menu" aria-label="Menu principale">
     {% for s in menu.sezioni %}
-    <div class="dm-sezione{% if s.aperta %} aperta{% endif %}">
-      {% if s.voci|length == 1 %}
-      <a class="dm-sezione-titolo{% if s.voci.0.attiva %} attiva{% endif %}" href="{{ s.voci.0.url }}" title="{{ s.titolo }}">
-        <svg class="dm-icona"><use href="#i-{{ s.icona }}"/></svg><span>{{ s.titolo }}</span></a>
-      {% else %}
-      <button type="button" class="dm-sezione-titolo{% if s.aperta %} attiva{% endif %}" data-dm-sezione title="{{ s.titolo }}" aria-expanded="{{ s.aperta|yesno:'true,false' }}">
+    {% if s.voci|length == 1 %}
+    <a class="dm-menu-voce{% if s.voci.0.attiva %} attiva{% endif %}" href="{{ s.voci.0.url }}" title="{{ s.titolo }}">
+      <svg class="dm-icona"><use href="#i-{{ s.icona }}"/></svg><span>{{ s.titolo }}</span></a>
+    {% else %}
+    <div class="dropdown">
+      <button type="button" class="dm-menu-voce{% if s.aperta %} attiva{% endif %}" data-bs-toggle="dropdown" aria-expanded="false" title="{{ s.titolo }}">
         <svg class="dm-icona"><use href="#i-{{ s.icona }}"/></svg><span>{{ s.titolo }}</span><i class="dm-freccia"></i></button>
-      <div class="dm-voci">
-        {% for v in s.voci %}<a href="{{ v.url }}" class="dm-voce{% if v.attiva %} attiva{% endif %}"{% if v.attiva %} aria-current="page"{% endif %}>{{ v.etichetta }}</a>{% endfor %}
+      <div class="dropdown-menu shadow">
+        {% for v in s.voci %}<a href="{{ v.url }}" class="dropdown-item{% if v.attiva %} active{% endif %}"{% if v.attiva %} aria-current="page"{% endif %}>{{ v.etichetta }}</a>{% endfor %}
       </div>
-      {% endif %}
     </div>
+    {% endif %}
     {% endfor %}
   </nav>
-  <div class="dm-barra-piede">
-    <button type="button" class="dm-pulsante-barra" data-dm-comprimi title="Comprimi / espandi il menu">
-      <svg class="dm-icona"><use href="#i-comprimi"/></svg><span>Comprimi menu</span></button>
-  </div>
-</aside>
-<div class="dm-velo" data-dm-chiudi-barra></div>
-
-<header class="dm-testata">
-  <button type="button" class="dm-pulsante-icona d-lg-none" data-dm-apri-barra aria-controls="dm-barra" title="Menu">
-    <svg class="dm-icona"><use href="#i-menu"/></svg></button>
-  <div class="dm-percorso">
-    {% if menu.attiva %}<span class="dm-percorso-sezione">{{ menu.attiva.sezione }}</span><span class="dm-percorso-sep">/</span><span>{{ menu.attiva.etichetta }}</span>{% endif %}
-  </div>
-  {% if perms.core.ordini_vedere %}
-  <form class="dm-vai" method="get" action="{% url 'ordini:vai' %}" data-dm-invia-alla-scelta role="search">
-    {{ vai_ordine.ordine }}
-  </form>
-  {% endif %}
-  <button type="button" class="dm-pulsante-icona" data-dm-reparto title="Modalità reparto: testi e pulsanti più grandi">
-    <svg class="dm-icona"><use href="#i-reparto"/></svg></button>
-  <div class="dropdown">
-    <button class="dm-utente" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-      <span class="dm-avatar">{{ user.get_username|slice:":1"|upper }}</span>
-      <span class="dm-utente-nome">{{ user.get_full_name|default:user.get_username }}</span></button>
-    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-      <li><span class="dropdown-item-text small text-muted">Accesso come <b>{{ user.get_username }}</b></span></li>
-      <li><hr class="dropdown-divider"></li>
-      <li><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="dropdown-item">Esci</button></form></li>
-    </ul>
+  <div class="dm-strumenti">
+    {% if perms.core.ordini_vedere %}
+    <form class="dm-vai" method="get" action="{% url 'ordini:vai' %}" data-dm-invia-alla-scelta role="search">
+      {{ vai_ordine.ordine }}
+    </form>
+    {% endif %}
+    <button type="button" class="dm-pulsante-icona" data-dm-reparto title="Modalità reparto: testi e pulsanti più grandi">
+      <svg class="dm-icona"><use href="#i-reparto"/></svg></button>
+    <div class="dropdown">
+      <button class="dm-utente" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ user.get_full_name|default:user.get_username }}">
+        <span class="dm-avatar">{{ user.get_username|slice:":1"|upper }}</span></button>
+      <ul class="dropdown-menu dropdown-menu-end shadow">
+        <li><span class="dropdown-item-text small">{{ user.get_full_name|default:user.get_username }}<br><span class="text-muted">utente {{ user.get_username }}</span></span></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="dropdown-item">Esci</button></form></li>
+      </ul>
+    </div>
   </div>
 </header>
 {% endif %}
