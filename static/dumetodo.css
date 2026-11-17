@@ -45,8 +45,7 @@ a:hover { text-decoration: underline; }
   gap: 6px; padding: 0 12px; background: var(--dm-barra); color: var(--dm-barra-testo); box-shadow: 0 1px 0 rgba(0,0,0,.2); }
 .dm-marchio { display: flex; align-items: center; gap: 9px; color: #fff; margin-right: 10px; flex: 0 0 auto; }
 .dm-marchio:hover { text-decoration: none; color: #fff; }
-.dm-marchio-logo { width: 30px; height: 30px; flex: 0 0 30px; border-radius: 7px; display: grid; place-items: center;
-  background: linear-gradient(135deg, #2f80ff, #1452c8); color: #fff; font-weight: 700; font-size: 16px; }
+.dm-marchio-logo { width: 30px; height: 30px; flex: 0 0 30px; display: block; }
 .dm-marchio-testo { display: flex; flex-direction: column; line-height: 1.1; }
 .dm-marchio-testo b { font-size: 14px; letter-spacing: .2px; }
 .dm-marchio-testo small { color: var(--dm-barra-testo); font-size: 11px; white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }

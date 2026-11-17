@@ -143,6 +143,7 @@ fn main() {
         .with_title("DuMetodo")
         .with_inner_size(tao::dpi::LogicalSize::new(1366.0, 860.0))
         .with_maximized(true)
+        .with_window_icon(icona_finestra())
         .build(&event_loop)
     {
         Ok(w) => w,
@@ -428,6 +429,11 @@ fn main() {
             aggiorna_barra(&barra, &schede, attiva);
         }
     });
+}
+
+/// Icona di DuMetodo (quadrante di misura), 64×64 RGBA, ricavata da static/img/dumetodo-64.png.
+fn icona_finestra() -> Option<tao::window::Icon> {
+    tao::window::Icon::from_rgba(include_bytes!("icona-64.rgba").to_vec(), 64, 64).ok()
 }
 
 /// Contenuto iniziale di una scheda.

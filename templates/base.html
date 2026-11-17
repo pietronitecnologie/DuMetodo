@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titolo %}DuMetodo{% endblock %} · DuMetodo · {{ nome_fornitore }}</title>
+  <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="any">
+  <link rel="icon" href="{% static 'img/dumetodo.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'img/dumetodo-180.png' %}">
+  <meta name="theme-color" content="#0f1b2d">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'dumetodo.css' %}">
   <script>
@@ -22,7 +26,7 @@
 {% if user.is_authenticated %}
 <header class="dm-testata">
   <a class="dm-marchio" href="{% url 'home' %}" title="DuMetodo">
-    <span class="dm-marchio-logo">D</span>
+    <img class="dm-marchio-logo" src="{% static 'img/dumetodo.svg' %}" alt="" width="30" height="30">
     <span class="dm-marchio-testo"><b>DuMetodo</b><small>{{ nome_fornitore }}</small></span>
   </a>
   <button type="button" class="dm-pulsante-icona dm-solo-piccolo" data-dm-apri-menu aria-controls="dm-menu" title="Menu">
