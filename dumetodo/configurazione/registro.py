@@ -38,6 +38,7 @@ class Tipo(StrEnum):
 
 
 class Gruppo(StrEnum):
+    AZIENDA = "Azienda"
     PRODUZIONE = "Produzione"
     ORDINI = "Ordini"
     IMPORTAZIONE = "Importazione ordini"
@@ -154,6 +155,24 @@ class Parametro:
 from dumetodo.tracciati.esempi import FILE_TECNICO_DDT, READYPRO_BOLLA  # noqa: E402
 
 PARAMETRI: tuple[Parametro, ...] = (
+    # --- Azienda ------------------------------------------------------------------------
+    Parametro(
+        "azienda.nome_fornitore",
+        Tipo.TESTO,
+        Gruppo.AZIENDA,
+        "Nome dell'azienda (Fornitore)",
+        "Ragione sociale o nome breve dell'azienda che usa DuMetodo: compare nell'intestazione, nelle note "
+        "e nelle email.",
+        default="Fornitore",
+    ),
+    Parametro(
+        "azienda.nome_cliente",
+        Tipo.TESTO,
+        Gruppo.AZIENDA,
+        "Nome del Cliente",
+        "Nome del Cliente che invia gli ordini, usato nelle note e nelle email.",
+        default="Cliente",
+    ),
     # --- Produzione -----------------------------------------------------------------
     Parametro(
         "produzione.prezzo_resa_oraria",

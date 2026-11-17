@@ -87,3 +87,18 @@ def test_viste_note(client, ordine, cliente, operatore):
     assert b"segreto" not in client.get(f"/note/ordine/{ordine.pk}/").content
     assert client.post(f"/note/{nota_interna.pk}/elimina/").status_code == 404
     assert client.get(f"/note/{nota_interna.pk}/elimina/").status_code == 405  # niente modifiche via GET
+
+
+def test_nomi_azienda_configurabili(
+    client, ordine, operatore, cliente, configura_email, django_capture_on_commit_callbacks
+):
+    from dumetodo.configurazione import servizi as config
+
+    config.scrivi_molti({"azienda.nome_fornitore": "Geko Srl", "azienda.nome_cliente": "DMG Spa"})
+    config.invalida_cache()
+    with django_capture_on_commit_callbacks(execute=True):
+        servizi.aggiungi_nota(ordine, operatore, "Pronto")
+    assert "(Geko Srl)" in mail.outbox[0].body
+    client.force_login(cliente)
+    html = client.get(f"/ordini/{ordine.pk}/").content.decode()
+    assert "comunicazione con Geko Srl" in html and "Operatore</strong> · Geko Srl" in html

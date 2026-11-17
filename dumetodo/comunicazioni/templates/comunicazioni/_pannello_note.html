@@ -2,7 +2,7 @@
   {% for n in note %}
   <div class="p-2 mb-2 bg-white rounded border {% if n.lato == 'CLI' %}nota-cliente{% else %}nota-fornitore{% endif %} {% if n.visibilita == 'INT' %}nota-interna{% endif %}">
     <div class="d-flex small text-muted">
-      <span class="me-auto"><strong>{{ n.autore_nome }}</strong> · {{ n.get_lato_display }}{% if n.visibilita == 'INT' %} · <em>solo interna</em>{% endif %}</span>
+      <span class="me-auto"><strong>{{ n.autore_nome }}</strong> · {% if n.lato == 'CLI' %}{{ nome_cliente }}{% else %}{{ nome_fornitore }}{% endif %}{% if n.visibilita == 'INT' %} · <em>solo interna</em>{% endif %}</span>
       <span>{{ n.creata_il|date:"d/m/Y H:i" }}</span>
       {% if n.autore_id == user.pk or is_amministratore %}
       <button class="btn btn-link btn-sm p-0 ms-2 text-danger" title="Elimina"
@@ -22,8 +22,8 @@
     <div class="d-flex align-items-center gap-2">
       {% if is_operatore %}
       <select name="visibilita" class="form-select form-select-sm w-auto">
-        <option value="CON">Condivisa con il cliente (invia email)</option>
-        <option value="INT">Solo interna</option>
+        <option value="CON">Condivisa con {{ nome_cliente }} (invia email)</option>
+        <option value="INT">Solo interna ({{ nome_fornitore }})</option>
       </select>
       {% endif %}
       <button class="btn btn-sm btn-primary ms-auto">Salva nota</button>

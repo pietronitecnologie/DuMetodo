@@ -47,3 +47,17 @@ class Reparto(ModelloTemporale):
 
     def __str__(self) -> str:
         return self.nome
+
+
+class Funzionalita(models.Model):
+    """Modello "contenitore" dei permessi per funzione (nessuna tabella: managed=False).
+    I permessi sono dichiarati in ``core/permessi.py`` e sincronizzati a ogni migrate."""
+
+    class Meta:
+        managed = False
+        default_permissions = ()
+        verbose_name = "funzionalità"
+        verbose_name_plural = "funzionalità"
+
+    def __str__(self) -> str:
+        return "funzionalità"

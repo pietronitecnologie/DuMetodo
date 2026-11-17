@@ -64,7 +64,13 @@ def _accoda_notifica(nota: Nota) -> None:
     fornitore, cliente = config.leggi("email.fornitore"), config.leggi("email.cliente")
     destinatari, rispondi_a = (cliente, fornitore) if nota.lato == Lato.FORNITORE else (fornitore, cliente)
     mittente = config.leggi("email.mittente") or settings.DEFAULT_FROM_EMAIL
-    contesto = {"nota": nota, "ordine": nota.ordine, "url": settings.SITE_URL + nota.ordine.get_absolute_url()}
+    lato = config.leggi("azienda.nome_cliente" if nota.lato == Lato.CLIENTE else "azienda.nome_fornitore")
+    contesto = {
+        "nota": nota,
+        "ordine": nota.ordine,
+        "lato": lato,
+        "url": settings.SITE_URL + nota.ordine.get_absolute_url(),
+    }
     email.accoda(
         oggetto=f"[DuMetodo][Nota ordine {nota.ordine.codice_breve}]",
         corpo_testo=render_to_string("comunicazioni/email_nota.txt", contesto),

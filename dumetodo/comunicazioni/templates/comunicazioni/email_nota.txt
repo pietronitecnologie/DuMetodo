@@ -1,6 +1,6 @@
 {% autoescape off %}Nuova nota sull'ordine {{ ordine.codice_breve }}
 
-Da: {{ nota.autore_nome }} ({{ nota.get_lato_display }})
+Da: {{ nota.autore_nome }} ({{ lato }})
 Data: {{ nota.creata_il|date:"d/m/Y H:i" }}
 
 {{ nota.testo }}
