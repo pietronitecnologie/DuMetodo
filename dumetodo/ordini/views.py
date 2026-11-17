@@ -124,7 +124,7 @@ def attiva_produzione(request: HttpRequest) -> HttpResponse:
     if request.method == "POST" and form.is_valid():
         try:
             n = servizi.attiva_produzione(form.cleaned_data["dal"], form.cleaned_data["al"], request.user)
-            messages.success(request, f"{n} ordini portati in lavorazione.")
+            messages.success(request, f"{n} ordini attivati (stato 'Lavorato con mancanze').")
             return redirect("ordini:lista")
         except servizi.OperazioneNonConsentita as exc:
             form.add_error(None, str(exc))

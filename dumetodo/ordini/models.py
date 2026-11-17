@@ -23,7 +23,7 @@ from dumetodo.core.models import ModelloTemporale
 
 class StatoOrdine(models.TextChoices):
     INSERITO = "INS", "Inserito"
-    IN_LAVORAZIONE = "LAV", "In lavorazione"
+    IN_LAVORAZIONE = "LAV", "Lavorato con mancanze"
     IN_SPEDIZIONE = "SPE", "In spedizione"
     EVASIONE_PARZIALE = "SPP", "Evasione parziale"
     CONSEGNATO = "CON", "Consegnato"

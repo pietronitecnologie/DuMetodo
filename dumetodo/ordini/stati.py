@@ -30,9 +30,9 @@ TRANSIZIONI: tuple[Transizione, ...] = (
         frozenset({S.INSERITO, S.IN_SPEDIZIONE, S.EVASIONE_PARZIALE}),
         S.IN_LAVORAZIONE,
         Ruolo.OPERATORE,
-        "In lavorazione",
+        "Lavorato con mancanze",
     ),
-    Transizione(frozenset({S.CONSEGNATO}), S.IN_LAVORAZIONE, Ruolo.AMMINISTRATORE, "Riapri (in lavorazione)"),
+    Transizione(frozenset({S.CONSEGNATO}), S.IN_LAVORAZIONE, Ruolo.AMMINISTRATORE, "Riapri (lavorato con mancanze)"),
     # SPE può diventare SPP se ci sono righe bloccate: lo gestisce servizi.cambia_stato
     Transizione(frozenset({S.INSERITO, S.IN_LAVORAZIONE}), S.IN_SPEDIZIONE, Ruolo.OPERATORE, "Spedisci"),
     Transizione(frozenset({S.IN_SPEDIZIONE, S.EVASIONE_PARZIALE}), S.INSERITO, Ruolo.OPERATORE, "Rimuovi da consegna"),
