@@ -1,0 +1,49 @@
+# Avvio: cp .env.example .env (e compilalo), poi: docker compose up -d --build
+x-app: &app
+  build: .
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    db: {condition: service_healthy}
+    redis: {condition: service_started}
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dumetodo
+      POSTGRES_USER: dumetodo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD nel .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dumetodo"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    restart: "no"
+    command: sh -c "python manage.py migrate --noinput && python manage.py crea_ruoli && python manage.py configura_pianificazioni"
+
+  web:
+    <<: *app
+    ports: ["8000:8000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+
+  worker:
+    <<: *app
+    command: celery -A config worker --loglevel=INFO --concurrency=2
+
+  beat:
+    <<: *app
+    # UN SOLO processo beat: è lui che decide quando partono i lavori periodici.
+    command: celery -A config beat --loglevel=INFO
+
+volumes:
+  pgdata:

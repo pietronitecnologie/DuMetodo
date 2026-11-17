@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titolo %}Dividi riga{% endblock %}
+{% block contenuto %}
+<div class="col-md-6">
+<h1 class="h5">Dividi la riga {{ riga.n_riga }} dell'ordine <a href="{{ riga.ordine.get_absolute_url }}">{{ riga.ordine.codice_breve }}</a></h1>
+<p class="text-muted">{{ riga.articolo }} {{ riga.variante }} — quantità attuale <strong>{{ riga.qta|floatformat:"-3" }}</strong>.
+La quantità indicata passa su una nuova riga dello stesso ordine, con la scadenza scelta.</p>
+<form method="post" class="card card-body">{% csrf_token %}
+  {% for e in form.non_field_errors %}<div class="alert alert-danger py-1">{{ e }}</div>{% endfor %}
+  {% include "_campo.html" with campo=form.qta %}
+  {% include "_campo.html" with campo=form.nuova_scadenza %}
+  <div class="mt-2"><button class="btn btn-primary">Dividi</button> <a href="{{ riga.ordine.get_absolute_url }}" class="btn btn-link">Annulla</a></div>
+</form>
+</div>
+{% endblock %}

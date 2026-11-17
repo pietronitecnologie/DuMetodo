@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titolo %}Configurazione{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Configurazione</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'configurazione:storico' %}">Storico modifiche</a></div>
+<div class="alert alert-info small">Qui ci sono solo i <strong>parametri di funzionamento</strong>, controllati e storicizzati.
+Le <strong>credenziali</strong> (password email, database) non stanno nel database: si impostano nel file <code>.env</code> del server.
+La <strong>capacità settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
+<div class="row g-3">
+{% for form in forms %}
+  <div class="col-lg-6">
+    <form method="post" class="card h-100">{% csrf_token %}
+      <input type="hidden" name="gruppo" value="{{ form.gruppo.name }}">
+      <div class="card-header"><strong>{{ form.gruppo.value }}</strong></div>
+      <div class="card-body">
+        {% for e in form.non_field_errors %}<div class="alert alert-danger py-1">{{ e }}</div>{% endfor %}
+        {% for campo in form %}{% include "_campo.html" %}{% endfor %}
+      </div>
+      <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Salva {{ form.gruppo.value|lower }}</button></div>
+    </form>
+  </div>
+{% endfor %}
+</div>
+<script>document.querySelectorAll('form.card input:not([type=hidden]), form.card textarea, form.card select').forEach(e => { if (e.type === 'checkbox') e.classList.add('form-check-input'); else e.classList.add('form-control', 'form-control-sm'); });</script>
+{% endblock %}

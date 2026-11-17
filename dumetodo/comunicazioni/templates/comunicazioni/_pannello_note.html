@@ -1,0 +1,32 @@
+<div class="card-body p-2" style="max-height: 60vh; overflow-y: auto">
+  {% for n in note %}
+  <div class="p-2 mb-2 bg-white rounded border {% if n.lato == 'CLI' %}nota-cliente{% else %}nota-geko{% endif %} {% if n.visibilita == 'INT' %}nota-interna{% endif %}">
+    <div class="d-flex small text-muted">
+      <span class="me-auto"><strong>{{ n.autore_nome }}</strong> · {{ n.get_lato_display }}{% if n.visibilita == 'INT' %} · <em>solo interna</em>{% endif %}</span>
+      <span>{{ n.creata_il|date:"d/m/Y H:i" }}</span>
+      {% if n.autore_id == user.pk or is_amministratore %}
+      <button class="btn btn-link btn-sm p-0 ms-2 text-danger" title="Elimina"
+              hx-post="{% url 'note:elimina' n.pk %}" hx-target="#pannello-note" hx-confirm="Eliminare questa nota?">✕</button>
+      {% endif %}
+    </div>
+    <div class="nota-testo">{{ n.testo }}</div>
+  </div>
+  {% empty %}
+  <p class="text-muted small mb-2">Nessuna nota.</p>
+  {% endfor %}
+</div>
+<div class="card-footer">
+  {% if errore %}<div class="alert alert-danger py-1 small mb-2">{{ errore }}</div>{% endif %}
+  <form hx-post="{% url 'note:aggiungi' ordine.pk %}" hx-target="#pannello-note" hx-disabled-elt="find button">
+    <textarea name="testo" class="form-control form-control-sm mb-2" rows="3" maxlength="5000" required placeholder="Scrivi una nota…">{{ testo }}</textarea>
+    <div class="d-flex align-items-center gap-2">
+      {% if is_operatore %}
+      <select name="visibilita" class="form-select form-select-sm w-auto">
+        <option value="CON">Condivisa con il cliente (invia email)</option>
+        <option value="INT">Solo interna</option>
+      </select>
+      {% endif %}
+      <button class="btn btn-sm btn-primary ms-auto">Salva nota</button>
+    </div>
+  </form>
+</div>

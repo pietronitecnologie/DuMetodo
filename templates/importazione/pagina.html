@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titolo %}Importazione ordini{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Importazione ordini</h1>
+  <a class="btn btn-sm btn-{% if problemi_aperti %}danger{% else %}outline-secondary{% endif %}" href="{% url 'importazione:problemi' %}">Problemi da gestire: {{ problemi_aperti }}</a></div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><form method="post" enctype="multipart/form-data" class="card h-100">{% csrf_token %}
+    <div class="card-header"><strong>Carica file ordine (.txt)</strong></div>
+    <div class="card-body">
+      {% for e in form.non_field_errors %}<div class="alert alert-danger py-1">{{ e }}</div>{% endfor %}
+      <input class="form-control" type="file" name="file" accept=".txt" multiple required>
+      <div class="form-text">Ogni ordine nel file sostituisce la versione precedente: le righe non più presenti vengono annullate, quelle già in bolla non vengono mai toccate.</div>
+    </div>
+    <div class="card-footer text-end"><button class="btn btn-primary btn-sm">Importa</button></div>
+  </form></div>
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header"><strong>Casella email ordini</strong></div>
+    <div class="card-body small">
+      {% if not casella_configurata %}<div class="alert alert-warning py-1">Casella IMAP non configurata (variabili ORDINI_IMAP_* nel file .env).</div>{% endif %}
+      {% for c in caselle %}<div><code>{{ c.casella }}</code> — ultima lettura {{ c.ultima_lettura_il|date:"d/m/Y H:i"|default:"mai" }}, ultimo UID {{ c.ultimo_uid }}
+        {% if c.ultimo_errore %}<div class="text-danger">Ultimo errore: {{ c.ultimo_errore }}</div>{% endif %}</div>
+      {% empty %}<p class="text-muted">Nessuna lettura ancora eseguita.</p>{% endfor %}
+    </div>
+    {% if is_amministratore and casella_configurata %}<div class="card-footer text-end">
+      <form method="post" action="{% url 'importazione:leggi_casella' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Leggi ora</button></form></div>{% endif %}
+  </div></div>
+</div>
+{% if risultati %}<div class="card mb-3"><div class="card-header"><strong>Esito caricamento</strong></div><ul class="list-group list-group-flush">
+  {% for f in risultati %}<li class="list-group-item"><a href="{% url 'importazione:dettaglio_file' f.pk %}">{{ f.nome }}</a> — {% include "importazione/_stato.html" %}</li>{% endfor %}
+</ul></div>{% endif %}
+<div class="card"><div class="card-header"><strong>File elaborati</strong></div>
+<div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+  <thead><tr><th>Quando</th><th>File</th><th>Origine</th><th>Esito</th><th class="text-end">Ordini nuovi</th><th class="text-end">aggiornati</th><th class="text-end">scartati</th></tr></thead><tbody>
+  {% for f in pagina %}<tr><td>{{ f.creato_il|date:"d/m/Y H:i" }}</td><td><a href="{% url 'importazione:dettaglio_file' f.pk %}">{{ f.nome }}</a></td>
+    <td class="small">{{ f.get_origine_display }}{% if f.caricato_da %} ({{ f.caricato_da }}){% endif %}</td><td>{% include "importazione/_stato.html" %}</td>
+    <td class="text-end">{{ f.ordini_creati }}</td><td class="text-end">{{ f.ordini_aggiornati }}</td><td class="text-end">{{ f.ordini_scartati }}</td></tr>
+  {% empty %}<tr><td colspan="7" class="text-muted text-center">Nessun file.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% if pagina.has_other_pages %}<nav class="mt-2"><ul class="pagination pagination-sm">
+  {% if pagina.has_previous %}<li class="page-item"><a class="page-link" href="?pagina={{ pagina.previous_page_number }}">‹</a></li>{% endif %}
+  <li class="page-item disabled"><span class="page-link">{{ pagina.number }} / {{ pagina.paginator.num_pages }}</span></li>
+  {% if pagina.has_next %}<li class="page-item"><a class="page-link" href="?pagina={{ pagina.next_page_number }}">›</a></li>{% endif %}
+</ul></nav>{% endif %}
+{% endblock %}

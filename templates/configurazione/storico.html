@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titolo %}Storico configurazione{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Storico modifiche alla configurazione</h1>
+<table class="table table-sm bg-white"><thead><tr><th>Quando</th><th>Chi</th><th>Parametro</th><th>Valore</th><th>Tipo</th></tr></thead><tbody>
+{% for v in voci %}<tr><td>{{ v.history_date|date:"d/m/Y H:i" }}</td><td>{{ v.history_user|default:"sistema" }}</td><td><code>{{ v.chiave }}</code></td><td>{{ v.valore }}</td><td>{{ v.get_history_type_display }}</td></tr>
+{% empty %}<tr><td colspan="5" class="text-muted">Nessuna modifica.</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}

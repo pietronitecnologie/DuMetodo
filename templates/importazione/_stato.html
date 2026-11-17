@@ -1,0 +1,1 @@
+<span class="badge text-bg-{% if f.stato == 'OK' %}success{% elif f.stato == 'AVV' %}warning{% elif f.stato == 'DUP' or f.stato == 'ATT' %}secondary{% else %}danger{% endif %}">{{ f.get_stato_display }}</span>

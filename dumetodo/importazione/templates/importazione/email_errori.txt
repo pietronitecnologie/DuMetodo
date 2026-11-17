@@ -1,0 +1,10 @@
+{% autoescape off %}Il file "{{ file.nome }}" ({{ file.get_origine_display }}) non è stato importato completamente.
+
+Esito: {{ file.get_stato_display }}
+Ordini creati: {{ file.ordini_creati }} — aggiornati: {{ file.ordini_aggiornati }} — scartati: {{ file.ordini_scartati }}
+
+Errori:
+{% for p in problemi %}- {{ p.messaggio }}
+{% endfor %}
+Dettagli: {{ url }}
+{% endautoescape %}

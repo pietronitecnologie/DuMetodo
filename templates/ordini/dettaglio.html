@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block titolo %}Ordine {{ ordine.codice_breve }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <a href="{% url 'ordini:lista' %}" class="btn btn-sm btn-outline-secondary">← Ordini</a>
+  <h1 class="h4 mb-0 me-auto">Ordine {{ ordine.codice_breve }}
+    <span class="badge text-bg-secondary align-middle">{{ ordine.get_stato_display }}</span></h1>
+  {% for t in transizioni %}
+  <form method="post" action="{% url 'ordini:cambia_stato' ordine.pk %}"
+        onsubmit="return confirm('Confermi: {{ t.etichetta|escapejs }}?')">{% csrf_token %}
+    <input type="hidden" name="stato" value="{{ t.a }}">
+    <button class="btn btn-sm {% if t.a == 'ANN' %}btn-outline-danger{% elif t.a == 'CON' %}btn-outline-success{% else %}btn-outline-primary{% endif %}">{{ t.etichetta }}</button>
+  </form>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body py-2">
+      <div class="row small">
+        <div class="col-6 col-md-3"><div class="text-muted">Codice completo</div>{{ ordine.codice }}</div>
+        <div class="col-6 col-md-3"><div class="text-muted">Scadenza</div>{{ ordine.data_scadenza|date:"d/m/Y"|default:"—" }}</div>
+        <div class="col-6 col-md-3"><div class="text-muted">Consegna</div>{{ ordine.data_consegna|date:"d/m/Y"|default:"—" }}</div>
+        <div class="col-6 col-md-3"><div class="text-muted">Inserito il</div>{{ ordine.creato_il|date:"d/m/Y H:i" }}</div>
+        <div class="col-6 col-md-3"><div class="text-muted">Pezzi</div>{{ totale_pezzi|floatformat:"-3" }}</div>
+        <div class="col-6 col-md-3"><div class="text-muted">Tempo teorico</div>{% if ore_teoriche is not None %}{{ ore_teoriche }} h{% else %}<span class="text-warning">resa oraria non configurata</span>{% endif %}</div>
+        <div class="col-6 col-md-3"><div class="text-muted">Reparto</div>{{ ordine.reparto|default:ordine.reparto_da_appendice|default:"—" }}</div>
+        <div class="col-6 col-md-3"><div class="text-muted">Cliente</div>{{ ordine.cliente|default:"—" }}</div>
+      </div>
+    </div></div>
+
+    <div class="card mb-3">
+      <div class="card-header d-flex align-items-center">
+        <strong class="me-auto">Righe</strong>
+        {% if is_operatore %}<a class="small" href="?tutte={% if mostra_tutte %}0{% else %}1{% endif %}">{% if mostra_tutte %}Solo attive{% else %}Mostra anche annullate/sostituite{% endif %}</a>{% endif %}
+      </div>
+      <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle">
+        <thead><tr><th>Riga</th><th>Articolo</th><th>Var.</th><th class="text-end">Qtà</th>
+          {% if is_amministratore %}<th class="text-end">Prezzo</th>{% endif %}
+          <th>Scadenza</th><th>Stato</th>{% if is_operatore %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for r in righe %}
+        <tr class="{% if not r.is_attiva %}riga-chiusa{% elif r.bolla_emessa %}riga-bolla{% elif r.in_evasione %}riga-evasione{% elif r.bloccata %}riga-bloccata{% endif %}{% if r.scorporata %} riga-scorporata{% endif %}">
+          <td>{{ r.n_riga }}</td><td>{{ r.articolo }}</td><td>{{ r.variante }}</td>
+          <td class="text-end">{{ r.qta|floatformat:"-3" }}</td>
+          {% if is_amministratore %}<td class="text-end">{{ r.prezzo_unitario|default:"" }}</td>{% endif %}
+          <td>{{ r.data_scadenza|date:"d/m/Y" }}</td>
+          <td class="small">{% if not r.is_attiva %}{{ r.get_stato_display }}{% elif r.bolla_emessa %}In bolla{% elif r.in_evasione %}In evasione{% elif r.bloccata %}Bloccata{% endif %}{% if r.scorporata %} · scorporata{% endif %}</td>
+          {% if is_operatore %}
+          <td class="text-nowrap">{% if r.is_attiva and not r.bolla_emessa %}
+            <form method="post" action="{% url 'ordini:azione_riga' ordine.pk r.pk %}" class="d-inline">{% csrf_token %}
+              {% if not r.in_evasione %}<button name="azione" value="evadi" class="btn btn-sm btn-outline-success py-0">Evadi</button>{% endif %}
+              {% if not r.bloccata %}<button name="azione" value="blocca" class="btn btn-sm btn-outline-danger py-0">Blocca</button>{% endif %}
+              {% if r.scorporata %}<button name="azione" value="reincorpora" class="btn btn-sm btn-outline-info py-0">Reincorpora</button>
+              {% else %}<button name="azione" value="scorpora" class="btn btn-sm btn-outline-info py-0">Scorpora</button>{% endif %}
+              {% if is_amministratore %}<button name="azione" value="annulla" class="btn btn-sm btn-outline-secondary py-0" onclick="return confirm('Annullare la riga {{ r.n_riga|escapejs }}?')">Annulla</button>{% endif %}
+            </form>
+            {% if is_caporeparto and not r.in_evasione %}<a class="btn btn-sm btn-outline-dark py-0" href="{% url 'ordini:dividi_riga' ordine.pk r.pk %}">Dividi</a>{% endif %}
+          {% endif %}</td>
+          {% endif %}
+        </tr>
+        {% empty %}<tr><td colspan="8" class="text-muted text-center">Nessuna riga.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><strong>Storico scadenze</strong></div>
+      <ul class="list-group list-group-flush small">
+        {% for s in storico %}
+        <li class="list-group-item">{{ s.creato_il|date:"d/m/Y H:i" }} — {% if s.riga %}riga {{ s.riga.n_riga }}{% else %}ordine{% endif %}:
+          {{ s.precedente|date:"d/m/Y"|default:"—" }} → <strong>{{ s.nuova|date:"d/m/Y"|default:"—" }}</strong>
+          <span class="text-muted">({{ s.get_origine_display }}{% if s.utente %}, {{ s.utente }}{% endif %})</span>
+          {% if s.motivo %}<div class="text-muted">{{ s.motivo }}</div>{% endif %}</li>
+        {% empty %}<li class="list-group-item text-muted">Nessuna variazione.</li>
+        {% endfor %}
+      </ul>
+      {% if is_caporeparto and not ordine.is_chiuso %}
+      <div class="card-body border-top">
+        <form method="post" action="{% url 'ordini:cambia_scadenza' ordine.pk %}" class="row g-2 align-items-end">{% csrf_token %}
+          <div class="col-md-4">{% include "_campo.html" with campo=form_scadenza.nuova %}</div>
+          <div class="col-md-6">{% include "_campo.html" with campo=form_scadenza.motivo %}</div>
+          <div class="col-md-2"><button class="btn btn-sm btn-primary w-100 mb-2">Posticipa</button></div>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card"><div class="card-header"><strong>Note</strong>
+      <span class="text-muted small">— comunicazione con {% if is_operatore %}il cliente{% else %}Geko{% endif %}</span></div>
+      <div id="pannello-note">{% include "comunicazioni/_pannello_note.html" %}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

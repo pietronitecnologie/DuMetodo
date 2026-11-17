@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titolo %}Accesso{% endblock %}
+{% block contenuto %}
+<div class="row justify-content-center"><div class="col-sm-8 col-md-5 col-lg-4">
+  <div class="card shadow-sm"><div class="card-body">
+    <h1 class="h4 mb-3">Accesso a DuMetodo</h1>
+    {% if form.errors %}<div class="alert alert-danger">Nome utente o password errati.</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <div class="mb-3"><label class="form-label" for="id_username">Utente</label>
+        <input class="form-control" name="username" id="id_username" autocomplete="username" required autofocus></div>
+      <div class="mb-3"><label class="form-label" for="id_password">Password</label>
+        <input class="form-control" type="password" name="password" id="id_password" autocomplete="current-password" required></div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-primary w-100">Entra</button>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}
