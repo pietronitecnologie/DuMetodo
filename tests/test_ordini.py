@@ -123,3 +123,27 @@ def test_vincolo_db_una_sola_riga_attiva_per_numero(ordine):
 
     with pytest.raises(IntegrityError), transaction.atomic():
         RigaOrdine.objects.create(ordine=ordine, n_riga="0000001", articolo="X", qta=1)
+
+
+def test_colore_cambia_a_ogni_cambio_articolo():
+    from types import SimpleNamespace
+
+    from dumetodo.ordini.aiuti_visivi import PALETTE_CAMBIO_ARTICOLO as P
+    from dumetodo.ordini.aiuti_visivi import colora_cambi_articolo
+
+    def righe():
+        return [SimpleNamespace(articolo=a) for a in ["A", "A", "B", "A", "C", "D", "E", "F", "G"]]
+
+    colorate = colora_cambi_articolo(righe())
+    assert [r.colore for r in colorate] == [P[0], P[0], P[1], P[2], P[3], P[4], P[5], P[0], P[1]]
+    assert [r.cambio_articolo for r in colorate][:4] == [True, False, True, True]
+    # Deterministico: in Metodo il contatore era globale e i colori cambiavano a ogni apertura.
+    assert [r.colore for r in colora_cambi_articolo(righe())] == [r.colore for r in colorate]
+
+
+def test_dettaglio_mostra_i_colori_degli_articoli(client, ordine, operatore):
+    from dumetodo.ordini.aiuti_visivi import PALETTE_CAMBIO_ARTICOLO as P
+
+    client.force_login(operatore)
+    html = client.get(f"/ordini/{ordine.pk}/").content.decode()
+    assert f'style="color: {P[0]}">ART-A' in html and f'style="color: {P[1]}">ART-B' in html

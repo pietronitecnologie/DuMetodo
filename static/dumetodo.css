@@ -8,3 +8,4 @@ body { background: #f6f7f9; }
 .nota-cliente { border-left: 4px solid #fd7e14; }
 .nota-interna { background: #f1f3f5; }
 .nota-testo { white-space: pre-wrap; }
+.articolo { font-weight: 600; }

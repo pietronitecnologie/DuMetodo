@@ -9,6 +9,7 @@ from dumetodo.comunicazioni import servizi as note
 from dumetodo.core.ruoli import Ruolo, ha_ruolo, richiede_ruolo
 
 from . import servizi, stati
+from .aiuti_visivi import colora_cambi_articolo
 from .forms import AttivaProduzioneForm, CambiaScadenzaForm, DividiRigaForm, FiltriOrdiniForm
 from .models import Ordine, RigaOrdine, StatoRiga
 
@@ -48,7 +49,7 @@ def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
         "ordini/dettaglio.html",
         {
             "ordine": ordine,
-            "righe": righe.select_related("riga_origine"),
+            "righe": colora_cambi_articolo(righe.select_related("riga_origine")),
             "mostra_tutte": mostra_tutte,
             "transizioni": transizioni,
             "storico": ordine.storico_scadenze.select_related("riga", "utente")[:50],
