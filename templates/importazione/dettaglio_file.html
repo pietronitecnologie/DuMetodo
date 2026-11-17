@@ -12,7 +12,7 @@
     Righe: {{ file.righe_create }} create, {{ file.righe_aggiornate }} aggiornate, {{ file.righe_annullate }} annullate</div>
 </div>
 <div class="mt-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'importazione:scarica_file' file.pk %}">Scarica il file originale</a>
-  {% if is_amministratore %}<form class="d-inline" method="post" action="{% url 'importazione:rielabora' file.pk %}" onsubmit="return confirm('Rielaborare il file? Gli ordini verranno riallineati a questo file.')">{% csrf_token %}<button class="btn btn-sm btn-outline-warning">Rielabora</button></form>{% endif %}</div>
+  {% if perms.core.importazione_avanzata %}<form class="d-inline" method="post" action="{% url 'importazione:rielabora' file.pk %}" onsubmit="return confirm('Rielaborare il file? Gli ordini verranno riallineati a questo file.')">{% csrf_token %}<button class="btn btn-sm btn-outline-warning">Rielabora</button></form>{% endif %}</div>
 <div class="card mt-3"><div class="card-header"><strong>Problemi</strong></div><ul class="list-group list-group-flush">
   {% for p in problemi %}<li class="list-group-item d-flex align-items-center">
     <span class="badge text-bg-{% if p.livello == 'ERR' %}danger{% else %}warning{% endif %} me-2">{{ p.get_livello_display }}</span>

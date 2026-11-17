@@ -108,8 +108,10 @@ def test_migrazione_completa(metodo_db):
     # utenti con password e ruoli
     mario, dmg = User.objects.get(username="mario"), User.objects.get(username="dmg")
     assert mario.password == "pbkdf2_sha256$1$x$y"
-    assert set(mario.groups.values_list("name", flat=True)) == {"Operatore"}
-    assert set(dmg.groups.values_list("name", flat=True)) == {"Cliente"}
+    from dumetodo.core.permessi import F, ha_permesso, is_cliente
+
+    assert ha_permesso(mario, F.CONSEGNA) and not is_cliente(mario)  # Geko -> profilo Operatore
+    assert is_cliente(dmg) and ha_permesso(dmg, F.ORDINI_VEDERE) and not ha_permesso(dmg, F.CONSEGNA)
     assert Reparto.objects.get(codice="GK01-PLS").nome == "Pulsanti"
 
     # chiave unica: il duplicato 4300 è fuso, vince il più recente non annullato

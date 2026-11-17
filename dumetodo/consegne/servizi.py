@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from dumetodo.comunicazioni import email
 from dumetodo.configurazione import servizi as config
-from dumetodo.core.ruoli import Ruolo, ha_ruolo
+from dumetodo.core.permessi import F, ha_permesso
 from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 from dumetodo.tracciati import dati, linguaggio
@@ -23,8 +23,8 @@ from .models import DDT, Consegna, RigaConsegnata
 DA_CONSEGNARE = (StatoOrdine.IN_SPEDIZIONE, StatoOrdine.EVASIONE_PARZIALE)
 
 
-def _richiedi_operatore(utente: Any) -> None:
-    if not ha_ruolo(utente, Ruolo.OPERATORE):
+def _richiedi(utente: Any, codice: str) -> None:
+    if not ha_permesso(utente, codice):
         raise OperazioneNonConsentita("Non hai i permessi per questa operazione.")
 
 
@@ -71,7 +71,7 @@ def consegna(utente: Any, *, serie: Sequence[str] = (), ordini_ids: Sequence[int
     Le righe d'ordine sono bloccate (SELECT FOR UPDATE): un doppio clic o due utenti insieme non
     possono consegnare due volte la stessa riga; il secondo trova "nessuna riga da consegnare".
     """
-    _richiedi_operatore(utente)
+    _richiedi(utente, F.CONSEGNA)
     bloccati = list(ordini_da_consegnare(serie, ordini_ids).select_for_update().order_by("pk"))
     bloccati.sort(key=lambda o: (o.serie, o.numero, o.appendice, o.anno))
     blocchi = [(o, list(righe_consegnabili(o).select_for_update())) for o in bloccati]
@@ -161,7 +161,7 @@ def _accoda_file_tecnico(ddt: DDT) -> Any:
 
 @transaction.atomic
 def registra_ddt(numero: str, data: dt.date, righe_ids: Sequence[int], utente: Any) -> DDT:
-    _richiedi_operatore(utente)
+    _richiedi(utente, F.DDT)
     numero = (numero or "").strip()
     if not _RE_NUMERO_DDT.match(numero):
         raise OperazioneNonConsentita("Numero DDT non valido (lettere, cifre, / - _, massimo 20 caratteri).")
@@ -189,8 +189,8 @@ def registra_ddt(numero: str, data: dt.date, righe_ids: Sequence[int], utente: A
 
 @transaction.atomic
 def reinvia_file_tecnico(ddt_id: int, utente: Any) -> DDT:
-    if not ha_ruolo(utente, Ruolo.AMMINISTRATORE):
-        raise OperazioneNonConsentita("Solo un amministratore può reinviare il file tecnico.")
+    if not ha_permesso(utente, F.DDT_REINVIA):
+        raise OperazioneNonConsentita("Non hai i permessi per reinviare il file tecnico.")
     ddt = DDT.objects.select_for_update().get(pk=ddt_id)
     ddt.email = _accoda_file_tecnico(ddt)
     if ddt.email is None:

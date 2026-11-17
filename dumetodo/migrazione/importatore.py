@@ -23,14 +23,14 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 from django.utils import timezone
 
 from dumetodo.anagrafica.models import Articolo, Tabulato, UnitaMisura
 from dumetodo.comunicazioni.models import Lato, LetturaNota, Nota, Visibilita
 from dumetodo.consegne.models import DDT, Consegna, RigaConsegnata
 from dumetodo.core.models import Reparto
-from dumetodo.core.ruoli import GRUPPI_METODO, Ruolo
+from dumetodo.core.permessi import GRUPPI_METODO, applica_profilo
 from dumetodo.ordini.models import (
     Ordine,
     OrigineModificaScadenza,
@@ -146,7 +146,6 @@ class Importatore:
         gruppi_utente: dict[int, set[str]] = defaultdict(set)
         for ug in self.m.righe("auth_user_groups", ordine="user_id"):
             gruppi_utente[ug["user_id"]].add(gruppi.get(ug["group_id"], ""))
-        ruoli = {r: Group.objects.get_or_create(name=r.value)[0] for r in Ruolo}
         for u in self.m.righe("auth_user"):
             utente, creato = User.objects.get_or_create(
                 username=u["username"],
@@ -165,13 +164,16 @@ class Importatore:
             if not creato:
                 self.r.avviso("utenti", f"{u['username']}: già presente in DuMetodo, non modificato")
             self.utenti[u["id"]] = utente
-            for nome in gruppi_utente.get(u["id"], set()):
+            profili = []
+            for nome in sorted(gruppi_utente.get(u["id"], set())):
                 if nome in GRUPPI_METODO:
-                    utente.groups.add(ruoli[GRUPPI_METODO[nome]])
-                    if GRUPPI_METODO[nome] == Ruolo.CLIENTE:
-                        self.clienti.add(u["id"])
+                    profili.append(GRUPPI_METODO[nome])
                 elif nome:
                     self.r.avviso("utenti", f"{u['username']}: gruppo '{nome}' non usato in DuMetodo")
+            if profili and creato:
+                applica_profilo(utente, *profili)  # unione dei permessi; Cliente solo se è soltanto Cliente
+            if profili and all(p == "Cliente" for p in profili):
+                self.clienti.add(u["id"])
             self.r.conteggi["utenti"] += 1
 
     # ------------------------------------------------------------------ reparti

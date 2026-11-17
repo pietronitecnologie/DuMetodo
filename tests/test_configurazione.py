@@ -108,7 +108,7 @@ def test_pagina_configurazione_solo_admin(client, operatore, amministratore):
 def test_mappatura_gruppi_metodo_coerente_con_la_migrazione():
     import importlib
 
-    from dumetodo.core.ruoli import GRUPPI_METODO
+    from dumetodo.core.permessi import GRUPPI_METODO
 
     migrazione = importlib.import_module("dumetodo.core.migrations.0002_rinomina_gruppi_metodo")
-    assert {vecchio: ruolo.value for vecchio, ruolo in GRUPPI_METODO.items()} == migrazione.RINOMINE
+    assert GRUPPI_METODO == migrazione.RINOMINE

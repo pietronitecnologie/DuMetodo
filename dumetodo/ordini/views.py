@@ -7,18 +7,16 @@ from django.views.decorators.http import require_GET, require_POST
 
 from dumetodo.anagrafica.servizi import descrizione_subquery
 from dumetodo.comunicazioni import servizi as note
-from dumetodo.core.ruoli import Ruolo, ha_ruolo, richiede_ruolo
+from dumetodo.core.permessi import F, ha_permesso, richiede_permesso
 
 from . import servizi, stati
 from .aiuti_visivi import colora_cambi_articolo
 from .forms import AttivaProduzioneForm, CambiaScadenzaForm, DividiRigaForm, FiltriOrdiniForm
 from .models import Ordine, RigaOrdine, StatoRiga
 
-TUTTI = (Ruolo.OPERATORE, Ruolo.CLIENTE)
-
 
 @require_GET
-@richiede_ruolo(*TUTTI)
+@richiede_permesso(F.ORDINI_VEDERE)
 def lista(request: HttpRequest) -> HttpResponse:
     dati = request.GET if request.GET else {"aperti": "on"}
     form = FiltriOrdiniForm(dati)
@@ -38,13 +36,13 @@ def lista(request: HttpRequest) -> HttpResponse:
 
 
 @require_GET
-@richiede_ruolo(*TUTTI)
+@richiede_permesso(F.ORDINI_VEDERE)
 def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
     ordine = get_object_or_404(Ordine.objects.select_related("reparto"), pk=pk)
-    mostra_tutte = request.GET.get("tutte") == "1" and ha_ruolo(request.user, Ruolo.OPERATORE)
+    mostra_tutte = request.GET.get("tutte") == "1" and ha_permesso(request.user, F.ORDINI_RIGHE)
     righe = ordine.righe.all() if mostra_tutte else ordine.righe.attive()
     note.segna_lette(ordine, request.user)
-    transizioni = [t for t in stati.transizioni_possibili(ordine.stato) if ha_ruolo(request.user, t.ruolo)]
+    transizioni = [t for t in stati.transizioni_possibili(ordine.stato) if ha_permesso(request.user, t.permesso)]
     return render(
         request,
         "ordini/dettaglio.html",
@@ -65,7 +63,7 @@ def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.ORDINI_STATO, F.ORDINI_ANNULLA)
 def cambia_stato(request: HttpRequest, pk: int) -> HttpResponse:
     try:
         ordine = servizi.cambia_stato(pk, request.POST.get("stato", ""), request.user)
@@ -76,7 +74,7 @@ def cambia_stato(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.ORDINI_RIGHE)
 def azione_riga(request: HttpRequest, pk: int, riga_id: int) -> HttpResponse:
     get_object_or_404(RigaOrdine, pk=riga_id, ordine_id=pk)
     try:
@@ -87,7 +85,7 @@ def azione_riga(request: HttpRequest, pk: int, riga_id: int) -> HttpResponse:
     return redirect("ordini:dettaglio", pk=pk)
 
 
-@richiede_ruolo(Ruolo.CAPOREPARTO)
+@richiede_permesso(F.ORDINI_DIVIDI)
 def dividi_riga(request: HttpRequest, pk: int, riga_id: int) -> HttpResponse:
     riga = get_object_or_404(RigaOrdine.objects.select_related("ordine"), pk=riga_id, ordine_id=pk)
     form = DividiRigaForm(request.POST or None, initial={"nuova_scadenza": riga.data_scadenza})
@@ -104,7 +102,7 @@ def dividi_riga(request: HttpRequest, pk: int, riga_id: int) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.CAPOREPARTO)
+@richiede_permesso(F.ORDINI_DIVIDI)
 def cambia_scadenza(request: HttpRequest, pk: int) -> HttpResponse:
     form = CambiaScadenzaForm(request.POST)
     if not form.is_valid():
@@ -118,7 +116,7 @@ def cambia_scadenza(request: HttpRequest, pk: int) -> HttpResponse:
     return redirect("ordini:dettaglio", pk=pk)
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.ATTIVA_PRODUZIONE)
 def attiva_produzione(request: HttpRequest) -> HttpResponse:
     form = AttivaProduzioneForm(request.POST or None)
     if request.method == "POST" and form.is_valid():

@@ -129,7 +129,7 @@ def test_invio_report(scenario, operatore, amministratore, django_capture_on_com
         }
     )
     config.invalida_cache()
-    with pytest.raises(OperazioneNonConsentita, match="amministratore"):
+    with pytest.raises(OperazioneNonConsentita, match="indirizzi diversi"):
         servizi.invia_report(operatore, destinatari="esterno@altro.it")
     with django_capture_on_commit_callbacks(execute=True):
         servizi.invia_report(operatore, oggetto="Report\r\nBcc: x@y.it", messaggio="<b>ciao</b>")

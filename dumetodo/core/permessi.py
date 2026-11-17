@@ -151,6 +151,17 @@ PROFILI: dict[str, set[str]] = {
 }
 
 
+# Gruppo in Metodo -> profilo in DuMetodo (migrazione utenti).
+GRUPPI_METODO: dict[str, str] = {
+    "Geko": "Operatore",
+    "GekoCapRep": "Caporeparto",
+    "Geko Admin": "Amministratore",
+    "Customer": "Cliente",
+}
+# Gruppi-ruolo delle prime versioni di DuMetodo, convertiti in permessi individuali a ogni migrate.
+GRUPPI_RUOLO_OBSOLETI = ("Operatore", "Caporeparto", "Amministratore")
+
+
 def registra_funzioni(funzioni: Iterable[Funzione], profili: dict[str, Iterable[str]] | None = None) -> None:
     """Permette ad altre app di aggiungere le proprie funzioni (chiamata a import time dal loro ``permessi.py``)."""
     codici = {f.codice for f in FUNZIONI}
@@ -240,6 +251,21 @@ def sincronizza_permessi(**kwargs: Any) -> None:
             p.name = nome
             p.save(update_fields=["name"])
     Permission.objects.filter(content_type=ct).exclude(codename__in=dichiarati).delete()
+    _converti_gruppi_ruolo()
+
+
+def _converti_gruppi_ruolo() -> None:
+    """Gli utenti nei vecchi gruppi-ruolo ricevono i permessi del profilo (in aggiunta) e il gruppo sparisce."""
+    from django.contrib.auth.models import Group
+
+    for nome in GRUPPI_RUOLO_OBSOLETI:
+        gruppo = Group.objects.filter(name=nome).first()
+        if gruppo is None:
+            continue
+        perms = list(permessi_di(codici_profilo(nome)))
+        for u in gruppo.user_set.all():
+            u.user_permissions.add(*perms)
+        gruppo.delete()
 
 
 def permessi_di(codici: Iterable[str]) -> Any:
@@ -250,13 +276,16 @@ def permessi_di(codici: Iterable[str]) -> Any:
     )
 
 
-def applica_profilo(user: Any, nome: str) -> None:
-    """Sostituisce i permessi individuali dell'utente con quelli del profilo (e imposta l'identità Cliente)."""
+def applica_profilo(user: Any, nome: str, *altri: str) -> None:
+    """Sostituisce i permessi individuali dell'utente con quelli del profilo (o dell'unione dei profili)
+    e imposta l'identità Cliente solo se TUTTI i profili sono "Cliente"."""
     from django.contrib.auth.models import Group
 
-    user.user_permissions.set(permessi_di(codici_profilo(nome)))
+    nomi = (nome, *altri)
+    codici: set[str] = set().union(*(codici_profilo(n) for n in nomi))
+    user.user_permissions.set(permessi_di(codici))
     cliente, _ = Group.objects.get_or_create(name=GRUPPO_CLIENTE)
-    if nome == "Cliente":
+    if all(n == "Cliente" for n in nomi):
         user.groups.add(cliente)
     else:
         user.groups.remove(cliente)

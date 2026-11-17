@@ -8,7 +8,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from dumetodo.anagrafica.models import Tabulato
 from dumetodo.core.models import Reparto
-from dumetodo.core.ruoli import Ruolo, richiede_ruolo
+from dumetodo.core.permessi import F, richiede_permesso
 from dumetodo.ordini.models import Ordine
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
@@ -29,7 +29,7 @@ def _xlsx(nome: str, contenuto: bytes) -> HttpResponse:
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.PIANIFICAZIONE)
 def pagina(request: HttpRequest) -> HttpResponse:
     p = piano.calcola()
     return render(
@@ -44,7 +44,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.CAPOREPARTO)
+@richiede_permesso(F.PIANIFICAZIONE_CAPACITA)
 def soglie(request: HttpRequest) -> HttpResponse:
     errori = 0
     for reparto in Reparto.objects.filter(attivo=True):
@@ -62,14 +62,14 @@ def soglie(request: HttpRequest) -> HttpResponse:
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.PIANIFICAZIONE)
 def export(request: HttpRequest) -> HttpResponse:
     nome, contenuto, _ = servizi.genera_xlsx()
     return _xlsx(nome, contenuto)
 
 
 @require_POST
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.PIANIFICAZIONE)
 def invia_report(request: HttpRequest) -> HttpResponse:
     try:
         e = servizi.invia_report(
@@ -99,7 +99,7 @@ def _filtra_agenda(request: HttpRequest):  # type: ignore[no-untyped-def]
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE, Ruolo.CLIENTE)
+@richiede_permesso(F.AGENDA)
 def agenda(request: HttpRequest) -> HttpResponse:
     return render(
         request,
@@ -113,7 +113,7 @@ def agenda(request: HttpRequest) -> HttpResponse:
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE, Ruolo.CLIENTE)
+@richiede_permesso(F.AGENDA)
 def agenda_pulsanti(request: HttpRequest) -> HttpResponse:
     return render(
         request,
@@ -183,19 +183,19 @@ def _tabulato(request: HttpRequest, tipo: str) -> HttpResponse:
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.PIANIFICAZIONE)
 def tabulato_settimanale(request: HttpRequest) -> HttpResponse:
     return _tabulato(request, "settimanale")
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.PIANIFICAZIONE)
 def tabulato_scorte(request: HttpRequest) -> HttpResponse:
     return _tabulato(request, "scorte")
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.PIANIFICAZIONE)
 def tabulato_commesse(request: HttpRequest) -> HttpResponse:
     oggi = timezone.localdate()
     lun, dom = calendario.settimana(oggi)

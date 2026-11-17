@@ -1,17 +1,11 @@
 from django.http import HttpRequest
 
-from .ruoli import Ruolo, ruoli_utente
+from .permessi import is_cliente, is_fornitore
 
 
 def ruoli(request: HttpRequest) -> dict[str, object]:
-    r = ruoli_utente(request.user)
-    return {
-        "ruoli": r,
-        "is_operatore": Ruolo.OPERATORE in r,
-        "is_amministratore": Ruolo.AMMINISTRATORE in r,
-        "is_caporeparto": Ruolo.CAPOREPARTO in r,
-        "is_cliente": Ruolo.CLIENTE in r,
-    }
+    """Identità dell'utente; i permessi nei template si leggono con ``perms.core.<funzione>``."""
+    return {"is_cliente": is_cliente(request.user), "is_fornitore": is_fornitore(request.user)}
 
 
 def azienda(request: HttpRequest) -> dict[str, object]:

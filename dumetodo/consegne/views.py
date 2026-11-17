@@ -7,7 +7,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
-from dumetodo.core.ruoli import Ruolo, richiede_ruolo
+from dumetodo.core.permessi import F, richiede_permesso
 from dumetodo.ordini.models import Ordine, StatoOrdine
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
@@ -28,7 +28,7 @@ def _serie_scelte(request: HttpRequest) -> list[str]:
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.CONSEGNA)
 def pagina(request: HttpRequest) -> HttpResponse:
     serie = _serie_scelte(request)
     qs = servizi.ordini_da_consegnare(serie)
@@ -54,7 +54,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
 
 
 @require_GET
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.CONSEGNA)
 def etichette(request: HttpRequest) -> HttpResponse:
     serie = _serie_scelte(request)
     qs = servizi.ordini_da_consegnare(serie)
@@ -66,7 +66,7 @@ def etichette(request: HttpRequest) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.CONSEGNA)
 def consegna(request: HttpRequest) -> HttpResponse:
     serie = [s for s in request.POST.getlist("serie") if s.isdigit()]
     ids = [int(i) for i in request.POST.getlist("ordine") if i.isdigit()]
@@ -83,7 +83,7 @@ def consegna(request: HttpRequest) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.CONSEGNA)
 def rimuovi(request: HttpRequest, ordine_id: int) -> HttpResponse:
     from dumetodo.ordini import servizi as ordini
 
@@ -94,14 +94,14 @@ def rimuovi(request: HttpRequest, ordine_id: int) -> HttpResponse:
     return redirect("consegne:pagina")
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.CONSEGNA, F.DDT)
 def storico(request: HttpRequest) -> HttpResponse:
     righe = Consegna.objects.filter(pk=OuterRef("pk")).annotate(n=Count("righe")).values("n")
     qs = Consegna.objects.select_related("creata_da").defer("file_contenuto").annotate(n_righe=Subquery(righe))
     return render(request, "consegne/storico.html", {"pagina": Paginator(qs, 30).get_page(request.GET.get("pagina"))})
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.CONSEGNA, F.DDT)
 def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
     c = get_object_or_404(Consegna.objects.defer("file_contenuto"), pk=pk)
     righe = c.righe.select_related("riga__ordine", "ddt").order_by(
@@ -110,14 +110,14 @@ def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, "consegne/dettaglio.html", {"consegna": c, "righe": righe})
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.CONSEGNA, F.DDT)
 def file_consegna(request: HttpRequest, pk: int) -> HttpResponse:
     c = get_object_or_404(Consegna, pk=pk)
     return _download(c.file_nome, c.file_contenuto)
 
 
 # ----------------------------------------------------------------------------------------- DDT
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.DDT)
 def ddt(request: HttpRequest) -> HttpResponse:
     oggi = dt.date.today()
     if request.method == "POST":
@@ -151,7 +151,7 @@ def ddt(request: HttpRequest) -> HttpResponse:
     )
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.DDT)
 def ddt_storico(request: HttpRequest) -> HttpResponse:
     qs = (
         DDT.objects.select_related("creato_da", "email")
@@ -164,14 +164,14 @@ def ddt_storico(request: HttpRequest) -> HttpResponse:
     )
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.DDT)
 def ddt_file(request: HttpRequest, pk: int) -> HttpResponse:
     d = get_object_or_404(DDT, pk=pk)
     return _download(d.file_nome, d.file_contenuto)
 
 
 @require_POST
-@richiede_ruolo(Ruolo.AMMINISTRATORE)
+@richiede_permesso(F.DDT_REINVIA)
 def ddt_reinvia(request: HttpRequest, pk: int) -> HttpResponse:
     try:
         d = servizi.reinvia_file_tecnico(pk, request.user)

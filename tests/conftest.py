@@ -2,37 +2,36 @@ import datetime as dt
 from decimal import Decimal
 
 import pytest
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import User
 
-from dumetodo.core.ruoli import Ruolo
+from dumetodo.core.permessi import applica_profilo
 from dumetodo.ordini.models import Ordine, RigaOrdine
 
 
-def _utente(username: str, *ruoli: Ruolo) -> User:
+def _utente(username: str, profilo: str) -> User:
     u = User.objects.create_user(username, f"{username}@example.com", "password-di-test", first_name=username.title())
-    for r in ruoli:
-        u.groups.add(Group.objects.get_or_create(name=r.value)[0])
-    return u
+    applica_profilo(u, profilo)
+    return User.objects.get(pk=u.pk)  # ricarica: niente cache dei permessi
 
 
 @pytest.fixture
 def operatore(db) -> User:
-    return _utente("operatore", Ruolo.OPERATORE)
+    return _utente("operatore", "Operatore")
 
 
 @pytest.fixture
 def caporeparto(db) -> User:
-    return _utente("caporeparto", Ruolo.CAPOREPARTO)
+    return _utente("caporeparto", "Caporeparto")
 
 
 @pytest.fixture
 def amministratore(db) -> User:
-    return _utente("admin", Ruolo.AMMINISTRATORE)
+    return _utente("admin", "Amministratore")
 
 
 @pytest.fixture
 def cliente(db) -> User:
-    return _utente("cliente", Ruolo.CLIENTE)
+    return _utente("cliente", "Cliente")
 
 
 @pytest.fixture

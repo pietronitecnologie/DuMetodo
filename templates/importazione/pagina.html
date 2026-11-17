@@ -21,7 +21,7 @@
         {% if c.ultimo_errore %}<div class="text-danger">Ultimo errore: {{ c.ultimo_errore }}</div>{% endif %}</div>
       {% empty %}<p class="text-muted">Nessuna lettura ancora eseguita.</p>{% endfor %}
     </div>
-    {% if is_amministratore and casella_configurata %}<div class="card-footer text-end">
+    {% if perms.core.importazione_avanzata and casella_configurata %}<div class="card-footer text-end">
       <form method="post" action="{% url 'importazione:leggi_casella' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Leggi ora</button></form></div>{% endif %}
   </div></div>
 </div>

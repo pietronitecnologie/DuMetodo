@@ -3,7 +3,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
-from dumetodo.core.ruoli import Ruolo, richiede_ruolo
+from dumetodo.core.permessi import F, richiede_permesso
 
 from . import servizi
 from .forms import ParametriGruppoForm
@@ -11,7 +11,7 @@ from .models import ValoreParametro
 from .registro import Gruppo
 
 
-@richiede_ruolo(Ruolo.AMMINISTRATORE)
+@richiede_permesso(F.CONFIGURAZIONE)
 @require_http_methods(["GET", "POST"])
 def pagina(request: HttpRequest) -> HttpResponse:
     gruppo_attivo = request.POST.get("gruppo")
@@ -30,13 +30,13 @@ def pagina(request: HttpRequest) -> HttpResponse:
     return render(request, "configurazione/pagina.html", {"forms": forms})
 
 
-@richiede_ruolo(Ruolo.AMMINISTRATORE)
+@richiede_permesso(F.CONFIGURAZIONE)
 def storico(request: HttpRequest) -> HttpResponse:
     voci = ValoreParametro.history.select_related("history_user").order_by("-history_date")[:200]
     return render(request, "configurazione/storico.html", {"voci": voci})
 
 
-@richiede_ruolo(Ruolo.AMMINISTRATORE)
+@richiede_permesso(F.CONFIGURAZIONE)
 @require_http_methods(["POST"])
 def anteprima_tracciato(request: HttpRequest) -> HttpResponse:
     """Genera il file d'esempio con il tracciato scritto nel form (non ancora salvato)."""
@@ -54,7 +54,7 @@ def anteprima_tracciato(request: HttpRequest) -> HttpResponse:
     return render(request, "configurazione/_anteprima_tracciato.html", contesto)
 
 
-@richiede_ruolo(Ruolo.AMMINISTRATORE)
+@richiede_permesso(F.CONFIGURAZIONE)
 def guida_tracciati(request: HttpRequest) -> HttpResponse:
     from dumetodo.tracciati import esempi, linguaggio
 

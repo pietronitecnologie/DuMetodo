@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from dumetodo.core.ruoli import Ruolo, richiede_ruolo
+from dumetodo.core.permessi import F, richiede_permesso
 
 from . import posta, servizi
 from .models import FileImportato, ProblemaImportazione, StatoCasella
@@ -30,7 +30,7 @@ class CaricamentoForm(forms.Form):
         return {"file": files}
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.IMPORTAZIONE)
 def pagina(request: HttpRequest) -> HttpResponse:
     form = CaricamentoForm(request.POST or None, request.FILES or None)
     risultati = []
@@ -52,7 +52,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
     )
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.IMPORTAZIONE, F.UTILITA_ERRORI_IMPORTAZIONE)
 def dettaglio_file(request: HttpRequest, pk: int) -> HttpResponse:
     file = get_object_or_404(FileImportato.objects.defer("contenuto"), pk=pk)
     return render(
@@ -65,7 +65,7 @@ def dettaglio_file(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.IMPORTAZIONE, F.UTILITA_ERRORI_IMPORTAZIONE)
 def scarica_file(request: HttpRequest, pk: int) -> HttpResponse:
     file = get_object_or_404(FileImportato, pk=pk)
     risposta = HttpResponse(bytes(file.contenuto), content_type="text/plain; charset=latin-1")
@@ -75,7 +75,7 @@ def scarica_file(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.AMMINISTRATORE)
+@richiede_permesso(F.IMPORTAZIONE_AVANZATA)
 def rielabora(request: HttpRequest, pk: int) -> HttpResponse:
     file = get_object_or_404(FileImportato, pk=pk)
     file = servizi.importa(file, forza=True)
@@ -83,7 +83,7 @@ def rielabora(request: HttpRequest, pk: int) -> HttpResponse:
     return redirect("importazione:dettaglio_file", pk=pk)
 
 
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.IMPORTAZIONE, F.UTILITA_ERRORI_IMPORTAZIONE)
 def problemi(request: HttpRequest) -> HttpResponse:
     qs = ProblemaImportazione.objects.select_related("file", "ordine").filter(gestito=request.GET.get("gestiti") == "1")
     return render(
@@ -97,7 +97,7 @@ def problemi(request: HttpRequest) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.OPERATORE)
+@richiede_permesso(F.IMPORTAZIONE, F.UTILITA_ERRORI_IMPORTAZIONE)
 def segna_gestito(request: HttpRequest, pk: int) -> HttpResponse:
     ProblemaImportazione.objects.filter(pk=pk, gestito=False).update(
         gestito=True, gestito_da=request.user, gestito_il=timezone.now()
@@ -109,7 +109,7 @@ def segna_gestito(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(Ruolo.AMMINISTRATORE)
+@richiede_permesso(F.IMPORTAZIONE_AVANZATA)
 def leggi_casella_ora(request: HttpRequest) -> HttpResponse:
     from .tasks import leggi_casella_ordini
 

@@ -4,7 +4,7 @@
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2"><h1 class="h4 me-auto mb-0">Pianificazione produzione</h1>
   <a class="btn btn-sm btn-outline-primary" href="{% url 'pianificazione:export' %}">Esporta Excel</a>
   <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modale-report">Invia report via email</button>
-  {% if is_caporeparto %}<button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modale-soglie">Capacità reparti</button>{% endif %}
+  {% if perms.core.pianificazione_capacita %}<button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modale-soglie">Capacità reparti</button>{% endif %}
 </div>
 <p class="small text-muted">Ore = Σ(quantità × prezzo) / resa oraria delle righe non ancora in bolla, ordini "Inserito" o "Evasione parziale".
 Arretrato dal {{ piano.inizio_arretrato|date:"d/m/Y" }}. Capacità della settimana corrente ridotta alle {{ piano.ore_rimanenti }} ore lavorative rimaste.</p>
@@ -27,7 +27,7 @@ Arretrato dal {{ piano.inizio_arretrato|date:"d/m/Y" }}. Capacità della settima
 <div class="modal fade" id="modale-report"><div class="modal-dialog"><form method="post" action="{% url 'pianificazione:invia_report' %}" class="modal-content">{% csrf_token %}
   <div class="modal-header"><h2 class="h5 modal-title">Invia report</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
   <div class="modal-body">
-    {% if is_amministratore %}<label class="form-label">Destinatari (vuoto = quelli configurati)</label>
+    {% if perms.core.pianificazione_report_libero %}<label class="form-label">Destinatari (vuoto = quelli configurati)</label>
     <input class="form-control mb-2" name="destinatari" placeholder="a@esempio.it, b@esempio.it">
     {% else %}<p class="small text-muted">Il report viene inviato ai destinatari configurati.</p>{% endif %}
     <label class="form-label">Oggetto</label><input class="form-control mb-2" name="oggetto" value="Report pianificazione produzione" maxlength="150">
@@ -36,7 +36,7 @@ Arretrato dal {{ piano.inizio_arretrato|date:"d/m/Y" }}. Capacità della settima
   <div class="modal-footer"><button class="btn btn-primary">Invia</button></div>
 </form></div></div>
 
-{% if is_caporeparto %}<div class="modal fade" id="modale-soglie"><div class="modal-dialog"><form method="post" action="{% url 'pianificazione:soglie' %}" class="modal-content">{% csrf_token %}
+{% if perms.core.pianificazione_capacita %}<div class="modal fade" id="modale-soglie"><div class="modal-dialog"><form method="post" action="{% url 'pianificazione:soglie' %}" class="modal-content">{% csrf_token %}
   <div class="modal-header"><h2 class="h5 modal-title">Capacità settimanale dei reparti (ore)</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
   <div class="modal-body">{% for r in reparti %}<div class="row mb-1 align-items-center"><label class="col-7 small" for="s{{ r.pk }}">{{ r.nome }}</label>
     <div class="col-5"><input class="form-control form-control-sm" id="s{{ r.pk }}" name="soglia_{{ r.pk }}" type="number" min="0" step="0.5" value="{{ r.soglia_ore_settimanali|default_if_none:''|stringformat:'s' }}"></div></div>{% endfor %}</div>

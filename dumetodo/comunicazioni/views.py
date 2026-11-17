@@ -2,13 +2,11 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET, require_POST
 
-from dumetodo.core.ruoli import Ruolo, is_fornitore, richiede_ruolo
+from dumetodo.core.permessi import F, is_fornitore, richiede_permesso
 from dumetodo.ordini.models import Ordine
 
 from . import servizi
 from .models import Nota, Visibilita
-
-TUTTI = (Ruolo.OPERATORE, Ruolo.CLIENTE)
 
 
 def _pannello(request: HttpRequest, ordine: Ordine, errore: str = "", testo: str = "") -> HttpResponse:
@@ -25,13 +23,13 @@ def _pannello(request: HttpRequest, ordine: Ordine, errore: str = "", testo: str
 
 
 @require_GET
-@richiede_ruolo(*TUTTI)
+@richiede_permesso(F.ORDINI_VEDERE)
 def pannello(request: HttpRequest, ordine_id: int) -> HttpResponse:
     return _pannello(request, get_object_or_404(Ordine, pk=ordine_id))
 
 
 @require_POST
-@richiede_ruolo(*TUTTI)
+@richiede_permesso(F.NOTE_SCRIVERE)
 def aggiungi(request: HttpRequest, ordine_id: int) -> HttpResponse:
     ordine = get_object_or_404(Ordine, pk=ordine_id)
     testo = request.POST.get("testo", "")
@@ -44,7 +42,7 @@ def aggiungi(request: HttpRequest, ordine_id: int) -> HttpResponse:
 
 
 @require_POST
-@richiede_ruolo(*TUTTI)
+@richiede_permesso(F.NOTE_SCRIVERE)
 def elimina(request: HttpRequest, nota_id: int) -> HttpResponse:
     qs = Nota.objects.select_related("ordine")
     if not is_fornitore(request.user):

@@ -21,7 +21,7 @@ from dumetodo.comunicazioni.models import Nota
 from dumetodo.configurazione import servizi as config
 from dumetodo.configurazione.registro import REGISTRO
 from dumetodo.core.models import Reparto
-from dumetodo.core.ruoli import Ruolo, ha_ruolo
+from dumetodo.core.permessi import F, ha_permesso
 from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StatoRiga
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
@@ -33,7 +33,7 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 # ----------------------------------------------------------------------------------------- soglie
 @transaction.atomic
 def aggiorna_soglia(reparto_id: int, valore: str, utente: Any) -> Reparto:
-    if not ha_ruolo(utente, Ruolo.CAPOREPARTO):
+    if not ha_permesso(utente, F.PIANIFICAZIONE_CAPACITA):
         raise OperazioneNonConsentita("Non hai i permessi per modificare le capacità dei reparti.")
     testo = (valore or "").strip().replace(",", ".")
     try:
@@ -96,9 +96,9 @@ def genera_xlsx(adesso: dt.datetime | None = None) -> tuple[str, bytes, piano.Pi
 # ----------------------------------------------------------------------------------------- report email
 def _destinatari(override: str | None, utente: Any) -> tuple[list[str], list[str]]:
     if override and override.strip():
-        if utente is not None and not ha_ruolo(utente, Ruolo.AMMINISTRATORE):
+        if utente is not None and not ha_permesso(utente, F.PIANIFICAZIONE_REPORT_LIBERO):
             raise OperazioneNonConsentita(
-                "Solo un amministratore può inviare il report a indirizzi diversi da quelli configurati."
+                "Non hai i permessi per inviare il report a indirizzi diversi da quelli configurati."
             )
         try:
             to = REGISTRO["email.report_produzione_to"].converti(override)
@@ -116,7 +116,7 @@ def _destinatari(override: str | None, utente: Any) -> tuple[list[str], list[str
 @transaction.atomic
 def invia_report(utente: Any = None, *, destinatari: str | None = None, oggetto: str = "", messaggio: str = "") -> Any:
     """Accoda l'email con il report allegato. ``utente=None`` = invio automatico pianificato."""
-    if utente is not None and not ha_ruolo(utente, Ruolo.OPERATORE):
+    if utente is not None and not ha_permesso(utente, F.PIANIFICAZIONE):
         raise OperazioneNonConsentita("Non hai i permessi per inviare il report.")
     to, cc = _destinatari(destinatari, utente)
     oggetto = re.sub(r"[\r\n]+", " ", oggetto or "").strip()[:150] or "Report pianificazione produzione"

@@ -1,13 +1,13 @@
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
 
-from dumetodo.core.ruoli import Ruolo
+from dumetodo.core.permessi import GRUPPO_CLIENTE, sincronizza_permessi
 
 
 class Command(BaseCommand):
-    help = "Crea i gruppi corrispondenti ai ruoli applicativi (idempotente)."
+    help = "Crea il gruppo Cliente e sincronizza i permessi per funzione (idempotente)."
 
     def handle(self, *args: object, **options: object) -> None:
-        for ruolo in Ruolo:
-            _, creato = Group.objects.get_or_create(name=ruolo.value)
-            self.stdout.write(f"{'creato' if creato else 'esistente'}: {ruolo.value}")
+        Group.objects.get_or_create(name=GRUPPO_CLIENTE)
+        sincronizza_permessi()
+        self.stdout.write("Permessi sincronizzati. Assegna i profili con: manage.py assegna_profilo <utente> <profilo>")

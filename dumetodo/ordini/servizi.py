@@ -17,7 +17,7 @@ from django.db import transaction
 from django.db.models import Sum
 
 from dumetodo.configurazione import servizi as config
-from dumetodo.core.ruoli import Ruolo, ha_ruolo
+from dumetodo.core.permessi import F, ha_permesso
 
 from . import stati
 from .models import (
@@ -52,7 +52,7 @@ def cambia_stato(ordine_id: int, nuovo_stato: str, utente: Any) -> Ordine:
         raise OperazioneNonConsentita(
             f"Non è possibile passare da '{ordine.get_stato_display()}' a '{StatoOrdine(nuovo_stato).label}'."
         )
-    if not ha_ruolo(utente, t.ruolo):
+    if not ha_permesso(utente, t.permesso):
         raise OperazioneNonConsentita("Non hai i permessi per questa operazione.")
 
     if nuovo_stato == StatoOrdine.IN_SPEDIZIONE:
@@ -79,7 +79,7 @@ def cambia_stato(ordine_id: int, nuovo_stato: str, utente: Any) -> Ordine:
 @transaction.atomic
 def attiva_produzione(dal: dt.date, al: dt.date, utente: Any) -> int:
     """Porta in lavorazione gli ordini 'Inserito' con scadenza nell'intervallo. Ritorna il numero."""
-    if not ha_ruolo(utente, Ruolo.OPERATORE):
+    if not ha_permesso(utente, F.ATTIVA_PRODUZIONE):
         raise OperazioneNonConsentita("Non hai i permessi per questa operazione.")
     if dal > al:
         raise OperazioneNonConsentita("La data iniziale è successiva a quella finale.")
@@ -99,8 +99,8 @@ def _riga_modificabile(ordine: Ordine, riga: RigaOrdine, utente: Any) -> None:
         raise OperazioneNonConsentita("La riga non è attiva.")
     if riga.bolla_emessa:
         raise OperazioneNonConsentita("La riga è già stata inserita in una bolla.")
-    if ordine.stato in (StatoOrdine.IN_SPEDIZIONE, StatoOrdine.CONSEGNATO, StatoOrdine.ANNULLATO) and not ha_ruolo(
-        utente, Ruolo.AMMINISTRATORE
+    if ordine.stato in (StatoOrdine.IN_SPEDIZIONE, StatoOrdine.CONSEGNATO, StatoOrdine.ANNULLATO) and not ha_permesso(
+        utente, F.ORDINI_ANNULLA
     ):
         raise OperazioneNonConsentita("L'ordine è in spedizione o chiuso: righe non modificabili.")
 
@@ -111,7 +111,7 @@ def azione_riga(riga_id: int, azione: str, utente: Any) -> RigaOrdine:
     che porta l'ordine in evasione parziale (comportamento di Metodo)."""
     if azione not in AZIONI_RIGA:
         raise OperazioneNonConsentita(f"Azione sconosciuta: {azione!r}.")
-    if not ha_ruolo(utente, Ruolo.OPERATORE):
+    if not ha_permesso(utente, F.ORDINI_RIGHE):
         raise OperazioneNonConsentita("Non hai i permessi per questa operazione.")
     ordine_id = RigaOrdine.objects.values_list("ordine_id", flat=True).get(pk=riga_id)
     ordine = _blocca_ordine(ordine_id)
@@ -121,8 +121,10 @@ def azione_riga(riga_id: int, azione: str, utente: Any) -> RigaOrdine:
         # Lo scorporo riguarda la fatturazione: possibile anche su righe consegnate, ma solo per gli admin.
         if not riga.is_attiva:
             raise OperazioneNonConsentita("La riga non è attiva.")
-        if (riga.bolla_emessa or ordine.is_chiuso) and not ha_ruolo(utente, Ruolo.AMMINISTRATORE):
-            raise OperazioneNonConsentita("Solo un amministratore può scorporare righe già consegnate.")
+        if (riga.bolla_emessa or ordine.is_chiuso) and not ha_permesso(
+            utente, F.ORDINI_ANNULLA, F.UTILITA_SCORPORAZIONE
+        ):
+            raise OperazioneNonConsentita("Non hai i permessi per scorporare righe già consegnate.")
         riga.scorporata = azione == "scorpora"
         riga.save()
         return riga
@@ -140,8 +142,8 @@ def azione_riga(riga_id: int, azione: str, utente: Any) -> RigaOrdine:
         riga.bloccata = True
         riga.save()
     elif azione == "annulla":
-        if not ha_ruolo(utente, Ruolo.AMMINISTRATORE):
-            raise OperazioneNonConsentita("Solo un amministratore può annullare una riga.")
+        if not ha_permesso(utente, F.ORDINI_ANNULLA):
+            raise OperazioneNonConsentita("Non hai i permessi per annullare una riga.")
         riga.stato = StatoRiga.ANNULLATA
         riga.in_evasione = False
         riga.save()
@@ -174,7 +176,7 @@ def registra_scadenza(
 
 @transaction.atomic
 def cambia_scadenza_ordine(ordine_id: int, nuova: dt.date, motivo: str, utente: Any) -> Ordine:
-    if not ha_ruolo(utente, Ruolo.CAPOREPARTO):
+    if not ha_permesso(utente, F.ORDINI_DIVIDI):
         raise OperazioneNonConsentita("Non hai i permessi per modificare la scadenza.")
     if not motivo.strip():
         raise OperazioneNonConsentita("Indica il motivo della modifica.")
@@ -211,7 +213,7 @@ def dividi_riga(riga_id: int, qta: Decimal | str, utente: Any, nuova_scadenza: d
     qui la riga resta nell'ordine originale con la propria scadenza (tracciata nello storico),
     così la chiave d'ordine del cliente resta intatta e la consegna/fatturazione è coerente.
     """
-    if not ha_ruolo(utente, Ruolo.CAPOREPARTO):
+    if not ha_permesso(utente, F.ORDINI_DIVIDI):
         raise OperazioneNonConsentita("Non hai i permessi per dividere una riga.")
     try:
         qta = Decimal(str(qta).replace(",", "."))

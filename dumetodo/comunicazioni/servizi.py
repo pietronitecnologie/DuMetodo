@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from dumetodo.configurazione import servizi as config
-from dumetodo.core.ruoli import Ruolo, ha_ruolo, is_fornitore
+from dumetodo.core.permessi import F, ha_permesso, is_cliente, is_fornitore
 from dumetodo.ordini.models import Ordine
 
 from . import email
@@ -24,11 +24,9 @@ class NotaNonValida(Exception):
 
 
 def _lato(utente: Any) -> str:
-    if is_fornitore(utente):
-        return Lato.FORNITORE
-    if ha_ruolo(utente, Ruolo.CLIENTE):
-        return Lato.CLIENTE
-    raise NotaNonValida("Non hai i permessi per scrivere note.")
+    if not ha_permesso(utente, F.NOTE_SCRIVERE):
+        raise NotaNonValida("Non hai i permessi per scrivere note.")
+    return Lato.CLIENTE if is_cliente(utente) else Lato.FORNITORE
 
 
 def note_visibili(ordine: Ordine, utente: Any) -> QuerySet[Nota]:
@@ -87,7 +85,7 @@ def elimina_nota(nota: Nota, utente: Any) -> None:
     """Eliminazione logica: resta nel database per l'audit. Può farlo l'autore o un amministratore."""
     if nota.eliminata:
         return
-    if nota.autore_id != utente.pk and not ha_ruolo(utente, Ruolo.AMMINISTRATORE):
+    if nota.autore_id != utente.pk and not ha_permesso(utente, F.NOTE_ELIMINARE_TUTTE):
         raise NotaNonValida("Puoi eliminare solo le tue note.")
     nota.eliminata_il = timezone.now()
     nota.eliminata_da = utente

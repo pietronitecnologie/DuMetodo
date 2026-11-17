@@ -17,26 +17,23 @@
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="menu">
       <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="{% url 'ordini:lista' %}">Ordini</a></li>
-        <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Agenda</a>
+        {% if perms.core.ordini_vedere %}<li class="nav-item"><a class="nav-link" href="{% url 'ordini:lista' %}">Ordini</a></li>{% endif %}
+        {% if perms.core.agenda or perms.core.pianificazione or perms.core.consegna or perms.core.ddt or perms.core.importazione or perms.core.attiva_produzione %}
+        <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Produzione</a>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="{% url 'pianificazione:agenda' %}">Agenda ordini</a></li>
-            <li><a class="dropdown-item" href="{% url 'pianificazione:agenda_pulsanti' %}">Agenda pulsanti</a></li>
-            {% if is_operatore %}<li><hr class="dropdown-divider"></li>
+            {% if perms.core.agenda %}<li><a class="dropdown-item" href="{% url 'pianificazione:agenda' %}">Agenda ordini</a></li>
+            <li><a class="dropdown-item" href="{% url 'pianificazione:agenda_pulsanti' %}">Agenda pulsanti</a></li>{% endif %}
+            {% if perms.core.pianificazione %}<li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="{% url 'pianificazione:pagina' %}">Pianificazione</a></li>
             <li><a class="dropdown-item" href="{% url 'pianificazione:tabulato_settimanale' %}">Tabulato settimanale</a></li>
             <li><a class="dropdown-item" href="{% url 'pianificazione:tabulato_scorte' %}">Tabulato scorte</a></li>
             <li><a class="dropdown-item" href="{% url 'pianificazione:tabulato_commesse' %}">Commesse per tabulato</a></li>{% endif %}
-          </ul></li>
-        {% if is_operatore %}
-        <li class="nav-item"><a class="nav-link" href="{% url 'consegne:pagina' %}">Consegna</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'consegne:ddt' %}">DDT</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'importazione:pagina' %}">Importazione</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'ordini:attiva_produzione' %}">Attiva produzione</a></li>
-        {% endif %}
-        {% if is_amministratore %}
-        <li class="nav-item"><a class="nav-link" href="{% url 'configurazione:pagina' %}">Configurazione</a></li>
-        {% endif %}
+            {% if perms.core.consegna or perms.core.ddt or perms.core.importazione or perms.core.attiva_produzione %}<li><hr class="dropdown-divider"></li>{% endif %}
+            {% if perms.core.consegna %}<li><a class="dropdown-item" href="{% url 'consegne:pagina' %}">Consegna</a></li>{% endif %}
+            {% if perms.core.ddt %}<li><a class="dropdown-item" href="{% url 'consegne:ddt' %}">DDT</a></li>{% endif %}
+            {% if perms.core.importazione %}<li><a class="dropdown-item" href="{% url 'importazione:pagina' %}">Importazione ordini</a></li>{% endif %}
+            {% if perms.core.attiva_produzione %}<li><a class="dropdown-item" href="{% url 'ordini:attiva_produzione' %}">Attiva produzione</a></li>{% endif %}
+          </ul></li>{% endif %}
         {% if perms.core.report_dashboard or perms.core.report_produttivita or perms.core.report_materiale or perms.core.report_prezzi %}
         <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Report</a>
           <ul class="dropdown-menu">
@@ -44,13 +41,16 @@
             {% if perms.core.report_produttivita %}<li><a class="dropdown-item" href="{% url 'report:produttivita' %}">Analisi produttività</a></li>{% endif %}
             {% if perms.core.report_materiale %}<li><a class="dropdown-item" href="{% url 'report:materiale' %}">Materiale per reparto/settimana</a></li>{% endif %}
             {% if perms.core.report_prezzi %}<li><a class="dropdown-item" href="{% url 'report:prezzi' %}">Controllo prezzi</a></li>{% endif %}
-          </ul></li>
-        {% endif %}
+          </ul></li>{% endif %}
         {% if perms.core.utilita_errori_importazione or perms.core.utilita_ristampa_etichette or perms.core.utilita_annunci or perms.core.utilita_scorporazione or perms.core.utilita_cambia_ordine %}
         <li class="nav-item"><a class="nav-link" href="{% url 'utilita:indice' %}">Utilità</a></li>{% endif %}
-        {% if perms.core.utenti %}<li class="nav-item"><a class="nav-link" href="{% url 'utenti:lista' %}">Utenti</a></li>{% endif %}
-        {% if is_amministratore %}<li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Amministrazione</a></li>
-        {% endif %}
+        {% if perms.core.configurazione or perms.core.utenti or user.is_staff %}
+        <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Amministrazione</a>
+          <ul class="dropdown-menu">
+            {% if perms.core.configurazione %}<li><a class="dropdown-item" href="{% url 'configurazione:pagina' %}">Configurazione</a></li>{% endif %}
+            {% if perms.core.utenti %}<li><a class="dropdown-item" href="{% url 'utenti:lista' %}">Utenti e permessi</a></li>{% endif %}
+            {% if user.is_staff %}<li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin tecnico (Django)</a></li>{% endif %}
+          </ul></li>{% endif %}
       </ul>
       <span class="navbar-text me-3">{{ user.get_full_name|default:user.get_username }}</span>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-outline-light btn-sm">Esci</button></form>

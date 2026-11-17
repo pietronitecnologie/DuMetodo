@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from dumetodo.core.ruoli import Ruolo
+from dumetodo.core.permessi import F
 
 from .models import StatoOrdine as S
 
@@ -19,7 +19,7 @@ from .models import StatoOrdine as S
 class Transizione:
     da: frozenset[str]
     a: str
-    ruolo: Ruolo
+    permesso: str
     etichetta: str
 
 
@@ -29,16 +29,16 @@ TRANSIZIONI: tuple[Transizione, ...] = (
     Transizione(
         frozenset({S.INSERITO, S.IN_SPEDIZIONE, S.EVASIONE_PARZIALE}),
         S.IN_LAVORAZIONE,
-        Ruolo.OPERATORE,
+        F.ORDINI_STATO,
         "Lavorato con mancanze",
     ),
-    Transizione(frozenset({S.CONSEGNATO}), S.IN_LAVORAZIONE, Ruolo.AMMINISTRATORE, "Riapri (lavorato con mancanze)"),
+    Transizione(frozenset({S.CONSEGNATO}), S.IN_LAVORAZIONE, F.ORDINI_ANNULLA, "Riapri (lavorato con mancanze)"),
     # SPE può diventare SPP se ci sono righe bloccate: lo gestisce servizi.cambia_stato
-    Transizione(frozenset({S.INSERITO, S.IN_LAVORAZIONE}), S.IN_SPEDIZIONE, Ruolo.OPERATORE, "Spedisci"),
-    Transizione(frozenset({S.IN_SPEDIZIONE, S.EVASIONE_PARZIALE}), S.INSERITO, Ruolo.OPERATORE, "Rimuovi da consegna"),
-    Transizione(_APERTI, S.CONSEGNATO, Ruolo.AMMINISTRATORE, "Consegna forzata (senza bolla)"),
-    Transizione(_APERTI, S.ANNULLATO, Ruolo.AMMINISTRATORE, "Annulla"),
-    Transizione(frozenset({S.ANNULLATO}), S.INSERITO, Ruolo.AMMINISTRATORE, "Ripristina"),
+    Transizione(frozenset({S.INSERITO, S.IN_LAVORAZIONE}), S.IN_SPEDIZIONE, F.ORDINI_STATO, "Spedisci"),
+    Transizione(frozenset({S.IN_SPEDIZIONE, S.EVASIONE_PARZIALE}), S.INSERITO, F.ORDINI_STATO, "Rimuovi da consegna"),
+    Transizione(_APERTI, S.CONSEGNATO, F.ORDINI_ANNULLA, "Consegna forzata (senza bolla)"),
+    Transizione(_APERTI, S.ANNULLATO, F.ORDINI_ANNULLA, "Annulla"),
+    Transizione(frozenset({S.ANNULLATO}), S.INSERITO, F.ORDINI_ANNULLA, "Ripristina"),
 )
 
 
