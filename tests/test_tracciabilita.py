@@ -21,7 +21,6 @@ from dumetodo.tracciabilita.models import (
     EsitoControllo,
     FileOrdine,
     Postazione,
-    Reclamo,
     StatoWorkOrder,
     TipoControllo,
     TipoElemento,
@@ -330,7 +329,7 @@ def test_esportazione_cavi_tiene_prodotto_e_misura(client, cliente, postazione, 
 # =========================================================================== permessi delle viste
 @pytest.mark.parametrize(
     "nome",
-    ["batterie", "cavi", "qualita", "reclami", "display"],
+    ["batterie", "cavi", "qualita"],
 )
 def test_liste_visibili_a_fornitore_e_cliente(client, operatore, cliente, nome):
     for u in (operatore, cliente):
@@ -346,8 +345,6 @@ def test_liste_visibili_a_fornitore_e_cliente(client, operatore, cliente, nome):
         "batteria_nuova",
         "traccia_nuova",
         "qualita_nuovo",
-        "reclamo_nuovo",
-        "display_nuovo",
         "file_carica",
         "work_order",
         "genera_codice",
@@ -556,72 +553,3 @@ def test_controllo_qualita_da_vista_su_stock_ed_esportazione(client, operatore, 
     assert len(righe) == 3 and {r[5] for r in righe} == {"Visivo", "Distinta", "Disegno"}
     assert _xlsx(client.get(reverse("tracciabilita:qualita"), {"articolo": "ALTRO", "formato": "xlsx"})) == []
     assert EsitoControllo.objects.count() == 3
-
-
-# =========================================================================== reclami e test display
-def test_reclamo_conserva_la_data_dell_utente_e_l_allegato(client, operatore, cliente, ordine, reparto):
-    client.force_login(operatore)
-    data = timezone.localdate() - dt.timedelta(days=5)
-    r = client.post(
-        reverse("tracciabilita:reclamo_nuovo"),
-        {
-            "codice": "RC-1",
-            "ordine": "40.0004300-2026",
-            "articolo": "ART-A",
-            "reparto": reparto.pk,
-            "data": data.isoformat(),
-            "note": "graffi",
-            "file": SimpleUploadedFile("foto.jpg", JPEG),
-        },
-    )
-    assert r.status_code == 302
-    rec = Reclamo.objects.get()
-    assert rec.data == data and rec.ordine == ordine and rec.file_tipo == "image/jpeg"
-    client.force_login(cliente)
-    r = client.get(reverse("tracciabilita:reclamo_file", args=[rec.pk]))
-    assert r.status_code == 200 and "attachment" in r["Content-Disposition"]
-    righe = _xlsx(client.get(reverse("tracciabilita:reclami"), {"codice": "RC-1", "formato": "xlsx"}))
-    assert righe[0][1:3] == ("RC-1", ordine.codice_breve)
-
-
-def test_test_display_con_campi_appiccicosi(client, operatore):
-    client.force_login(operatore)
-    oggi = timezone.localdate().isoformat()
-    dati = {
-        "prodotto": "RAFFAELLO28",
-        "sito": "S1",
-        "articolo": "A1",
-        "esito": "NEG",
-        "fw": "1.2",
-        "lotto": "L5",
-        "data": oggi,
-    }
-    r = client.post(reverse("tracciabilita:display_nuovo"), dati)
-    assert r.status_code == 302 and "fw=1.2" in r["Location"] and "lotto=L5" in r["Location"]
-    pagina = client.get(r["Location"]).content.decode()
-    assert 'value="L5"' in pagina and "tracciabilita/display.js" in pagina
-    t = modelli.TestDisplay.objects.get()
-    assert t.utente == operatore and t.get_esito_display() == "Negativo"
-
-
-def test_test_display_lettura_sito_articolo_anche_senza_javascript(client, operatore):
-    client.force_login(operatore)
-    oggi = timezone.localdate().isoformat()
-    dati = {"prodotto": "RAFFAELLO28", "sito": "S9$$ART-9", "articolo": "", "esito": "", "data": oggi}
-    client.post(reverse("tracciabilita:display_nuovo"), dati)
-    t = modelli.TestDisplay.objects.get()
-    assert (t.sito, t.articolo, t.esito) == ("S9", "ART-9", "POS")
-
-
-def test_test_display_prodotto_validato_ed_esportazione_filtrata(client, operatore):
-    client.force_login(operatore)
-    oggi = timezone.localdate().isoformat()
-    r = client.post(
-        reverse("tracciabilita:display_nuovo"),
-        {"prodotto": "INVENTATO", "sito": "S", "articolo": "A", "esito": "POS", "data": oggi},
-    )
-    assert r.status_code == 200 and not modelli.TestDisplay.objects.exists()
-    for sito, esito in (("S1", "POS"), ("S2", "NEG")):
-        modelli.TestDisplay.objects.create(sito=sito, articolo="A", esito=esito, data=timezone.localdate())
-    righe = _xlsx(client.get(reverse("tracciabilita:display"), {"esito": "NEG", "formato": "xlsx"}))
-    assert [r[2] for r in righe] == ["S2"]

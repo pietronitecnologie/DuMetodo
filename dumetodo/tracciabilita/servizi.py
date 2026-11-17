@@ -43,10 +43,8 @@ from .models import (
     EsitoControllo,
     FileOrdine,
     Postazione,
-    Reclamo,
     StatoWorkOrder,
     Test,
-    TestDisplay,
     TipoControllo,
     TipoElemento,
     Traccia,
@@ -471,36 +469,6 @@ def elimina_file_ordine(file_id: int, utente: Any) -> Ordine:
     return ordine
 
 
-# =========================================================================== reclami
-@transaction.atomic
-def registra_reclamo(
-    *,
-    utente: Any,
-    codice: str,
-    articolo: str,
-    data: dt.date,
-    ordine: Ordine | None = None,
-    reparto: Reparto | None = None,
-    note: str = "",
-    file: UploadedFile | None = None,
-) -> Reclamo:
-    _richiedi(utente)
-    codice, articolo = (codice or "").strip(), (articolo or "").strip()
-    if not codice or not articolo:
-        raise OperazioneNonConsentita("Identificativo e codice prodotto sono obbligatori.")
-    reclamo = Reclamo(
-        codice=codice, articolo=articolo, data=data, ordine=ordine, reparto=reparto, note=(note or "").strip(),
-        creato_da=utente,
-    )  # fmt: skip
-    if file:
-        tipo, estensione = valida_file(file)
-        reclamo.file_nome_originale = _nome_originale(file.name)
-        reclamo.file_tipo = tipo
-        reclamo.file.save(f"file{estensione}", file, save=False)
-    reclamo.save()
-    return reclamo
-
-
 # =========================================================================== controllo qualità
 def controlli_del_test(test: Test) -> list[Controllo]:
     return list(test.controlli.order_by("tipo", "nome"))
@@ -557,14 +525,6 @@ def registra_controllo_qualita(
         e.controllo_qualita = cq
     EsitoControllo.objects.bulk_create(esiti)
     return cq
-
-
-# =========================================================================== test display
-@transaction.atomic
-def registra_test_display(*, utente: Any, dati: Mapping[str, Any]) -> TestDisplay:
-    _richiedi(utente)
-    campi = ("prodotto", "sito", "articolo", "esito", "fw", "lotto", "data", "note")
-    return TestDisplay.objects.create(utente=utente, **{c: dati[c] for c in campi if c in dati})
 
 
 # =========================================================================== esportazioni xlsx
@@ -673,36 +633,6 @@ def esporta_qualita(qs: QuerySet[EsitoControllo]) -> bytes:
         "Presenza", "Eseguito da",
     )  # fmt: skip
     return xlsx("Controlli qualità", intestazioni, righe, {5: DATA})
-
-
-def esporta_reclami(qs: QuerySet[Reclamo]) -> bytes:
-    righe = (
-        (r.codice, r.ordine_testo, r.articolo, str(r.reparto or ""), r.data, r.note, r.file_nome_originale) for r in qs
-    )
-    intestazioni = ("Identificativo", "Ordine", "Codice prodotto", "Reparto", "Data", "Note", "Allegato")
-    return xlsx("Reclami", intestazioni, righe, {4: DATA})
-
-
-def esporta_display(qs: QuerySet[TestDisplay]) -> bytes:
-    righe = (
-        (
-            t.get_prodotto_display(),
-            t.sito,
-            t.articolo,
-            t.get_esito_display(),
-            t.fw,
-            t.lotto,
-            t.data,
-            t.note,
-            t.creato_il,
-            t.utente.get_username() if t.utente else "",
-        )
-        for t in qs
-    )
-    intestazioni = (
-        "Prodotto", "Sito", "Articolo", "Esito", "FW", "Lotto", "Data", "Note", "Data inserimento", "Utente",
-    )  # fmt: skip
-    return xlsx("Test display", intestazioni, righe, {6: DATA, 8: DATA_ORA})
 
 
 def esporta_file(qs: QuerySet[FileOrdine]) -> bytes:

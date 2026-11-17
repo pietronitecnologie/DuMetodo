@@ -37,9 +37,4 @@ urlpatterns = [
     path("qualita/", views.qualita, name="qualita"),
     path("qualita/nuovo/", views.qualita_nuovo, name="qualita_nuovo"),
     path("qualita/controlli/", views.qualita_controlli, name="qualita_controlli"),
-    path("reclami/", views.reclami, name="reclami"),
-    path("reclami/nuovo/", views.reclamo_nuovo, name="reclamo_nuovo"),
-    path("reclami/<int:pk>/file/", views.reclamo_file, name="reclamo_file"),
-    path("display/", views.display, name="display"),
-    path("display/nuovo/", views.display_nuovo, name="display_nuovo"),
 ]

@@ -526,12 +526,13 @@ def test_inserimento_manuale_tutto_o_niente(operatore, amministratore):
     assert not ddt.materiali.exists()
 
 
-def test_richieste_aperte_proposte_sul_ddt(operatore, pulsanti):
+def test_richieste_chiuse_dal_ddt_e_le_altre_restano_aperte(operatore, pulsanti):
     servizi.richiedi_materiale(operatore, pulsanti, "ABC123")
     servizi.richiedi_materiale(operatore, pulsanti, "ALTRO")
     servizi.importa_file_ddt(operatore, "d.xml", XML.encode("cp1252"))
     ddt = DDTIngresso.objects.get(numero="5")
-    assert [r.codice for r in servizi.richieste_aperte_del_ddt(ddt)] == ["ABC123"]
+    assert not servizi.richieste_aperte_del_ddt(ddt).exists()  # chiuse automaticamente all'arrivo
+    assert list(RichiestaMateriale.objects.filter(ricevuta=False).values_list("codice", flat=True)) == ["ALTRO"]
 
 
 def test_pagine_ddt(client, operatore):
@@ -586,7 +587,8 @@ def test_accesso_pagine(client, cliente, operatore, url):
 
 def test_pagine_amministratore_con_dati(client, amministratore, pulsanti):
     r, _ = servizi.richiedi_materiale(amministratore, pulsanti, "ABC123", urgente=True)
-    servizi.importa_file_ddt(amministratore, "d.xml", XML.encode("cp1252"))
+    servizi.importa_file_ddt(amministratore, "d.xml", XML.encode("cp1252"))  # chiude la richiesta ABC123
+    servizi.richiedi_materiale(amministratore, pulsanti, "NONARRIVATO", urgente=True)
     d = servizi.crea_distinta(amministratore, "ART-1")
     servizi.aggiungi_componente_distinta(amministratore, d.pk, "ABC123", "", "2")
     servizi.registra_conteggio(amministratore, "ABC123", "", "5")
@@ -604,10 +606,10 @@ def test_pagine_amministratore_con_dati(client, amministratore, pulsanti):
     ):
         assert client.get(url).status_code == 200, url
     pagina = client.get(f"/magazzino/ddt/{ddt.pk}/").content.decode()
-    assert "Segna ricevuto" in pagina  # richiesta aperta per un codice arrivato con il DDT
+    assert "chiuse dall'arrivo" in pagina and "ABC123" in pagina
     assert "Mail Sollecito" in client.get("/magazzino/richieste/reparto/GK01-PLS/").content.decode()
     r = client.get("/magazzino/richieste/reparto/GK01-PLS/email/?tipo=MANCANTE&tutte=1")
-    assert r.status_code == 200 and "ABC123 - Materiale in esaurimento." in r.content.decode()
+    assert r.status_code == 200 and "NONARRIVATO - Materiale in esaurimento." in r.content.decode()
     riga = d.componenti.get()
     client.post(f"/magazzino/distinte/componenti/{riga.pk}/sposta/", {"direzione": "giu"})
     assert client.post(f"/magazzino/ddt/materiali/{ddt.materiali.first().pk}/elimina/").status_code == 302
@@ -722,3 +724,31 @@ def test_migrazione_magazzino(metodo_magazzino_db):
     assert DistintaBase.objects.filter(articolo__codice="ART-A", eliminata_il__isnull=False).count() == 1
     assert dict(attiva.componenti.values_list("componente__codice", "quantita")) == {"VITE": 5, "CAVO": Decimal("0.5")}
     assert DistintaBase.objects.get(articolo__codice="ART-Z").eliminata_il is not None
+
+
+def test_arrivo_ddt_chiude_le_richieste_senza_toccare_la_giacenza(operatore, pulsanti):
+    import datetime as dt
+
+    from dumetodo.core.models import Reparto
+    from dumetodo.magazzino.models import ConteggioInventario
+
+    elettronica = Reparto.objects.create(codice="GK01-ETT", nome="Elettronica prova")
+    r1, _ = servizi.richiedi_materiale(operatore, pulsanti, "AB1")
+    r2, _ = servizi.richiedi_materiale(operatore, elettronica, "AB1")
+    altra, _ = servizi.richiedi_materiale(operatore, pulsanti, "ZZ9")
+    conteggi = ConteggioInventario.objects.count()
+    ddt = servizi.crea_ddt(operatore, "77", dt.date.today(), "Fornitore X")
+    m = servizi.aggiungi_materiale(operatore, ddt.pk, codice="ab1", qta="10")
+    for r in (r1, r2):
+        r.refresh_from_db()
+        assert r.ricevuta and r.ricevuta_con == m and r.ricevuta_da == operatore and r.ricevuta_il
+    altra.refresh_from_db()
+    assert not altra.ricevuta
+    assert ConteggioInventario.objects.count() == conteggi  # la giacenza non cambia
+
+
+def test_importazione_ddt_chiude_le_richieste(operatore, pulsanti):
+    r, _ = servizi.richiedi_materiale(operatore, pulsanti, "ABC123")
+    esito = servizi.importa_file_ddt(operatore, "d.xml", XML.encode("cp1252"))
+    r.refresh_from_db()
+    assert r.ricevuta and esito.richieste_chiuse >= 1

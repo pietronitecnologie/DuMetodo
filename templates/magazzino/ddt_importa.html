@@ -7,7 +7,8 @@
 {% if esito %}<div class="card mb-3"><div class="card-header"><strong>Esito</strong></div><div class="card-body">
   <p class="mb-2">DDT creati: <strong>{{ esito.ddt_creati|length }}</strong>, DDT già presenti completati: <strong>{{ esito.ddt_aggiornati|length }}</strong>,
     materiali importati: <strong>{{ esito.materiali_importati }}</strong>, righe già presenti: <strong>{{ esito.materiali_gia_presenti }}</strong>,
-    righe scartate: <strong>{{ esito.scarti|length }}</strong>.</p>
+    righe scartate: <strong>{{ esito.scarti|length }}</strong>,
+    richieste materiali chiuse: <strong>{{ esito.richieste_chiuse }}</strong>.</p>
   {% if esito.ddt %}<ul class="small">{% for d in esito.ddt %}<li><a href="{{ d.get_absolute_url }}">{{ d }}</a></li>{% endfor %}</ul>{% endif %}
   {% if scarti %}<div class="alert alert-warning small mb-0"><strong>Righe scartate</strong><ul class="mb-0">{% for s in scarti %}<li>{{ s }}</li>{% endfor %}</ul>
     {% if altri_scarti %}… e altre {{ altri_scarti }} righe scartate.{% endif %}</div>{% endif %}

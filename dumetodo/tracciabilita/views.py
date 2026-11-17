@@ -29,10 +29,8 @@ from .models import (
     EsitoControllo,
     FileOrdine,
     Postazione,
-    Reclamo,
     StatoWorkOrder,
     Test,
-    TestDisplay,
     TipoControllo,
     TipoElemento,
     Traccia,
@@ -272,7 +270,6 @@ def _contesto_pannello(ordine: Ordine) -> dict[str, Any]:
         "controlli": ordine.controlli_qualita.select_related("test", "eseguito_da").prefetch_related(
             Prefetch("esiti", queryset=EsitoControllo.objects.select_related("controllo"))
         )[:50],
-        "reclami": ordine.reclami.select_related("reparto")[:50],
         "file": ordine.file_allegati.select_related("caricato_da")[:100],
         "dimensione_massima_mb": config.leggi("tracciabilita.dimensione_massima_file_mb"),
     }
@@ -543,83 +540,4 @@ def qualita(request: HttpRequest) -> HttpResponse:
         esporta=servizi.esporta_qualita,
         nome_file="ControlliQualita.xlsx",
         predefiniti=_giorni_fa(30),
-    )
-
-
-# =========================================================================== reclami
-@richiede_permesso(F.TRACCIABILITA_REGISTRA)
-def reclamo_nuovo(request: HttpRequest) -> HttpResponse:
-    if request.method == "POST":
-        form = forms.ReclamoForm(request.POST, request.FILES)
-        if form.is_valid():
-            d = form.cleaned_data
-            try:
-                r = servizi.registra_reclamo(
-                    utente=request.user, codice=d["codice"], articolo=d["articolo"], data=d["data"],
-                    ordine=d["ordine"], reparto=d["reparto"], note=d["note"], file=d["file"],
-                )  # fmt: skip
-            except OperazioneNonConsentita as exc:
-                messages.error(request, str(exc))
-            else:
-                messages.success(request, f"{r} registrato.")
-                return redirect("tracciabilita:reclami")
-    else:
-        form = forms.ReclamoForm(initial={"data": timezone.localdate(), "ordine": request.GET.get("ordine", "")[:60]})
-    return render(request, "tracciabilita/reclamo_nuovo.html", {"form": form})
-
-
-@require_GET
-@richiede_permesso(F.TRACCIABILITA_CONSULTA, F.TRACCIABILITA_REGISTRA)
-def reclami(request: HttpRequest) -> HttpResponse:
-    return _lista(
-        request,
-        form_cls=forms.FiltriReclami,
-        qs=Reclamo.objects.select_related("ordine", "reparto"),
-        template="tracciabilita/reclami.html",
-        esporta=servizi.esporta_reclami,
-        nome_file="Reclami.xlsx",
-        predefiniti=_giorni_fa(30),
-    )
-
-
-@require_GET
-@richiede_permesso(F.TRACCIABILITA_CONSULTA, F.TRACCIABILITA_REGISTRA)
-def reclamo_file(request: HttpRequest, pk: int) -> HttpResponse:
-    r = get_object_or_404(Reclamo, pk=pk)
-    if not r.file:
-        raise Http404
-    return _servi_file(r.file, r.file_nome_originale or "allegato", r.file_tipo or "application/octet-stream", True)
-
-
-# =========================================================================== test display
-@richiede_permesso(F.TRACCIABILITA_REGISTRA)
-def display_nuovo(request: HttpRequest) -> HttpResponse:
-    if request.method == "POST":
-        form = forms.TestDisplayForm(request.POST)
-        if form.is_valid():
-            try:
-                t = servizi.registra_test_display(utente=request.user, dati=form.cleaned_data)
-            except OperazioneNonConsentita as exc:
-                messages.error(request, str(exc))
-            else:
-                messages.success(request, f"Test salvato: {t.sito} - {t.articolo} - Esito: {t.get_esito_display()}")
-                # Campi "appiccicosi" come in Metodo: prodotto, FW, lotto e data restano per il pezzo successivo.
-                sticky = {"prodotto": t.prodotto, "fw": t.fw, "lotto": t.lotto, "data": t.data.isoformat()}
-                return redirect(f"{reverse('tracciabilita:display_nuovo')}?{urlencode(sticky)}")
-    else:
-        iniziali = {k: request.GET.get(k, "")[:50] for k in ("prodotto", "fw", "lotto")}
-        form = forms.TestDisplayForm(initial={**iniziali, "data": request.GET.get("data") or timezone.localdate()})
-    return render(request, "tracciabilita/display_nuovo.html", {"form": form})
-
-
-@require_GET
-@richiede_permesso(F.TRACCIABILITA_CONSULTA, F.TRACCIABILITA_REGISTRA)
-def display(request: HttpRequest) -> HttpResponse:
-    return _lista(
-        request,
-        form_cls=forms.FiltriDisplay,
-        qs=TestDisplay.objects.select_related("utente"),
-        template="tracciabilita/display.html",
-        esporta=servizi.esporta_display,
-        nome_file="TestDisplay.xlsx",
     )

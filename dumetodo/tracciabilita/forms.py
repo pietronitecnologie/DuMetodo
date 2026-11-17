@@ -20,11 +20,8 @@ from dumetodo.ordini.models import Ordine
 from . import servizi
 from .models import (
     Chiave,
-    EsitoDisplay,
     Postazione,
-    ProdottoDisplay,
     Test,
-    TestDisplay,
 )
 
 DATA = {"type": "date"}
@@ -216,41 +213,6 @@ class ControlloQualitaForm(FormConStile):
         return d
 
 
-class ReclamoForm(FormConStile):
-    codice = forms.CharField(label="Identificativo", max_length=50)
-    ordine = CampoOrdine(required=False)
-    articolo = forms.CharField(label="Codice prodotto", max_length=50)
-    reparto = forms.ModelChoiceField(label="Reparto", queryset=Reparto.objects.none())
-    data = _campo_data("Data", required=True)
-    note = forms.CharField(label="Note", required=False, widget=forms.Textarea(attrs={"rows": 3}))
-    file = forms.FileField(label="Allegato", required=False, help_text=f"Ammessi: {servizi.TIPI_AMMESSI}.")
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.fields["reparto"].queryset = _reparti()
-
-
-class TestDisplayForm(forms.ModelForm):
-    class Meta:
-        model = TestDisplay
-        fields = ["prodotto", "sito", "articolo", "esito", "fw", "lotto", "data", "note"]
-        widgets = {"data": forms.DateInput(attrs=DATA), "note": forms.Textarea(attrs={"rows": 1})}
-
-    def __init__(self, data: Any = None, *args: Any, **kwargs: Any) -> None:
-        # Lettura "sito$$articolo" arrivata senza JavaScript: la si divide anche lato server.
-        if data is not None and "$$" in data.get("sito", "") and not data.get("articolo"):
-            data = data.copy()
-            sito, _, articolo = data["sito"].partition("$$")
-            data["sito"], data["articolo"] = sito, articolo
-            if not data.get("esito"):
-                data["esito"] = EsitoDisplay.POSITIVO
-        super().__init__(data, *args, **kwargs)
-
-    def clean_data(self) -> dt.date | None:
-        return _non_futura(self.cleaned_data.get("data"))
-
-
-# =========================================================================== filtri delle liste
 class Filtri(FormConStile):
     dal = _campo_data("Data dal")
     al = _campo_data("al")
@@ -329,53 +291,6 @@ class FiltriQualita(Filtri):
             qs = qs.filter(controllo_qualita__articolo__icontains=d["articolo"].strip())
         if d.get("test"):
             qs = qs.filter(controllo_qualita__test=d["test"])
-        return qs
-
-
-class FiltriReclami(Filtri):
-    campo_data = "data"
-    codice = forms.CharField(label="Identificativo", max_length=50, required=False)
-    ordine = forms.CharField(label="Ordine (numero)", max_length=50, required=False)
-    articolo = forms.CharField(label="Codice prodotto", max_length=50, required=False)
-    reparto = forms.ModelChoiceField(label="Reparto", queryset=Reparto.objects.none(), required=False)
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.fields["reparto"].queryset = Reparto.objects.all()
-
-    def filtra(self, qs: QuerySet[Any]) -> QuerySet[Any]:
-        qs = super().filtra(qs)
-        d = self.cleaned_data
-        if d.get("codice"):
-            qs = qs.filter(codice__icontains=d["codice"].strip())
-        if d.get("ordine"):
-            t = d["ordine"].strip()
-            qs = qs.filter(Q(ordine__numero__icontains=t) | Q(riferimento_ordine__icontains=t))
-        if d.get("articolo"):
-            qs = qs.filter(articolo__icontains=d["articolo"].strip())
-        if d.get("reparto"):
-            qs = qs.filter(reparto=d["reparto"])
-        return qs
-
-
-class FiltriDisplay(Filtri):
-    campo_data = "data"
-    prodotto = forms.ChoiceField(label="Prodotto", choices=[("", "Tutti"), *ProdottoDisplay.choices], required=False)
-    sito = forms.CharField(label="Sito", max_length=100, required=False)
-    articolo = forms.CharField(label="Articolo", max_length=100, required=False)
-    esito = forms.ChoiceField(label="Esito", choices=[("", "Tutti"), *EsitoDisplay.choices], required=False)
-
-    def filtra(self, qs: QuerySet[Any]) -> QuerySet[Any]:
-        qs = super().filtra(qs)
-        d = self.cleaned_data
-        if d.get("prodotto"):
-            qs = qs.filter(prodotto=d["prodotto"])
-        if d.get("sito"):
-            qs = qs.filter(sito__icontains=d["sito"].strip())
-        if d.get("articolo"):
-            qs = qs.filter(articolo__icontains=d["articolo"].strip())
-        if d.get("esito"):
-            qs = qs.filter(esito=d["esito"])
         return qs
 
 

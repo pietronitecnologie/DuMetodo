@@ -559,6 +559,7 @@ def ddt(request: HttpRequest, pk: int) -> HttpResponse:
             "ddt": d,
             "materiali": d.materiali.select_related("componente").order_by("riga_documento", "id"),
             "richieste": servizi.richieste_aperte_del_ddt(d),
+            "richieste_chiuse": RichiestaMateriale.objects.filter(ricevuta_con__ddt=d).select_related("reparto"),
             "oggi": timezone.localdate(),
         },
     )

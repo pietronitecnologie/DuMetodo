@@ -16,12 +16,10 @@ from dumetodo.tracciabilita.models import (
     Elemento,
     FileOrdine,
     Postazione,
-    Reclamo,
     TipoElemento,
     Traccia,
 )
 from dumetodo.tracciabilita.models import Test as ModelloTest
-from dumetodo.tracciabilita.models import TestDisplay as ProvaDisplay
 
 from .test_migrazione import DATI, SCHEMA
 
@@ -130,16 +128,6 @@ def test_migrazione_tracciabilita_e_qualita(metodo_db):
     assert risultati == {"visivo": (20, 2, None), "distinta": (None, None, True)}
     assert "non validi" in out  # KO > campione
 
-    # reclami, test display, file
-    r1, r2 = Reclamo.objects.order_by("codice")
-    assert (r1.ordine, r1.data, r1.file.name, r1.file_tipo) == (
-        o4300,
-        dt.date(2024, 3, 12),
-        "Reclami/foto.jpg",
-        "image/jpeg",
-    )
-    assert (r2.ordine, r2.riferimento_ordine) == (None, "99.999")
-    d = ProvaDisplay.objects.get()
-    assert (d.sito, d.utente.username, d.creato_il.date()) == ("S1", "mario", dt.date(2024, 3, 13))
+    # reclami e test display (presenti in Metodo) non vengono importati: funzioni non più usate
     f = FileOrdine.objects.get()
     assert (f.ordine, f.file.name, f.tipo_contenuto) == (o4300, "file/foto1.jpg", "image/jpeg")

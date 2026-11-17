@@ -23,7 +23,7 @@ Tutte le funzioni dell'app `Prod` di Metodo sono state riscritte.
 | **Consegna** con bolla, **DDT** con file tecnico, **etichette** | ✅ |
 | **Anagrafica articoli**, **agenda** ordini e pulsanti, **pianificazione** con report email, **tabulati** | ✅ |
 | **Magazzino**: componenti, inventario, richieste materiali, distinte base, DDT in ingresso | ✅ |
-| **Tracciabilità e qualità**: batterie, cavi dai banchi, lotti, controllo qualità, reclami, test display, foto | ✅ |
+| **Tracciabilità e qualità**: batterie, cavi dai banchi, lotti, controllo qualità, foto | ✅ |
 | **Report**: dashboard, analisi produttività, materiale per reparto/settimana, controllo prezzi | ✅ |
 | **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ✅ |
 | **Permessi granulari** per funzione, pagina Utenti e permessi | ✅ |
@@ -139,10 +139,17 @@ Il linguaggio si usa oggi per:
 * **Etichette:** stesso xlsx di Metodo. Il codice Fornitore della colonna I si configura e le date
   sono vere date.
 
+## Magazzino
+
+DuMetodo, come Metodo, **non gestisce i movimenti di magazzino**: la giacenza è l'ultimo conteggio
+d'inventario. Quando un materiale arriva con un DDT in ingresso (inserito a mano o importato), le
+richieste materiali aperte per lo stesso codice e variante, di qualsiasi reparto, vengono **chiuse
+automaticamente**; sulla richiesta resta la riga del DDT che l'ha chiusa. La giacenza non cambia.
+
 ## Tracciabilità e qualità
 
 Menu **Tracciabilità e qualità** (app `dumetodo.tracciabilita`). La pagina di ogni ordine mostra
-tracce, lotto/busta, controlli qualità, reclami, foto e file dell'ordine.
+tracce, lotto/busta, controlli qualità, foto e file dell'ordine.
 
 * **Elementi tracciati:** ogni elemento fisico (batteria, cavo, generico) ha un codice UNICO e un tipo
   esplicito. In Metodo il tipo si esprimeva con righe d'ordine finte e ogni evento creava un nuovo item.
@@ -156,18 +163,15 @@ tracce, lotto/busta, controlli qualità, reclami, foto e file dell'ordine.
 * **Controllo qualità:** i **test** (con i loro **controlli**) si definiscono in Amministrazione. Un
   controllo è "campione/KO" (numeri interi, KO ≤ campione) oppure "presente/assente". Distinta e
   disegno sono controlli di presenza con codice `distinta` e `disegno` (in Metodo: id 8 e 9 nel codice).
-* **Reclami** con ordine (facoltativo), reparto, data scelta dall'utente e allegato.
-* **Test display:** con il lettore di codici a barre si legge `sito$$articolo` nel campo Sito: i
-  campi si compilano, l'esito diventa Positivo e il test si salva da solo se prodotto, FW e lotto
-  sono compilati. Prodotto, FW, lotto e data restano per il pezzo successivo.
 * **Foto e file per ordine:** dal telefono le foto vengono ridotte a 1024 px prima dell'invio. Sono
   ammessi JPEG, PNG, GIF, WebP e PDF (tipo verificato dal contenuto) fino alla dimensione configurata.
   I file stanno in `MEDIA_ROOT` (mai servito pubblicamente) e si scaricano solo da una vista che
   controlla i permessi.
 * **Liste:** filtri in GET, paginazione ed **esportazione xlsx degli stessi dati filtrati**; gli
   intervalli di date comprendono il giorno finale.
-* **Permessi:** il Fornitore registra; il Cliente consulta batterie, cavi, qualità, reclami, test
-  display e quanto collegato ai suoi ordini.
+* **Permessi:** il Fornitore registra; il Cliente consulta batterie, cavi, controlli qualità e quanto
+  collegato ai suoi ordini.
+* Reclami e test display di Metodo non sono stati riportati: funzioni non più usate.
 
 ### Protocollo dei banchi di prova (API cavi)
 
@@ -242,8 +246,8 @@ python manage.py importa_configurazione_metodo configuration.csv --applica
   * storico scadenze;
   * righe consegnate con i relativi DDT.
   * tracciabilità e qualità: postazioni (senza token), elementi e tracce, test e controlli, controlli
-    qualità, reclami, test display, file per ordine. I file non vengono copiati: copia le cartelle
-    `Reclami/` e `file/` della cartella media di Metodo in `MEDIA_ROOT`.
+    qualità, file per ordine (reclami e test display non vengono importati). I file non vengono
+    copiati: copia la cartella `file/` della cartella media di Metodo in `MEDIA_ROOT`.
 * **Ordini duplicati in Metodo:** quelli con la stessa chiave vengono fusi in uno solo e segnalati nel report.
 
 ## Sviluppo

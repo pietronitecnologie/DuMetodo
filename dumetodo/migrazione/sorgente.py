@@ -124,11 +124,6 @@ TABELLE: dict[str, tuple[set[str], set[str]]] = {  # tabella -> (colonne obbliga
         {"id", "codiceProdotto", "data_inserimento", "campione", "ko"},
         {"ordine", "check_rif_id", "qtaInOrdine"},
     ),
-    "Prod_reclami": ({"id", "codice", "articolo", "ordine"}, {"data", "reparto_id", "note", "file"}),
-    "Prod_displaytest": (
-        {"id", "sito", "articolo", "esito", "data"},
-        {"prodotto", "fw", "lotto", "note", "data_inserimento", "utente_id"},
-    ),
     "Prod_fileordini": ({"id", "file", "rif_ordine"}, {"anno", "serie", "appendice", "data_inserimento"}),
 }
 FACOLTATIVE = {"Prod_anagrafica", "Plan_location", "Plan_locpath", "Prod_storicoscadenza", "Prod_documentitrasporto"}
@@ -152,8 +147,6 @@ FACOLTATIVE |= {
     "Prod_test",
     "Prod_test_checks",
     "Prod_controlloqlta",
-    "Prod_reclami",
-    "Prod_displaytest",
     "Prod_fileordini",
 }
 

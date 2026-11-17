@@ -439,22 +439,6 @@ PARAMETRI: tuple[Parametro, ...] = (
     ),
     # --- Tracciabilità ------------------------------------------------------------------
     Parametro(
-        "tracciabilita.articolo_batterie",
-        Tipo.TESTO,
-        Gruppo.TRACCIABILITA,
-        "Articolo batterie",
-        "Codice articolo che identifica le batterie tracciate.",
-        legacy=("ARTICOLO_TRACCIA_BATTERIE",),
-    ),
-    Parametro(
-        "tracciabilita.articolo_cavi",
-        Tipo.TESTO,
-        Gruppo.TRACCIABILITA,
-        "Articolo cavi",
-        "Codice articolo che identifica i cavi tracciati.",
-        legacy=("ARTICOLO_TRACCIA_CAVI",),
-    ),
-    Parametro(
         "tracciabilita.prefisso_codice_cavi",
         Tipo.TESTO,
         Gruppo.TRACCIABILITA,
@@ -540,7 +524,7 @@ PARAMETRI: tuple[Parametro, ...] = (
         Tipo.INTERO,
         Gruppo.TRACCIABILITA,
         "Dimensione massima foto/file (MB)",
-        "Foto e documenti allegati agli ordini e ai reclami.",
+        "Foto e documenti allegati agli ordini.",
         default=10,
         minimo=1,
     ),
@@ -560,5 +544,6 @@ LEGACY_SEGRETI: dict[str, str] = {
     "MAIL_TICKET_PSW": "(app Tickets, fuori da DuMetodo)",
 }
 # Cursori tecnici della vecchia tabella: sostituiti da tabelle dedicate, non vanno importati.
-LEGACY_IGNORATI = {"ID_EMAIL", "IDX_SYNC", "ID_MIGRAZIONE"}
+# ARTICOLO_TRACCIA_*: in DuMetodo il tipo di elemento tracciato è esplicito, non dedotto dal codice articolo.
+LEGACY_IGNORATI = {"ID_EMAIL", "IDX_SYNC", "ID_MIGRAZIONE", "ARTICOLO_TRACCIA_BATTERIE", "ARTICOLO_TRACCIA_CAVI"}
 LEGACY_PREFISSO_SOGLIE = "SOGLIA_"

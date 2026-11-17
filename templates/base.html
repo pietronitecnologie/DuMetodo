@@ -57,8 +57,6 @@
             <li><a class="dropdown-item" href="{% url 'tracciabilita:batteria_nuova' %}">Batteria</a></li>
             <li><a class="dropdown-item" href="{% url 'tracciabilita:traccia_nuova' %}">Traccia generica</a></li>
             <li><a class="dropdown-item" href="{% url 'tracciabilita:qualita_nuovo' %}">Controllo qualità</a></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:reclamo_nuovo' %}">Reclamo</a></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:display_nuovo' %}">Test display</a></li>
             <li><a class="dropdown-item" href="{% url 'tracciabilita:file_carica' %}">Foto per ordine</a></li>
             <li><hr class="dropdown-divider"></li>
             {% endif %}
@@ -71,8 +69,6 @@
             <li><a class="dropdown-item" href="{% url 'tracciabilita:file_lista' %}">Foto e file</a></li>
             {% endif %}
             <li><a class="dropdown-item" href="{% url 'tracciabilita:qualita' %}">Controlli qualità</a></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:reclami' %}">Reclami</a></li>
-            <li><a class="dropdown-item" href="{% url 'tracciabilita:display' %}">Test display</a></li>
             {% if perms.core.tracciabilita_postazioni %}
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="{% url 'tracciabilita:postazioni' %}">Postazioni e token</a></li>

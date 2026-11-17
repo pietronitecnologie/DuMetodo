@@ -30,20 +30,14 @@
 </div>
 
 <div class="card mb-3">
-  <div class="card-header d-flex align-items-center gap-2"><strong class="me-auto">Controlli qualità e reclami</strong>
-    {% if perms.core.tracciabilita_registra %}<a class="small" href="{% url 'tracciabilita:qualita_nuovo' %}?ordine={{ ordine.codice_breve|urlencode }}">Nuovo controllo</a>
-    <a class="small" href="{% url 'tracciabilita:reclamo_nuovo' %}?ordine={{ ordine.codice_breve|urlencode }}">Nuovo reclamo</a>{% endif %}</div>
+  <div class="card-header d-flex align-items-center gap-2"><strong class="me-auto">Controlli qualità</strong>
+    {% if perms.core.tracciabilita_registra %}<a class="small" href="{% url 'tracciabilita:qualita_nuovo' %}?ordine={{ ordine.codice_breve|urlencode }}">Nuovo controllo</a>{% endif %}</div>
   <ul class="list-group list-group-flush small">
     {% for cq in controlli %}
     <li class="list-group-item"><strong>{{ cq.test }}</strong> del {{ cq.data|date:"d/m/Y" }} · {{ cq.articolo }}{% if cq.eseguito_da %} · {{ cq.eseguito_da }}{% endif %}
       <div>{% for e in cq.esiti.all %}<span class="badge {% if e.ko or e.presente is False %}text-bg-danger{% else %}text-bg-light{% endif %} me-1">{{ e }}</span>{% endfor %}</div></li>
+    {% empty %}<li class="list-group-item text-muted">Nessun controllo.</li>
     {% endfor %}
-    {% for r in reclami %}
-    <li class="list-group-item list-group-item-warning">Reclamo <strong>{{ r.codice }}</strong> del {{ r.data|date:"d/m/Y" }} · {{ r.articolo }}{% if r.reparto %} · {{ r.reparto }}{% endif %}
-      {% if r.file %} · <a href="{% url 'tracciabilita:reclamo_file' r.pk %}">allegato</a>{% endif %}
-      {% if r.note %}<div class="nota-testo">{{ r.note }}</div>{% endif %}</li>
-    {% endfor %}
-    {% if not controlli and not reclami %}<li class="list-group-item text-muted">Nessun controllo né reclamo.</li>{% endif %}
   </ul>
 </div>
 

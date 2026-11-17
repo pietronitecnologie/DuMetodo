@@ -8,9 +8,7 @@ from .models import (
     EsitoControllo,
     FileOrdine,
     Postazione,
-    Reclamo,
     Test,
-    TestDisplay,
     Traccia,
     WorkOrderBatteria,
 )
@@ -93,20 +91,6 @@ class ControlloQualitaAdmin(SoloLettura):
     list_filter = ("test",)
     search_fields = ("articolo", "riferimento", "ordine__numero")
     inlines = [EsitoInline]
-
-
-@admin.register(Reclamo)
-class ReclamoAdmin(SoloLettura):
-    list_display = ("codice", "data", "ordine", "articolo", "reparto")
-    search_fields = ("codice", "articolo", "ordine__numero")
-    exclude = ("file",)
-
-
-@admin.register(TestDisplay)
-class TestDisplayAdmin(SoloLettura):
-    list_display = ("data", "prodotto", "sito", "articolo", "esito", "utente")
-    list_filter = ("prodotto", "esito")
-    search_fields = ("sito", "articolo", "lotto")
 
 
 @admin.register(FileOrdine)

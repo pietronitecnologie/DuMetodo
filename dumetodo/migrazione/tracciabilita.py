@@ -10,8 +10,9 @@
   "distinta" e "disegno", diventano i controlli di presenza con quei codici;
 - ``ControlloQlta`` (una riga per check, senza test) -> ``ControlloQualita`` raggruppando le righe della
   stessa registrazione; il test è quello che contiene tutti i controlli registrati;
-- ``Reclami``, ``DisplayTest``, ``FileOrdini``: gli ordini scritti come testo vengono cercati per chiave;
-  i file restano dove sono: va copiata la cartella media di Metodo (``Reclami/``, ``file/``) in MEDIA_ROOT.
+- ``FileOrdini``: gli ordini scritti come testo vengono cercati per chiave; i file restano dove sono:
+  va copiata la cartella ``file/`` della cartella media di Metodo in MEDIA_ROOT.
+- ``Reclami`` e ``DisplayTest`` non vengono importati: funzioni non più usate.
 - ``WorkOrderTraccia`` non viene importato (in Metodo il job era disattivato e non c'era interfaccia).
 """
 
@@ -35,13 +36,9 @@ from dumetodo.tracciabilita.models import (
     ControlloQualita,
     Elemento,
     EsitoControllo,
-    EsitoDisplay,
     FileOrdine,
     Postazione,
-    ProdottoDisplay,
-    Reclamo,
     Test,
-    TestDisplay,
     TipoControllo,
     TipoElemento,
     TipoTest,
@@ -59,8 +56,6 @@ CAMPI_DATA_ORIGINALE = (
     (Elemento, "creato_il"),
     (Traccia, "inserita_il"),
     (ControlloQualita, "creato_il"),
-    (Reclamo, "creato_il"),
-    (TestDisplay, "creato_il"),
     (FileOrdine, "caricato_il"),
 )
 
@@ -109,8 +104,6 @@ class ImportaTracciabilita:
             self._tracce()
             self._test()
             self._controlli_qualita()
-            self._reclami()
-            self._display()
             self._file()
 
     # ------------------------------------------------------------------ ordini scritti come testo
@@ -329,56 +322,7 @@ class ImportaTracciabilita:
             if testo_ordine and ordine is None:
                 self.r.conteggi["controlli qualità con ordine non trovato (tenuto come riferimento)"] += 1
 
-    # ------------------------------------------------------------------ reclami, display, file
-    def _reclami(self) -> None:
-        for r in self.m.righe("Prod_reclami"):
-            data = _aware(r.get("data"))
-            giorno = timezone.localtime(data).date() if data else dt.date(2000, 1, 1)
-            testo = _t(r["ordine"])[:50]
-            ordine = self._ordine_da_testo(testo, giorno)
-            file = _t(r.get("file"))[:255]
-            Reclamo.objects.create(
-                codice=_t(r["codice"])[:50] or "?",
-                ordine=ordine,
-                riferimento_ordine="" if ordine else testo,
-                articolo=_t(r["articolo"])[:50],
-                reparto=self.imp.reparti.get(r.get("reparto_id")),
-                data=giorno,
-                note=_t(r.get("note")),
-                file=file,
-                file_nome_originale=file.rsplit("/", 1)[-1],
-                file_tipo=(mimetypes.guess_type(file)[0] or "application/octet-stream") if file else "",
-                creato_il=data or timezone.now(),
-            )
-            self.r.conteggi["reclami"] += 1
-            if testo and ordine is None:
-                self.r.avviso("reclami", f"reclamo id {r['id']}: ordine {testo!r} non trovato, tenuto come testo")
-
-    def _display(self) -> None:
-        nuovi = []
-        for d in self.m.righe("Prod_displaytest"):
-            if d["esito"] not in EsitoDisplay.values or d.get("data") is None:
-                self.r.avviso("test display", f"id {d['id']}: esito {d['esito']!r} o data non validi, saltato")
-                continue
-            nuovi.append(
-                TestDisplay(
-                    prodotto=d.get("prodotto")
-                    if d.get("prodotto") in ProdottoDisplay.values
-                    else ProdottoDisplay.RAFFAELLO28,
-                    sito=_t(d["sito"])[:100],
-                    articolo=_t(d["articolo"])[:100],
-                    esito=d["esito"],
-                    fw=_t(d.get("fw"))[:50],
-                    lotto=_t(d.get("lotto"))[:50],
-                    data=d["data"],
-                    note=_t(d.get("note")),
-                    utente=self.imp.utenti.get(d.get("utente_id")),
-                    creato_il=_aware(d.get("data_inserimento")) or timezone.now(),
-                )
-            )
-        TestDisplay.objects.bulk_create(nuovi, batch_size=2000)
-        self.r.conteggi["test display"] += len(nuovi)
-
+    # ------------------------------------------------------------------ file
     def _file(self) -> None:
         for f in self.m.righe("Prod_fileordini"):
             anno = _intero(f.get("anno"))

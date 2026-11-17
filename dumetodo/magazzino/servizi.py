@@ -780,7 +780,7 @@ def aggiungi_materiale(
         prezzo_medio=prezzo,
         fornitore=ddt.fornitore,
     )
-    return MaterialeIngresso.objects.create(
+    materiale = MaterialeIngresso.objects.create(
         ddt=ddt,
         componente=componente,
         descrizione=descrizione or componente.descrizione[:200],
@@ -792,6 +792,8 @@ def aggiungi_materiale(
         note=(note or "").strip(),
         creato_da=utente,
     )
+    chiudi_richieste_per_materiale(materiale, utente)
+    return materiale
 
 
 @transaction.atomic
@@ -823,6 +825,7 @@ class EsitoImportazioneDDT:
     ddt_aggiornati: list[DDTIngresso] = field(default_factory=list)
     materiali_importati: int = 0
     materiali_gia_presenti: int = 0
+    richieste_chiuse: int = 0
     scarti: list[str] = field(default_factory=list)
 
     @property
@@ -891,7 +894,7 @@ def importa_file_ddt(utente: Any, nome: str, contenuto: bytes) -> EsitoImportazi
                 fornitore=fornitore,
                 prezzo_medio=r.prezzo_unitario,
             )
-            MaterialeIngresso.objects.create(
+            materiale = MaterialeIngresso.objects.create(
                 ddt=ddt,
                 componente=componente,
                 riga_documento=r.riga_documento,
@@ -903,9 +906,26 @@ def importa_file_ddt(utente: Any, nome: str, contenuto: bytes) -> EsitoImportazi
                 verificato=origine == OrigineDDT.XML,  # come in Metodo: il CSV va verificato a mano
                 creato_da=utente,
             )
+            esito.richieste_chiuse += chiudi_richieste_per_materiale(materiale, utente)
             presenti.add(r.riga_documento)
             esito.materiali_importati += 1
     return esito
+
+
+def chiudi_richieste_per_materiale(materiale: MaterialeIngresso, utente: Any) -> int:
+    """All'arrivo di un materiale con un DDT in ingresso si chiudono le richieste aperte per lo stesso
+    codice e variante (di qualsiasi reparto). La giacenza NON viene aggiornata: DuMetodo, come Metodo,
+    non gestisce i movimenti di magazzino."""
+    richieste = list(
+        RichiestaMateriale.objects.select_for_update().filter(
+            codice=materiale.componente.codice, variante=materiale.componente.variante, ricevuta=False
+        )
+    )
+    adesso = timezone.now()
+    for r in richieste:
+        r.ricevuta, r.ricevuta_il, r.ricevuta_da, r.ricevuta_con = True, adesso, utente, materiale
+        r.save()
+    return len(richieste)
 
 
 def richieste_aperte_del_ddt(ddt: DDTIngresso) -> QuerySet[RichiestaMateriale]:

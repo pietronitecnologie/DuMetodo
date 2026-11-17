@@ -134,6 +134,15 @@ class RichiestaMateriale(models.Model):
     ricevuta_da = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
+    ricevuta_con = models.ForeignKey(
+        "magazzino.MaterialeIngresso",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="richieste_chiuse",
+        verbose_name="chiusa dalla riga DDT",
+        help_text="Riga del DDT in ingresso che ha chiuso la richiesta.",
+    )
     creata_il = models.DateTimeField(auto_now_add=True)
 
     class Meta:

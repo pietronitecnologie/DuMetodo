@@ -4,6 +4,10 @@
 <div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">{{ ddt }}</h1>
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'magazzino:ddt_lista' %}">Tutti i DDT</a></div>
 <p class="small text-muted">{{ ddt.get_origine_display }} — registrato il {{ ddt.creato_il|date:"d/m/Y H:i" }}{% if ddt.creato_da %} da {{ ddt.creato_da }}{% endif %}</p>
+{% if richieste_chiuse %}<div class="alert alert-success">
+  <strong>Richieste materiali chiuse dall'arrivo di questo DDT:</strong>
+  <ul class="mb-0">{% for r in richieste_chiuse %}<li>{{ r.codice_completo }} — {{ r.reparto.nome }}</li>{% endfor %}</ul>
+</div>{% endif %}
 {% if richieste %}<div class="alert alert-info">
   <strong>Richieste materiali aperte per i codici di questo DDT:</strong>
   <ul class="mb-0">{% for r in richieste %}<li>{{ r.codice_completo }} — {{ r.reparto.nome }}, richiesto {{ r.numero_richieste }} volt{{ r.numero_richieste|pluralize:"a,e" }}
