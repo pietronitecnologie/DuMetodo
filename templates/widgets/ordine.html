@@ -8,7 +8,7 @@
     <div class="input-group input-group-sm">
       <span class="input-group-text" aria-hidden="true">🔍</span>
       <input type="search" class="form-control" id="{{ widget.attrs.id }}" name="{{ widget.name }}_cerca"
-             placeholder="Cerca ordine: numero, serie, appendice, anno" autocomplete="off" inputmode="search"
+             placeholder="{{ widget.attrs.placeholder|default:'Cerca ordine: numero, serie, appendice, anno' }}" autocomplete="off" inputmode="search"
              hx-get="{{ widget.url }}" hx-trigger="input changed delay:250ms, focus" hx-target="next .dm-ordine-elenco"
              hx-vals='{"campo": "{{ widget.name }}"}' {% if widget.obbligatorio and not widget.ordine %}required{% endif %}>
     </div>

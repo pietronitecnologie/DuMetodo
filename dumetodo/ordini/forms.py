@@ -22,7 +22,7 @@ class FiltriOrdiniForm(forms.Form):
     stato = forms.MultipleChoiceField(
         label="Stato", required=False, choices=StatoOrdine.choices, widget=forms.CheckboxSelectMultiple
     )
-    aperti = forms.BooleanField(label="Solo aperti", required=False, initial=True)
+    aperti = forms.BooleanField(label="Solo aperti", required=False)
     categoria = forms.ChoiceField(label="Categoria", required=False, choices=CATEGORIE)
     scadenza_dal = forms.DateField(
         label="Scadenza dal", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
@@ -30,6 +30,10 @@ class FiltriOrdiniForm(forms.Form):
     scadenza_al = forms.DateField(
         label="al", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
     )
+
+    def ha_filtri(self) -> bool:
+        """True se l'utente ha indicato almeno un criterio (la pagina parte vuota)."""
+        return any(v not in (None, "", [], False) for v in self.cleaned_data.values())
 
     def filtra(self, qs):  # type: ignore[no-untyped-def]
         d = self.cleaned_data
@@ -75,5 +79,10 @@ class DividiRigaForm(forms.Form):
 
 
 class CambiaScadenzaForm(forms.Form):
-    nuova = forms.DateField(label="Nuova scadenza", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
-    motivo = forms.CharField(label="Motivo", max_length=500, widget=forms.Textarea(attrs={"rows": 2}))
+    nuova = forms.DateField(
+        label="Nuova scadenza",
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control form-control-sm"}, format="%Y-%m-%d"),
+    )
+    motivo = forms.CharField(
+        label="Motivo", max_length=500, widget=forms.TextInput(attrs={"class": "form-control form-control-sm"})
+    )

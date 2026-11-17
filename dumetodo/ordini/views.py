@@ -1,8 +1,10 @@
+from django import forms
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Count, OuterRef, Subquery, Sum
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
 from dumetodo.anagrafica.servizi import descrizione_subquery
@@ -18,11 +20,12 @@ from .models import Ordine, RigaOrdine, StatoRiga
 @require_GET
 @richiede_permesso(F.ORDINI_VEDERE)
 def lista(request: HttpRequest) -> HttpResponse:
-    dati = request.GET if request.GET else {"aperti": "on"}
-    form = FiltriOrdiniForm(dati)
-    qs = Ordine.objects.all()
-    if form.is_valid():
-        qs = form.filtra(qs)
+    # Gli ordini sono migliaia: senza almeno un filtro la pagina resta vuota (niente elenco enorme
+    # caricato a ogni apertura).
+    form = FiltriOrdiniForm(request.GET)
+    qs = Ordine.objects.none()
+    if form.is_valid() and form.ha_filtri():
+        qs = form.filtra(Ordine.objects.all())
     # Subquery (non JOIN) così i totali restano corretti anche con il filtro per articolo.
     righe = RigaOrdine.objects.filter(ordine=OuterRef("pk"), stato=StatoRiga.ATTIVA).order_by().values("ordine")
     qs = qs.annotate(
@@ -32,7 +35,8 @@ def lista(request: HttpRequest) -> HttpResponse:
     qs = note.annota_non_lette(qs, request.user)
     pagina = Paginator(qs, 50).get_page(request.GET.get("pagina"))
     template = "ordini/_tabella.html" if request.htmx else "ordini/lista.html"
-    return render(request, template, {"form": form, "pagina": pagina})
+    filtri_attivi = form.is_valid() and form.ha_filtri()
+    return render(request, template, {"form": form, "pagina": pagina, "filtri_attivi": filtri_attivi})
 
 
 @require_GET
@@ -124,3 +128,20 @@ def seleziona(request: HttpRequest) -> HttpResponse:
     """Elenco degli ordini per il campo di selezione (HTMX)."""
     testo = request.GET.get(f"{request.GET.get('campo', 'ordine')}_cerca", "")[:60].strip()
     return render(request, "ordini/_selezione.html", {"testo": testo, "ordini": list(selezione.cerca(testo))})
+
+
+@require_GET
+@richiede_permesso(F.ORDINI_VEDERE)
+def vai(request: HttpRequest) -> HttpResponse:
+    """Ricerca rapida della barra in alto: apre l'ordine scelto."""
+    campo = selezione.CampoOrdine(required=False)
+    try:
+        ordine = campo.clean(campo.widget.value_from_datadict(request.GET, None, "ordine"))
+    except forms.ValidationError:
+        ordine = None
+    if ordine is None:
+        messages.error(request, "Ordine non trovato: sceglilo dall'elenco.")
+        indietro = request.headers.get("referer", "")
+        sicuro = url_has_allowed_host_and_scheme(indietro, {request.get_host()}, request.is_secure())
+        return redirect(indietro if sicuro else "ordini:lista")
+    return redirect(ordine)

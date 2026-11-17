@@ -11,7 +11,7 @@
     {% for x in ordini %}{% with o=x.ordine %}
       <tr class="{% if not x.n %}text-muted{% endif %}">
         <td><a href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a></td>
-        <td>{{ o.get_stato_display }}</td><td>{{ o.data_scadenza|date:"d/m/Y" }}</td>
+        <td><span class="dm-stato dm-stato-{{ o.stato }}">{{ o.get_stato_display }}</span></td><td>{{ o.data_scadenza|date:"d/m/Y" }}</td>
         <td class="text-end">{{ x.n }}</td><td class="text-end">{{ x.pezzi|floatformat:"-3" }}</td>
         <td class="text-end text-nowrap">
           {% if x.n %}<form method="post" action="{% url 'consegne:consegna' %}" class="d-inline" onsubmit="return confirm('Consegnare {{ o.codice_breve|escapejs }}?')">{% csrf_token %}

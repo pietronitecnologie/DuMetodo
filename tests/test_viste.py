@@ -14,7 +14,9 @@ def test_anonimo_rediretto_al_login(client, db):
 
 def test_lista_e_dettaglio_ordini(client, ordine, cliente, operatore):
     client.force_login(cliente)
-    r = client.get("/ordini/")
+    r = client.get("/ordini/")  # senza filtri la pagina parte vuota (gli ordini sono migliaia)
+    assert r.status_code == 200 and b"40.0004300-2026" not in r.content and b"Imposta almeno un filtro" in r.content
+    r = client.get("/ordini/?q=4300")
     assert r.status_code == 200 and b"40.0004300-2026" in r.content
     r = client.get(f"/ordini/{ordine.pk}/")
     assert r.status_code == 200 and b"Prezzo" not in r.content  # i prezzi li vede solo l'amministratore

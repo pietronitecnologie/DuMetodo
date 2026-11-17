@@ -75,6 +75,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "dumetodo.core.context_processors.ruoli",
                 "dumetodo.core.context_processors.azienda",
+                "dumetodo.core.context_processors.navigazione",
                 "dumetodo.client.context_processors.client",
             ],
         },

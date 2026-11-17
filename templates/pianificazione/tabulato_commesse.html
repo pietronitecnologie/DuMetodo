@@ -10,7 +10,7 @@
   {% if tabulato is not None %}<a class="btn btn-sm btn-outline-primary" href="?tabulato={{ tabulato }}&dal={{ dal|date:'Y-m-d' }}&al={{ al|date:'Y-m-d' }}&formato=xlsx">Excel</a>{% endif %}
 </form>
 <table class="table table-sm bg-white"><thead><tr><th>Ordine</th><th>Scadenza</th><th>Stato</th></tr></thead><tbody>
-{% for o in ordini %}<tr><td><a href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a></td><td>{{ o.data_scadenza|date:"d/m/Y" }}</td><td>{{ o.get_stato_display }}</td></tr>
+{% for o in ordini %}<tr><td><a href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a></td><td>{{ o.data_scadenza|date:"d/m/Y" }}</td><td><span class="dm-stato dm-stato-{{ o.stato }}">{{ o.get_stato_display }}</span></td></tr>
 {% empty %}<tr><td colspan="3" class="text-muted text-center">Nessuna commessa.</td></tr>{% endfor %}
 </tbody></table>
 {% endblock %}

@@ -4,7 +4,7 @@
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
   <a href="{% url 'ordini:lista' %}" class="btn btn-sm btn-outline-secondary">← Ordini</a>
   <h1 class="h4 mb-0 me-auto" data-dm-menu="ordine" data-dm-id="{{ ordine.pk }}" data-dm-codice="{{ ordine.codice_breve }}">Ordine {{ ordine.codice_breve }}
-    <span class="badge text-bg-secondary align-middle">{{ ordine.get_stato_display }}</span></h1>
+    <span class="align-middle dm-stato dm-stato-{{ ordine.stato }}">{{ ordine.get_stato_display }}</span></h1>
   {% for t in transizioni %}
   <form method="post" action="{% url 'ordini:cambia_stato' ordine.pk %}"
         onsubmit="return confirm('Confermi: {{ t.etichetta|escapejs }}?')">{% csrf_token %}
@@ -17,7 +17,7 @@
 <div class="row g-3">
   <div class="col-lg-8">
     <div class="card mb-3"><div class="card-body py-2">
-      <div class="row small">
+      <div class="row dm-dati">
         <div class="col-6 col-md-3"><div class="text-muted">Codice completo</div>{{ ordine.codice }}</div>
         <div class="col-6 col-md-3"><div class="text-muted">Scadenza</div>{{ ordine.data_scadenza|date:"d/m/Y"|default:"—" }}</div>
         <div class="col-6 col-md-3"><div class="text-muted">Consegna</div>{{ ordine.data_consegna|date:"d/m/Y"|default:"—" }}</div>
@@ -48,8 +48,8 @@
           <td>{{ r.data_scadenza|date:"d/m/Y" }}</td>
           <td class="small">{% if not r.is_attiva %}{{ r.get_stato_display }}{% elif r.bolla_emessa %}In bolla{% elif r.in_evasione %}In evasione{% elif r.bloccata %}Bloccata{% endif %}{% if r.scorporata %} · scorporata{% endif %}</td>
           {% if perms.core.ordini_righe or perms.core.ordini_dividi %}
-          <td class="text-nowrap">{% if r.is_attiva and not r.bolla_emessa %}
-            <form method="post" action="{% url 'ordini:azione_riga' ordine.pk r.pk %}" class="d-inline">{% csrf_token %}
+          <td><div class="d-flex flex-wrap gap-1 justify-content-end">{% if r.is_attiva and not r.bolla_emessa %}
+            <form method="post" action="{% url 'ordini:azione_riga' ordine.pk r.pk %}" class="d-flex flex-wrap gap-1">{% csrf_token %}
               {% if not r.in_evasione %}<button name="azione" value="evadi" class="btn btn-sm btn-outline-success py-0">Evadi</button>{% endif %}
               {% if not r.bloccata %}<button name="azione" value="blocca" class="btn btn-sm btn-outline-danger py-0">Blocca</button>{% endif %}
               {% if r.scorporata %}<button name="azione" value="reincorpora" class="btn btn-sm btn-outline-info py-0">Reincorpora</button>
@@ -57,7 +57,7 @@
               {% if perms.core.ordini_annulla %}<button name="azione" value="annulla" class="btn btn-sm btn-outline-secondary py-0" onclick="return confirm('Annullare la riga {{ r.n_riga|escapejs }}?')">Annulla</button>{% endif %}
             </form>
             {% if perms.core.ordini_dividi and not r.in_evasione %}<a class="btn btn-sm btn-outline-dark py-0" href="{% url 'ordini:dividi_riga' ordine.pk r.pk %}">Dividi</a>{% endif %}
-          {% endif %}</td>
+          {% endif %}</div></td>
           {% endif %}
         </tr>
         {% empty %}<tr><td colspan="8" class="text-muted text-center">Nessuna riga.</td></tr>
@@ -81,9 +81,9 @@
       {% if perms.core.ordini_dividi and not ordine.is_chiuso %}
       <div class="card-body border-top">
         <form method="post" action="{% url 'ordini:cambia_scadenza' ordine.pk %}" class="row g-2 align-items-end">{% csrf_token %}
-          <div class="col-md-4">{% include "_campo.html" with campo=form_scadenza.nuova %}</div>
-          <div class="col-md-6">{% include "_campo.html" with campo=form_scadenza.motivo %}</div>
-          <div class="col-md-2"><button class="btn btn-sm btn-primary w-100 mb-2">Posticipa</button></div>
+          <div class="col-sm-4 col-xl-3">{% include "_campo.html" with campo=form_scadenza.nuova %}</div>
+          <div class="col-sm-8 col-xl-7">{% include "_campo.html" with campo=form_scadenza.motivo %}</div>
+          <div class="col-12 col-xl-2"><button class="btn btn-sm btn-primary w-100 mb-2">Posticipa</button></div>
         </form>
       </div>
       {% endif %}

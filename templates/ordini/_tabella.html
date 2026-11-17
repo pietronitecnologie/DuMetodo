@@ -1,19 +1,19 @@
 <div class="table-responsive">
-<table class="table table-sm table-hover bg-white align-middle">
+<table class="table table-hover align-middle">
   <thead><tr><th>Ordine</th><th>Stato</th><th>Scadenza</th><th class="text-end">Righe</th><th class="text-end">Pezzi</th><th>Reparto</th><th>Note</th></tr></thead>
   <tbody>
   {% for o in pagina %}
   <tr data-dm-menu="ordine" data-dm-id="{{ o.pk }}" data-dm-codice="{{ o.codice_breve }}">
     <td><a href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a></td>
-    <td><span class="badge text-bg-{% if o.stato == 'CON' %}success{% elif o.stato == 'ANN' %}secondary{% elif o.stato == 'SPE' or o.stato == 'SPP' %}warning{% elif o.stato == 'LAV' %}primary{% else %}light{% endif %}">{{ o.get_stato_display }}</span></td>
-    <td>{{ o.data_scadenza|date:"d/m/Y"|default:"—" }}</td>
+    <td><span class="dm-stato dm-stato-{{ o.stato }}">{{ o.get_stato_display }}</span></td>
+    <td class="{% if o.data_scadenza and o.data_scadenza < oggi and o.stato != 'CON' and o.stato != 'ANN' %}dm-scaduto{% endif %}">{{ o.data_scadenza|date:"d/m/Y"|default:"—" }}</td>
     <td class="text-end">{{ o.n_righe|default:0 }}</td>
     <td class="text-end">{{ o.pezzi|default:0|floatformat:"-3" }}</td>
     <td>{{ o.reparto_da_appendice }}</td>
     <td>{% if o.note_non_lette %}<span class="badge text-bg-danger" title="Note non lette">{{ o.note_non_lette }}</span>{% endif %}</td>
   </tr>
   {% empty %}
-  <tr><td colspan="7" class="text-center text-muted py-4">Nessun ordine trovato.</td></tr>
+  <tr><td colspan="7" class="text-center text-muted py-4">{% if filtri_attivi %}Nessun ordine trovato.{% else %}Imposta almeno un filtro (ordine, articolo, stato, scadenza…) per vedere gli ordini.{% endif %}</td></tr>
   {% endfor %}
   </tbody>
 </table>

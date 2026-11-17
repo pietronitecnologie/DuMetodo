@@ -2,6 +2,50 @@
 (function () {
   "use strict";
 
+  // ---- Guscio: barra laterale, barra compatta, modalità reparto (preferenze di questo PC).
+  function salva(chiave, valore) { try { localStorage.setItem(chiave, valore); } catch (e) {} }
+  var radice = document.documentElement;
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-dm-sezione], [data-dm-comprimi], [data-dm-apri-barra], [data-dm-chiudi-barra], [data-dm-reparto]");
+    if (!t) {
+      document.querySelectorAll(".dm-sezione.volante").forEach(function (s) { s.classList.remove("volante"); });
+      return;
+    }
+    if (t.hasAttribute("data-dm-sezione")) {
+      var sezione = t.closest(".dm-sezione");
+      if (radice.classList.contains("dm-barra-compatta") && window.innerWidth >= 992) {
+        // Barra compatta: le voci si aprono in un pannello a fianco dell'icona.
+        var era = sezione.classList.contains("volante");
+        document.querySelectorAll(".dm-sezione.volante").forEach(function (s) { s.classList.remove("volante"); });
+        if (!era) {
+          sezione.classList.add("volante");
+          sezione.querySelector(".dm-voci").style.top = t.getBoundingClientRect().top + "px";
+        }
+      } else {
+        var aperta = sezione.classList.toggle("aperta");
+        t.setAttribute("aria-expanded", aperta ? "true" : "false");
+      }
+    } else if (t.hasAttribute("data-dm-comprimi")) {
+      salva("dm-barra", radice.classList.toggle("dm-barra-compatta") ? "compatta" : "estesa");
+    } else if (t.hasAttribute("data-dm-apri-barra")) {
+      document.body.classList.add("dm-barra-aperta");
+    } else if (t.hasAttribute("data-dm-chiudi-barra")) {
+      document.body.classList.remove("dm-barra-aperta");
+    } else if (t.hasAttribute("data-dm-reparto")) {
+      salva("dm-reparto", radice.classList.toggle("dm-modo-reparto") ? "1" : "0");
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") document.body.classList.remove("dm-barra-aperta");
+    // "/" porta alla ricerca rapida dell'ordine (se non si sta già scrivendo).
+    if (e.key === "/" && !e.target.closest("input, textarea, select, [contenteditable=true]")) {
+      var vai = document.getElementById("dm-vai-ordine");
+      if (vai) { e.preventDefault(); vai.focus(); }
+    }
+  });
+
   // ---- Selezione dell'ordine: si sceglie da un elenco, il form invia la chiave primaria.
   function scegli(box, bottone) {
     box.querySelector("[data-dm-ordine-valore]").value = bottone.dataset.dmOrdinePk;
