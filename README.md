@@ -22,7 +22,7 @@ L'analisi funzionale del codice originale, che fa da specifica per la riscrittur
 | Agenda ordini, pianificazione, tabulati | ⏳ fase 3 |
 | Magazzino, distinte base, richieste materiali, DDT in ingresso | ⏳ fase 4 |
 | Tracciabilità, controllo qualità, reclami, annunci | ⏳ fase 5 |
-| Migrazione dei dati da Metodo | ⏳ fase 2 |
+| **Migrazione dei dati da Metodo** | ✅ fase 2 |
 | **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ⏳ fase finale |
 
 ## Regole di progetto
@@ -139,6 +139,24 @@ Il linguaggio si usa oggi per:
 Personale del Fornitore, con gerarchia: **Amministratore** ⊃ **Caporeparto** ⊃ **Operatore**.
 Utenti del Cliente: **Cliente**. I gruppi di Metodo (`Geko Admin`, `GekoCapRep`, `Geko`, `Customer`)
 vengono rinominati automaticamente dalla migrazione `core/0002`.
+
+## Migrazione da Metodo
+
+```bash
+python manage.py migrate && python manage.py crea_ruoli
+python manage.py importa_da_metodo --db postgres://utente:password@host/metodo            # prova a secco + report
+python manage.py importa_da_metodo --db postgres://utente:password@host/metodo --applica
+python manage.py importa_configurazione_metodo configuration.csv --applica
+```
+
+* **Lettura di Metodo:** in sola lettura, controllando prima che lo schema contenga le colonne necessarie.
+* **Dati importati:**
+  * utenti, con le stesse password e i gruppi convertiti nei nuovi ruoli;
+  * reparti, ordini e righe;
+  * note, segnate come già lette;
+  * storico scadenze;
+  * righe consegnate con i relativi DDT.
+* **Ordini duplicati in Metodo:** quelli con la stessa chiave vengono fusi in uno solo e segnalati nel report.
 
 ## Sviluppo
 
