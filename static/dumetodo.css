@@ -215,3 +215,13 @@ body.dm-pubblica .dm-contenuto { min-height: calc(100vh - 44px); display: grid; 
 /* Pulsanti dentro le tabelle: piccoli, non devono allargare le righe (in modalità reparto tornano grandi) */
 html:not(.dm-modo-reparto) .dm-contenuto .table .btn-sm { --bs-btn-padding-y: .05rem; --bs-btn-padding-x: .45rem; --bs-btn-font-size: .75rem; }
 .dm-contenuto .form-check-input { border-color: #b9c2ce; }
+
+/* Configurazione: schede comprimibili (chiuse all'apertura della pagina) */
+details.dm-config > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; user-select: none;
+  font-size: .8rem; padding-top: .55rem; padding-bottom: .55rem; }
+details.dm-config > summary::-webkit-details-marker { display: none; }
+details.dm-config > summary::before { content: ""; width: .45rem; height: .45rem; border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; margin-right: .2rem; }
+details.dm-config[open] > summary::before { transform: rotate(45deg); }
+details.dm-config:not([open]) > summary { border-bottom: 0; border-radius: var(--dm-raggio); }
+details.dm-config > summary:hover { color: var(--dm-testo); }

@@ -7,12 +7,18 @@
 <div class="alert alert-info small py-2">Parametri di funzionamento, controllati e storicizzati. Le <strong>password</strong>
 (casella ordini) sono salvate cifrate, non vengono mai mostrate e non finiscono nello storico. La <strong>capacità
 settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
-<div class="row g-3">
+<div class="d-flex gap-2 mb-2 small">
+  <button type="button" class="btn btn-sm btn-link p-0" onclick="document.querySelectorAll('details.dm-config').forEach(d => d.open = true)">Espandi tutto</button>
+  <span class="text-muted">·</span>
+  <button type="button" class="btn btn-sm btn-link p-0" onclick="document.querySelectorAll('details.dm-config').forEach(d => d.open = false)">Comprimi tutto</button>
+</div>
+<div class="row g-2 align-items-start">
 {% for form in forms %}
   <div class="col-lg-6">
-    <form method="post" class="card h-100" enctype="multipart/form-data">{% csrf_token %}
+    <details class="card dm-config" id="gruppo-{{ form.gruppo.name }}"{% if form.errors or aperto == form.gruppo.name %} open{% endif %}>
+    <summary class="card-header">{{ form.gruppo.value }}{% if form.errors %} <span class="badge text-bg-danger ms-1">da correggere</span>{% endif %}</summary>
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
       <input type="hidden" name="gruppo" value="{{ form.gruppo.name }}">
-      <div class="card-header"><strong>{{ form.gruppo.value }}</strong></div>
       <div class="card-body">
         {% for e in form.non_field_errors %}<div class="alert alert-danger py-1">{{ e }}</div>{% endfor %}
         {% for campo in form %}{% include "_campo.html" %}
@@ -47,9 +53,10 @@ settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
       </div>
       <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Salva {{ form.gruppo.value|lower }}</button></div>
     </form>
+    </details>
   </div>
 {% endfor %}
 </div>
-<script>document.querySelectorAll('form.card input:not([type=hidden]), form.card textarea, form.card select').forEach(e => { if (e.type === 'checkbox') e.classList.add('form-check-input'); else e.classList.add('form-control', 'form-control-sm'); });</script>
+<script>document.querySelectorAll('details.dm-config input:not([type=hidden]), details.dm-config textarea, details.dm-config select').forEach(e => { if (e.type === 'checkbox') e.classList.add('form-check-input'); else e.classList.add('form-control', 'form-control-sm'); });</script>
 <template id="esempio-readypro">{{ esempio_readypro }}</template>
 {% endblock %}

@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotModified
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from dumetodo.core.permessi import F, richiede_permesso
@@ -28,12 +29,13 @@ def pagina(request: HttpRequest) -> HttpResponse:
                     if form.cleaned_data.get(f"{chiave}__cancella"):
                         servizi.cancella_valore(chiave, request.user)
                 messages.success(request, f"Parametri '{gruppo.value}' salvati.")
-                return redirect("configurazione:pagina")
+                # Dopo il salvataggio la scheda appena salvata resta aperta (le altre chiuse).
+                return redirect(f"{reverse('configurazione:pagina')}?aperto={gruppo.name}#gruppo-{gruppo.name}")
             messages.error(request, "Correggi gli errori evidenziati: nessun valore è stato salvato.")
         else:
             form = ParametriGruppoForm(gruppo)
         forms.append(form)
-    return render(request, "configurazione/pagina.html", {"forms": forms})
+    return render(request, "configurazione/pagina.html", {"forms": forms, "aperto": request.GET.get("aperto", "")})
 
 
 @richiede_permesso(F.CONFIGURAZIONE)

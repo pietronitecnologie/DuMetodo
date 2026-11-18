@@ -3,7 +3,7 @@
 {% block contenuto %}
 <div class="d-flex align-items-center mb-2"><h1 class="h4 me-auto mb-0">Ordini</h1></div>
 <form class="card card-body mb-3 py-2" method="get" hx-get="{% url 'ordini:lista' %}" hx-target="#tabella-ordini"
-      hx-trigger="change, keyup changed delay:400ms from:input[type=search]" hx-push-url="true">
+      hx-push-url="true" hx-indicator="#cerca-ordini">
   <div class="row g-2 align-items-end">
     <div class="col-6 col-md-2"><label class="form-label small mb-0">Ordine</label>
       <input type="search" class="form-control form-control-sm" name="q" value="{{ form.q.value|default:'' }}"></div>
@@ -28,7 +28,11 @@
     <label class="me-2"><input type="checkbox" name="stato" value="{{ v }}" {% if v in form.stato.value %}checked{% endif %}> {{ l }}</label>
     {% endfor %}
   </div>
-  <noscript><button class="btn btn-sm btn-primary mt-2">Filtra</button></noscript>
+  <div class="d-flex align-items-center gap-2 mt-2">
+    <button id="cerca-ordini" class="btn btn-sm btn-primary px-3">Cerca</button>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'ordini:lista' %}">Azzera</a>
+    <span class="small text-muted">Imposta i filtri e premi Cerca (o Invio).</span>
+  </div>
 </form>
 <div id="tabella-ordini">{% include "ordini/_tabella.html" %}</div>
 {% endblock %}

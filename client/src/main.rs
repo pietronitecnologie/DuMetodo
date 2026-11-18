@@ -209,7 +209,7 @@ fn main() {
     {
         collega(&schede[0].pagina, &origine, u);
     }
-    aggiorna_barra(&barra, &schede, attiva);
+    aggiorna_barra(&barra, &schede, attiva, &origine);
 
     // Il menu nativo deve restare in vita finché è aperto (su Linux la scelta arriva in modo asincrono).
     let mut menu_aperto: Option<(Menu, u32)> = None;
@@ -221,6 +221,8 @@ fn main() {
         let mut apri: Option<Option<String>> = None;
         let mut chiudi: Option<u32> = None;
         let mut attiva_id: Option<u32> = None;
+        let mut cambia_server = false;
+        let mut ridisegna = false;
         match event {
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *control_flow = ControlFlow::Exit,
             Event::WindowEvent { event: WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. }, .. } => {
@@ -234,6 +236,7 @@ fn main() {
                 Some(barra::Comando::Attiva { .. }) => {}
                 Some(barra::Comando::Chiudi { id }) => chiudi = Some(id),
                 Some(barra::Comando::Nuova) => apri = Some(None),
+                Some(barra::Comando::CambiaServer) => cambia_server = true,
                 None => {}
             },
             Event::UserEvent(Evento::Titolo { scheda, titolo }) => {
@@ -241,7 +244,7 @@ fn main() {
                     // "Ordini · DuMetodo · Fornitore" -> "Ordini": nella scheda basta la pagina.
                     let breve = titolo.split(" · DuMetodo").next().unwrap_or(&titolo).trim();
                     s.titolo = breve.chars().take(120).collect();
-                    aggiorna_barra(&barra, &schede, attiva);
+                    aggiorna_barra(&barra, &schede, attiva, &origine);
                     if schede.get(attiva).is_some_and(|s| s.id == scheda) {
                         window.set_title(&format!("{} - DuMetodo", schede[attiva].titolo));
                     }
@@ -260,6 +263,7 @@ fn main() {
                             }
                             url_corrente = Some(u.clone());
                             collega(webview, &origine, &u);
+                            ridisegna = true;
                         }
                         Err(e) => {
                             let _ = webview.load_html(&avvio::pagina_indirizzo(&url, &e, &percorso_conf));
@@ -268,6 +272,7 @@ fn main() {
                     Some(Messaggio::Riprova) if !dal_server => {
                         if let Some(u) = &url_corrente {
                             collega(webview, &origine, u);
+                            ridisegna = true;
                         }
                     }
                     Some(Messaggio::CambiaServer) if !dal_server => {
@@ -384,6 +389,21 @@ fn main() {
         }
 
         // ---- Applica le azioni sulle schede
+        if cambia_server {
+            // Resta solo la scheda attiva, scollegata, con la schermata dell'indirizzo (Annulla = torna com'era).
+            let tenuta = schede.remove(attiva);
+            for s in schede.drain(..) {
+                let _ = s.pagina.set_visible(false);
+            }
+            schede.push(tenuta);
+            attiva = 0;
+            *origine.borrow_mut() = None;
+            let attuale = url_corrente.as_ref().map(|u| u.to_string()).unwrap_or_default();
+            let _ = schede[0].pagina.load_html(&avvio::pagina_indirizzo(&attuale, "", &percorso_conf));
+            schede[0].titolo = "Cambia server".into();
+            let _ = schede[0].pagina.set_visible(true);
+            ridisegna = true;
+        }
         if let Some(indirizzo) = apri {
             if schede.len() >= barra::MASSIMO_SCHEDE {
                 avvisa(&schede[attiva].pagina, "Troppe schede aperte: chiudine qualcuna (Ctrl+W)");
@@ -430,6 +450,9 @@ fn main() {
                 attiva_id = Some(schede[attiva].id);
             }
         }
+        if ridisegna && attiva_id.is_none() {
+            aggiorna_barra(&barra, &schede, attiva, &origine);
+        }
         if let Some(id) = attiva_id
             && let Some(pos) = schede.iter().position(|s| s.id == id)
         {
@@ -440,7 +463,7 @@ fn main() {
             }
             let _ = schede[attiva].pagina.focus();
             window.set_title(&format!("{} - DuMetodo", schede[attiva].titolo));
-            aggiorna_barra(&barra, &schede, attiva);
+            aggiorna_barra(&barra, &schede, attiva, &origine);
         }
     });
 }
@@ -494,13 +517,22 @@ fn disponi(window: &Window, barra_web: &WebView, schede: &[Scheda]) {
     }
 }
 
-fn aggiorna_barra(barra_web: &WebView, schede: &[Scheda], attiva: usize) {
+fn aggiorna_barra(barra_web: &WebView, schede: &[Scheda], attiva: usize, origine: &Origine) {
     let voci: Vec<barra::VoceScheda<'_>> = schede
         .iter()
         .enumerate()
         .map(|(i, s)| barra::VoceScheda { id: s.id, titolo: &s.titolo, attiva: i == attiva })
         .collect();
-    let _ = barra_web.evaluate_script(&barra::script_aggiorna(&voci));
+    let server = origine
+        .borrow()
+        .as_ref()
+        .map(|u| match (u.host_str(), u.port()) {
+            (Some(h), Some(p)) => format!("{h}:{p}"),
+            (Some(h), None) => h.to_string(),
+            _ => String::new(),
+        })
+        .unwrap_or_default();
+    let _ = barra_web.evaluate_script(&barra::script_aggiorna(&voci, &server));
 }
 
 /// Piccolo avviso in basso a destra nella pagina (lo disegna lo script iniziale).

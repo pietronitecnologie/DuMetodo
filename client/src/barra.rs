@@ -14,9 +14,15 @@ pub const MASSIMO_SCHEDE: usize = 16;
 #[derive(Debug, Deserialize)]
 #[serde(tag = "tipo", rename_all = "snake_case")]
 pub enum Comando {
-    Attiva { id: u32 },
-    Chiudi { id: u32 },
+    Attiva {
+        id: u32,
+    },
+    Chiudi {
+        id: u32,
+    },
     Nuova,
+    /// Apre la schermata di collegamento per indicare un altro server.
+    CambiaServer,
 }
 
 pub fn interpreta(testo: &str) -> Option<Comando> {
@@ -33,10 +39,11 @@ pub struct VoceScheda<'a> {
     pub attiva: bool,
 }
 
-/// Script che ridisegna la barra con lo stato attuale.
-pub fn script_aggiorna(voci: &[VoceScheda<'_>]) -> String {
+/// Script che ridisegna la barra con lo stato attuale; `server` = server collegato (host[:porta]), vuoto se nessuno.
+pub fn script_aggiorna(voci: &[VoceScheda<'_>], server: &str) -> String {
     let json = serde_json::to_string(voci).unwrap_or_else(|_| "[]".into());
-    format!("window.aggiorna && window.aggiorna({json})")
+    let server = serde_json::to_string(server).unwrap_or_else(|_| "\"\"".into());
+    format!("window.aggiorna && window.aggiorna({json}, {server})")
 }
 
 /// Pagina della barra con l'icona di DuMetodo (PNG 32 px incorporato).
@@ -66,6 +73,12 @@ const MODELLO: &str = r##"<!doctype html>
   #nuova { width: 28px; height: 26px; margin: 0 0 2px 4px; border: 0; border-radius: 6px; background: none; color: #93a1b8;
     font-size: 20px; line-height: 1; }
   #nuova:hover { background: #13223a; color: #fff; }
+  #server { margin: 0 2px 4px auto; align-self: center; display: flex; align-items: center; gap: 6px; max-width: 280px;
+    height: 24px; padding: 0 10px; border: 1px solid #263955; border-radius: 6px; background: #0c1828; color: #93a1b8;
+    font: inherit; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #server:hover { background: #13223a; color: #fff; border-color: #3d5a85; }
+  #server .punto { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #3ccf7a; }
+  #server.scollegato .punto { background: #e0a030; }
 </style></head>
 <body><div id="schede"><img id="icona" alt="" src="data:image/png;base64,{ICONA}"></div>
 <script>
@@ -74,11 +87,11 @@ const MODELLO: &str = r##"<!doctype html>
   const contenitore = document.getElementById("schede");
   let ultimo = "";
   // Ridisegna solo se qualcosa è cambiato: ridisegnare durante un clic farebbe perdere il clic.
-  window.aggiorna = (schede) => {
-    const firma = JSON.stringify(schede);
+  window.aggiorna = (schede, server) => {
+    const firma = JSON.stringify([schede, server]);
     if (firma === ultimo) return;
     ultimo = firma;
-    contenitore.querySelectorAll(".scheda, #nuova").forEach((el) => el.remove());
+    contenitore.querySelectorAll(".scheda, #nuova, #server").forEach((el) => el.remove());
     for (const s of schede) {
       const d = document.createElement("div");
       d.className = "scheda" + (s.attiva ? " attiva" : "");
@@ -101,10 +114,22 @@ const MODELLO: &str = r##"<!doctype html>
     n.textContent = "+";
     n.title = "Nuova scheda (Ctrl+T)";
     contenitore.append(n);
+    const sv = document.createElement("button");
+    sv.id = "server";
+    sv.type = "button";
+    sv.className = server ? "" : "scollegato";
+    sv.title = "Cambia server… (le altre schede vengono chiuse)";
+    const punto = document.createElement("span");
+    punto.className = "punto";
+    const testo = document.createElement("span");
+    testo.textContent = server ? "Server: " + server : "Nessun server collegato";
+    sv.append(punto, testo);
+    contenitore.append(sv);
   };
   // Un solo gestore per tutta la barra, sul clic completo (premi e rilascia).
   contenitore.addEventListener("click", (e) => {
     if (e.target.closest("#nuova")) { invia({ tipo: "nuova" }); return; }
+    if (e.target.closest("#server")) { invia({ tipo: "cambia_server" }); return; }
     const scheda = e.target.closest(".scheda");
     if (!scheda) return;
     const id = Number(scheda.dataset.id);
@@ -129,8 +154,9 @@ mod test {
     fn comandi_e_aggiornamento() {
         assert!(matches!(interpreta(r#"{"tipo":"attiva","id":3}"#), Some(Comando::Attiva { id: 3 })));
         assert!(matches!(interpreta(r#"{"tipo":"nuova"}"#), Some(Comando::Nuova)));
+        assert!(matches!(interpreta(r#"{"tipo":"cambia_server"}"#), Some(Comando::CambiaServer)));
         assert!(interpreta(r#"{"tipo":"esegui","cmd":"x"}"#).is_none());
-        let s = script_aggiorna(&[VoceScheda { id: 1, titolo: "<b>x</b>\"", attiva: true }]);
+        let s = script_aggiorna(&[VoceScheda { id: 1, titolo: "<b>x</b>\"", attiva: true }], "srv:8000");
         assert!(s.starts_with("window.aggiorna") && s.contains(r#""titolo":"<b>x</b>\"""#));
     }
 }

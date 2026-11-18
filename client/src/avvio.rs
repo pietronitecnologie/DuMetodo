@@ -30,10 +30,15 @@ pub fn pagina_indirizzo(attuale: &str, errore: &str, percorso_conf: &Path) -> St
          <p>Indica l'indirizzo del server DuMetodo, ad esempio <code>https://dumetodo.miaazienda.it</code> \
          oppure, se DuMetodo gira su un PC della rete, <code>http://192.168.1.20:8000</code>.</p>\
          <form onsubmit=\"salva(event)\"><input id=url type=url required autofocus placeholder=\"https://…\" value=\"{}\">\
-         <button>Collega</button></form><p id=stato class=err>{}</p>\
+         <button>Collega</button>{}</form><p id=stato class=err>{}</p>\
          <p class=mut>L'indirizzo viene salvato in <code>{}</code>.<br>Il client mostra solo DuMetodo: \
          serve un server DuMetodo installato e acceso (vedi README del progetto, \"Produzione (Docker)\").</p></main>",
         esc(attuale),
+        if attuale.is_empty() {
+            ""
+        } else {
+            " <button type=button class=sec onclick=\"invia({tipo:'riprova'})\">Annulla</button>"
+        },
         esc(errore),
         esc(&percorso_conf.display().to_string())
     )
