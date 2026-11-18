@@ -22,6 +22,29 @@
     }
   });
 
+  // ---- Tabelle su telefono: ogni riga diventa una scheda con le etichette delle colonne.
+  // Solo tabelle "semplici" (una riga di intestazione, almeno 4 colonne, senza celle unite); le griglie
+  // (pianificazione, materiale per reparto) restano tabelle che scorrono. data-dm-schede="no" per escluderne una.
+  function adattaTabelle(radice) {
+    (radice || document).querySelectorAll(".dm-contenuto table").forEach(function (t) {
+      if (t.dataset.dmSchede === "no" || !t.tHead || t.tHead.rows.length !== 1) return;
+      var titoli = Array.prototype.slice.call(t.tHead.rows[0].cells);
+      if (titoli.length < 4 || titoli.some(function (c) { return c.colSpan > 1 || c.rowSpan > 1; })) return;
+      t.classList.add("dm-schede");
+      Array.prototype.forEach.call(t.tBodies, function (corpo) {
+        Array.prototype.forEach.call(corpo.rows, function (riga) {
+          var i = 0;
+          Array.prototype.forEach.call(riga.cells, function (cella) {
+            cella.dataset.label = cella.colSpan > 1 ? "" : (titoli[i] ? titoli[i].textContent.trim() : "");
+            i += cella.colSpan || 1;
+          });
+        });
+      });
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () { adattaTabelle(document); });
+  document.addEventListener("htmx:afterSettle", function (e) { adattaTabelle(e.target); });
+
   // ---- Selezione dell'ordine: si sceglie da un elenco, il form invia la chiave primaria.
   function scegli(box, bottone) {
     box.querySelector("[data-dm-ordine-valore]").value = bottone.dataset.dmOrdinePk;

@@ -57,26 +57,26 @@ const MODELLO: &str = r##"<!doctype html>
 <html lang="it"><head><meta charset="utf-8"><title>Schede</title>
 <style>
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #08111e; user-select: none;
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #e9edf3; user-select: none;
     font: 13px "Segoe UI", system-ui, sans-serif; }
   #icona { width: 20px; height: 20px; margin: 0 6px 6px 4px; flex: 0 0 20px; align-self: center; }
   #schede { display: flex; align-items: flex-end; height: 100%; padding: 4px 6px 0; gap: 2px; }
   .scheda { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 220px; height: 30px;
-    padding: 0 6px 0 12px; border-radius: 8px 8px 0 0; color: #93a1b8; background: #0c1828; cursor: default;
-    border: 1px solid #263955; border-bottom: 0; }
-  .scheda:hover { background: #13223a; color: #dbe3ef; }
-  .scheda.attiva { background: #0f1b2d; color: #fff; border-color: #3d5a85; box-shadow: inset 0 2px 0 #2f80ff; }
+    padding: 0 6px 0 12px; border-radius: 8px 8px 0 0; color: #4a5567; background: #dde3ec; cursor: default;
+    border: 1px solid #c9d2df; border-bottom: 0; }
+  .scheda:hover { background: #eef2f7; color: #18212e; }
+  .scheda.attiva { background: #ffffff; color: #18212e; border-color: #c9d2df; box-shadow: inset 0 2px 0 #2f74f0; }
   .titolo { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chiudi { width: 20px; height: 20px; flex: 0 0 20px; border: 0; border-radius: 5px; background: none; color: inherit;
     font-size: 15px; line-height: 1; opacity: .65; }
-  .chiudi:hover { background: #24364f; opacity: 1; }
-  #nuova { width: 28px; height: 26px; margin: 0 0 2px 4px; border: 0; border-radius: 6px; background: none; color: #93a1b8;
+  .chiudi:hover { background: #d3dbe6; opacity: 1; }
+  #nuova { width: 28px; height: 26px; margin: 0 0 2px 4px; border: 0; border-radius: 6px; background: none; color: #5b6676;
     font-size: 20px; line-height: 1; }
-  #nuova:hover { background: #13223a; color: #fff; }
+  #nuova:hover { background: #dde3ec; color: #18212e; }
   #server { margin: 0 2px 4px auto; align-self: center; display: flex; align-items: center; gap: 6px; max-width: 280px;
-    height: 24px; padding: 0 10px; border: 1px solid #263955; border-radius: 6px; background: #0c1828; color: #93a1b8;
+    height: 24px; padding: 0 10px; border: 1px solid #c9d2df; border-radius: 6px; background: #fff; color: #4a5567;
     font: inherit; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #server:hover { background: #13223a; color: #fff; border-color: #3d5a85; }
+  #server:hover { background: #eef3fc; color: #18212e; border-color: #9fbdf3; }
   #server .punto { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #3ccf7a; }
   #server.scollegato .punto { background: #e0a030; }
 </style></head>
