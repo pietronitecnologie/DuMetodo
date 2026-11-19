@@ -7,7 +7,7 @@ from django.views.decorators.http import require_GET
 
 from dumetodo.configurazione import servizi as config
 
-from . import menu
+from . import menu, scorciatoie
 
 
 @require_GET
@@ -18,7 +18,18 @@ def configurazione(request: HttpRequest) -> JsonResponse:
         dati = menu.valida(config.leggi("client.menu"))
     except menu.MenuNonValido:
         dati = menu.PREDEFINITO
-    r = JsonResponse({"versione": 1, "menu": menu.per_utente(dati, request.user), "intestazione": intestazione_menu()})
+    try:
+        tasti = scorciatoie.valida(config.leggi("client.scorciatoie"))
+    except scorciatoie.ScorciatoieNonValide:
+        tasti = scorciatoie.PREDEFINITE
+    r = JsonResponse(
+        {
+            "versione": 1,
+            "menu": menu.per_utente(dati, request.user),
+            "intestazione": intestazione_menu(),
+            "scorciatoie": scorciatoie.per_utente(tasti, request.user),
+        }
+    )
     r["Cache-Control"] = "private, no-store"
     return r
 

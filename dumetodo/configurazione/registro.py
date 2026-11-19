@@ -37,6 +37,7 @@ class Tipo(StrEnum):
     EMAIL = "email"
     LISTA_EMAIL = "lista_email"
     MENU_CLIENT = "menu_client"  # menu del tasto destro del client desktop (JSON)
+    SCORCIATOIE = "scorciatoie"  # scorciatoie da tastiera del client desktop (JSON)
     TRACCIATO = "tracciato"  # formato di un file esportato, nel linguaggio di dumetodo.tracciati
     IMMAGINE = "immagine"  # PNG normalizzato (base64), vedi configurazione/immagini.py
     SEGRETO = "segreto"  # password: salvata cifrata (SegretoParametro), mai mostrata né storicizzata
@@ -123,6 +124,16 @@ class Parametro:
                 except ErroreTracciato as exc:
                     raise ValidationError(f"{self.etichetta}: {exc}") from exc
                 return testo
+            case Tipo.SCORCIATOIE:
+                from dumetodo.client.scorciatoie import ScorciatoieNonValide
+                from dumetodo.client.scorciatoie import valida as valida_scorciatoie
+
+                testo = str(valore).replace("\r\n", "\n")
+                try:
+                    valida_scorciatoie(testo)
+                except ScorciatoieNonValide as exc:
+                    raise ValidationError(f"{self.etichetta}: {exc}") from exc
+                return testo
             case Tipo.MENU_CLIENT:
                 from dumetodo.client.menu import MenuNonValido, valida
 
@@ -180,9 +191,11 @@ class Parametro:
 
 
 from dumetodo.client.menu import PREDEFINITO as _MENU_PREDEFINITO  # noqa: E402
+from dumetodo.client.scorciatoie import PREDEFINITE_JSON as _SCORCIATOIE_JSON  # noqa: E402
 from dumetodo.tracciati.esempi import FILE_TECNICO_DDT, READYPRO_BOLLA  # noqa: E402
 
 _MENU_CLIENT_PREDEFINITO = json.dumps(_MENU_PREDEFINITO, ensure_ascii=False, indent=2)
+_SCORCIATOIE_PREDEFINITE = _SCORCIATOIE_JSON
 
 PARAMETRI: tuple[Parametro, ...] = (
     # --- Azienda ------------------------------------------------------------------------
@@ -506,6 +519,17 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Azioni: naviga, post, copia, stampa, ricarica, indietro, avanti, schermo_intero. Una voce con "
         "'permesso' compare solo a chi ha quella funzione. {nome} = dato dell'elemento cliccato.",
         default=_MENU_CLIENT_PREDEFINITO,
+        obbligatorio=True,
+    ),
+    Parametro(
+        "client.scorciatoie",
+        Tipo.SCORCIATOIE,
+        Gruppo.CLIENT,
+        "Scorciatoie da tastiera",
+        "Tasti del client desktop (F1-F12 o combinazioni con Ctrl/Alt), in JSON: tasto, etichetta, azione "
+        "(naviga con url, cerca_ordine, nuova_scheda, ricarica, stampa, indietro, avanti, schermo_intero, aiuto) "
+        "ed eventuale 'permesso'. F1 mostra l'elenco a chi usa il client.",
+        default=_SCORCIATOIE_PREDEFINITE,
         obbligatorio=True,
     ),
     # --- Consegna --------------------------------------------------------------------

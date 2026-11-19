@@ -42,7 +42,7 @@ settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
             <div class="esito-prova small"></div>
           </div>
           <div class="form-text mb-2">La prova usa i valori scritti qui sopra (anche se non ancora salvati) e non legge né modifica i messaggi.</div>
-          {% elif campo.name == "client.menu" %}
+          {% elif campo.name == "client.menu" or campo.name == "client.scorciatoie" %}
           <div class="d-flex gap-2 mb-2">
             <button type="button" class="btn btn-sm btn-outline-secondary"
                     onclick="if (confirm('Sostituire i menu con quelli predefiniti? Dovrai poi salvare.')) document.getElementById('{{ campo.id_for_label }}').value = document.getElementById('predefinito-{{ campo.id_for_label }}').content.textContent">Ripristina predefinito</button>
