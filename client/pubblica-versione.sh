@@ -7,7 +7,7 @@ versione="${1:?indica la versione, es. 0.3.0}"
 attuale=$(sed -n 's/^version = "\(.*\)"$/\1/p' client/Cargo.toml)
 [ "$(printf '%s\n%s\n' "$attuale" "$versione" | sort -V | tail -1)" = "$versione" ] && [ "$versione" != "$attuale" ] \
   || { echo "La versione $versione non è più alta di $attuale" >&2; exit 1; }
-[ -z "$(git status --porcelain)" ] || { echo "Ci sono modifiche non salvate" >&2; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "Ci sono modifiche non salvate:" >&2; git status --short >&2; exit 1; }
 git pull --ff-only
 sed -i "s/^version = \".*\"$/version = \"$versione\"/" client/Cargo.toml
 git add client/Cargo.toml && git commit -m "Client $versione" && git tag "client-v$versione"

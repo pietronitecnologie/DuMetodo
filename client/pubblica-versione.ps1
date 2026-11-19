@@ -10,7 +10,12 @@ $cargo = "client\Cargo.toml"
 $attuale = (Select-String -Path $cargo -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
 $vecchia = [version]$attuale; $nuova = [version]$Versione
 if ($nuova -le $vecchia) { Write-Host "La versione $Versione non è più alta di quella attuale ($attuale)." -ForegroundColor Red; exit 1 }
-if (git status --porcelain) { Write-Host "Ci sono modifiche non salvate: prima fai commit (o annullale)." -ForegroundColor Red; exit 1 }
+$modifiche = git status --porcelain
+if ($modifiche) {
+    Write-Host "Ci sono modifiche non salvate: prima fai commit (o annullale). File interessati:" -ForegroundColor Red
+    $modifiche | ForEach-Object { Write-Host "  $_" }
+    exit 1
+}
 
 git pull --ff-only
 # Scrittura senza BOM: Cargo.toml deve restare UTF-8 semplice.
