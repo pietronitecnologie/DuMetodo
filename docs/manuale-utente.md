@@ -1,0 +1,461 @@
+# Manuale utente di DuMetodo
+
+DuMetodo gestisce la produzione: gli ordini del Cliente, la pianificazione dei reparti, le consegne con bolla e
+DDT, il magazzino, la qualità e la tracciabilità. Questo manuale descrive ogni sezione dell'applicazione.
+
+Ogni pagina di DuMetodo ha in alto a destra un piccolo pulsante **?**: apre in una scheda separata il capitolo
+del manuale che riguarda quella pagina.
+
+Ognuno vede solo le sezioni per cui ha il permesso: se nel tuo menu manca una voce descritta qui, chiedi a un
+amministratore di abilitarla (vedi [Utenti e permessi](#utenti-e-permessi)).
+
+## Primi passi
+
+### Accesso e password
+
+- Entra con il nome utente e la password ricevuti dall'amministratore.
+- Se la password è stata impostata da un amministratore, al primo accesso DuMetodo chiede di sceglierne una
+  nuova: scrivi la password attuale, poi due volte la nuova. Finché non la cambi le altre pagine non si aprono.
+- La password deve avere almeno 10 caratteri, non solo numeri, non troppo simile al nome utente e non tra le
+  più comuni.
+- Per cambiarla in qualsiasi momento: clicca il cerchio con la tua iniziale (in alto a destra) →
+  **Cambia password**. Dallo stesso menu esci con **Esci**.
+- Se hai dimenticato la password, chiedi a un amministratore una **password temporanea**.
+
+### La barra in alto
+
+- **Logo e scritta DuMetodo**: riportano alla pagina iniziale.
+- **Menu**: le sezioni (Ordini, Produzione, Spedizioni, Magazzino, Qualità, Report, Utilità, Amministrazione).
+  Le sezioni con più pagine si aprono a tendina.
+- **Cerca ordine**: il campo a destra apre subito un ordine. Scrivi una parte del numero, la serie, l'appendice
+  o l'anno e scegli dall'elenco: non serve scrivere il codice completo.
+- **Modalità reparto** (icona accanto alla ricerca): ingrandisce testi e pulsanti, utile sui PC e sui tablet dei
+  reparti. Si ricorda la scelta su quel dispositivo.
+- **?**: apre il capitolo del manuale della pagina in cui ti trovi.
+
+In fondo a ogni pagina sono scritte la versione del server e, se usi il client desktop, quella del client:
+servono all'assistenza per capire se tutto è aggiornato.
+
+### Scegliere un ordine nei moduli
+
+Dove un modulo chiede un ordine (tracce, controlli qualità, foto, cambia ordine…) non si scrive il codice a
+mano: si inizia a scrivere e si sceglie dall'elenco. Un ordine è identificato da **serie, numero, appendice e
+anno**, e l'elenco li mostra tutti, con stato e scadenza, così non si confondono ordini con lo stesso numero.
+Con il campo vuoto l'elenco propone gli ordini aperti con la scadenza più vicina.
+
+### Tabelle: ordinare e filtrare
+
+Tutte le tabelle si possono:
+
+- **ordinare** cliccando l'intestazione di una colonna (un secondo clic inverte l'ordine);
+- **filtrare** scrivendo nel campo sotto l'intestazione: restano solo le righe che contengono il testo.
+
+Ordinamento e filtro agiscono sulle righe mostrate nella pagina; per cercare tra tutti i dati usa i filtri e
+il pulsante **Cerca** della pagina.
+
+### Annunci
+
+Gli amministratori possono pubblicare annunci (fermi macchina, scadenze, avvisi): compaiono in cima alla
+pagina all'accesso. **Chiudi** li nasconde.
+
+### Uso da telefono e tablet
+
+DuMetodo funziona anche da telefono: il menu si apre con il pulsante ☰, e le tabelle larghe diventano schede
+una sotto l'altra. Dal telefono si possono anche scattare foto e caricarle su un ordine (vedi
+[Foto e file](#foto-e-file)).
+
+## Il client desktop
+
+Il client desktop (`dumetodo-client.exe`) è il programma consigliato per lavorare con DuMetodo sui PC: apre
+solo DuMetodo e aggiunge funzioni che un browser non ha.
+
+### Schede
+
+- **Ctrl+T** o il pulsante **+** apre una nuova scheda; **Ctrl+W** o la **×** la chiude; il clic centrale su
+  una scheda la chiude.
+- **Ctrl+Tab** / **Ctrl+PagSu** / **Ctrl+PagGiù** passano da una scheda all'altra.
+- **Ctrl+clic** o clic centrale su un link, oppure *Apri in nuova scheda* dal tasto destro, aprono la pagina in
+  una nuova scheda.
+- L'accesso vale per tutte le schede. Alla chiusura il client ricorda le schede aperte e le riapre al
+  prossimo avvio.
+
+### Menu del tasto destro
+
+Il tasto destro apre un menu con il logo dell'azienda e le voci adatte a ciò che hai sotto il mouse:
+
+- **Aggiorna pagina**;
+- **Copia tabella**, **Copia colonna**, **Copia riga**: copiano i dati in un formato che si incolla
+  direttamente in Excel;
+- **Copia selezione** e **Incolla**;
+- sugli ordini e sulle righe, le azioni rapide (apri ordine, apri in nuova scheda…).
+
+Le voci sono decise dall'amministratore in Configurazione e dipendono dai tuoi permessi.
+
+### Scorciatoie da tastiera
+
+Premi **F1** per vedere l'elenco delle scorciatoie attive. Quelle predefinite:
+
+| Tasto | Azione |
+|---|---|
+| F1 | Elenco delle scorciatoie |
+| F2 | Cerca un ordine |
+| F3 | Elenco ordini |
+| F4 | Agenda ordini |
+| F6 | Consegna |
+| F7 | DDT |
+| F8 | Importazione ordini |
+| F9 | Richiesta materiali |
+| F10 | Dashboard |
+| Ctrl+Shift+N | Nuova scheda |
+
+Valgono inoltre: **Ctrl+P** stampa, **Ctrl +** / **Ctrl −** / **Ctrl 0** zoom, **F11** schermo intero,
+**Alt+←** / **Alt+→** indietro e avanti.
+
+### Cambia server
+
+Il pulsante a destra nella barra delle schede mostra il server collegato (pallino verde). Cliccandolo si può
+indicare un altro indirizzo; **Annulla** lascia il server attuale. Cambiando server le altre schede si
+chiudono.
+
+### Aggiornamenti del client
+
+Quando l'amministratore pubblica una versione nuova, nella pagina compare l'avviso **È disponibile un
+aggiornamento**. Con **Aggiorna ora** il client scarica la nuova versione, controlla che il file sia integro e si
+riavvia riaprendo le schede. La versione del client è scritta in fondo alla pagina e nel suggerimento
+dell'icona in alto a sinistra.
+
+## Chat
+
+Nel client desktop il pulsante **💬 Chat** nella barra delle schede apre il pannello della chat a destra
+(serve il permesso *Usare la chat*).
+
+- Le chat sono **solo 1 a 1**, tra due persone.
+- **Persone**: l'elenco dei colleghi, con chi è collegato in quel momento. Cerca un nome e clicca per scrivere.
+- **Conversazioni**: le chat in corso, con il numero di messaggi non letti.
+- Scrivi in basso e premi **Invio** (o **Invia**).
+- I messaggi sono **salvati sul server**: puoi scrivere anche a chi non è collegato, li leggerà al prossimo
+  accesso. Chiudere una conversazione (✕) la toglie dall'elenco, ma i messaggi restano.
+- All'arrivo di un messaggio: il numero dei non letti compare sul pulsante Chat, la pagina mostra un avviso e,
+  se il client non è in primo piano, Windows mostra una notifica e l'icona lampeggia nella barra delle
+  applicazioni.
+
+## Ordini
+
+### Elenco ordini
+
+La pagina **Ordini → Elenco ordini** parte vuota, perché gli ordini sono migliaia: imposta almeno un filtro e
+premi **Cerca** (o Invio).
+
+- Filtri: ordine (numero, serie, appendice), articolo, anno, categoria, scadenza dal/al, *Solo aperti*.
+- **Azzera** pulisce i filtri.
+- Ogni riga mostra stato, scadenza, righe, pezzi, reparto e un segnale se ci sono **note non lette**.
+- Clicca un ordine per aprirne il dettaglio.
+
+### Stati dell'ordine
+
+| Stato | Significato |
+|---|---|
+| Inserito | Ordine ricevuto, da lavorare |
+| Lavorato con mancanze | In lavorazione, manca qualcosa per completarlo |
+| In spedizione | Pronto: compare nella pagina Consegna |
+| Evasione parziale | Consegnata solo una parte delle righe |
+| Consegnato | Tutte le righe consegnate |
+| Annullato | Ordine annullato |
+
+Lo stato si cambia dal dettaglio dell'ordine; i passaggi non ammessi vengono rifiutati con un messaggio.
+
+### Dettaglio dell'ordine
+
+Il dettaglio mostra codice completo, scadenza, data di consegna, pezzi, tempo teorico (ore calcolate con la
+resa oraria), reparto e cliente. Sotto:
+
+- **Righe**: articolo, variante, quantità, prezzo, scadenza e stato. *Mostra anche annullate/sostituite*
+  visualizza anche le righe non più attive.
+- **Storico scadenze**: ogni cambio di scadenza con data, utente e motivo. **Posticipa** sposta la scadenza.
+- **Note**: la comunicazione con il Cliente (vedi [Note e comunicazione con il Cliente](#note-e-comunicazione-con-il-cliente)).
+- **Tracciabilità, controlli qualità, foto e file** dell'ordine.
+
+### Azioni sulle righe
+
+| Azione | Cosa fa |
+|---|---|
+| Evadi | Segna la riga come pronta da consegnare |
+| Blocca | Blocca la riga: non viene consegnata finché non la sblocchi |
+| Scorpora | La riga resta consegnata ma è esclusa dalla fatturazione |
+| Reincorpora | Annulla uno scorporo |
+| Annulla | Annulla la riga |
+| Dividi | Sposta una parte della quantità su una nuova riga dello stesso ordine, con una scadenza diversa |
+
+Una riga già inserita in una bolla non si modifica più; sugli ordini in spedizione o chiusi le righe le
+modifica solo chi ha il permesso di annullare gli ordini.
+
+### Note e comunicazione con il Cliente
+
+Nel dettaglio dell'ordine, il riquadro **Note** raccoglie i messaggi tra il Fornitore e il Cliente su
+quell'ordine.
+
+- Scrivi la nota e salvala: resta legata all'ordine, con autore e data.
+- Le **note interne** sono visibili solo al personale del Fornitore, non agli utenti del Cliente.
+- Nell'elenco ordini un segnale indica gli ordini con note non lette.
+
+## Produzione
+
+### Agenda
+
+**Produzione → Agenda ordini** mostra gli ordini aperti come schede, divisi tra commesse grandi e commesse
+piccole, con pezzi, scadenza e numero di note. **Agenda pulsanti** mostra la stessa vista per le pulsantiere.
+
+- Filtra per ordine e appendice, oppure per tipo (Pulsanti, Elettronica, Conto lavoro, Tutti).
+- Il campo *Cerca nella pagina* evidenzia gli ordini che contengono il testo; **Esc** lo pulisce.
+- Clicca una scheda per aprire l'ordine.
+
+### Pianificazione
+
+**Produzione → Pianificazione** confronta il carico di lavoro di ogni reparto con la sua capacità, settimana per
+settimana.
+
+- Le ore sono calcolate come *quantità × prezzo / resa oraria* sulle righe non ancora in bolla degli ordini
+  *Inserito* o *Evasione parziale*.
+- La colonna **Arretrato** raccoglie le righe già scadute. La settimana corrente conta solo le ore lavorative
+  rimaste.
+- Ogni cella è colorata: **OK** (verde), **Attenzione** (giallo), **Critico** (rosso), in base alla percentuale
+  di capacità occupata.
+- **Capacità settimanale dei reparti**: modifica le ore disponibili e salva.
+- **Esporta Excel** scarica la tabella; **Invia report via email** la spedisce ai destinatari configurati (o a
+  quelli che scrivi).
+- Se la resa oraria non è configurata le ore non si possono calcolare: va impostata in Configurazione.
+
+### Tabulati
+
+- **Tabulato settimanale**: articoli da produrre in una settimana per un reparto, con ore totali. Scegli reparto e
+  settimana (‹ precedente / successiva ›), poi **Stampa** o **Excel**.
+- **Tabulato scorte**: come il settimanale, solo per le commesse piccole.
+- **Commesse per tabulato**: gli ordini di un tabulato in un intervallo di scadenze, esportabili in Excel.
+
+## Spedizioni
+
+### Consegna
+
+**Spedizioni → Consegna** elenca gli ordini **In spedizione** con le righe da consegnare.
+
+1. **Selezione**: scegli le serie da consegnare (nessuna scelta = tutti gli ordini). **Rimuovi** toglie un ordine
+   dalla spedizione.
+2. **Etichette**: scarica il file delle etichette (Excel) o quello delle sole pulsantiere.
+3. **Genera bolla e consegna**: crea il file della bolla per il gestionale (con il tracciato scelto in
+   Configurazione) e segna le righe come consegnate.
+
+**Consegne effettuate** mostra lo storico: numero, data, utente, selezione e file della bolla, sempre
+riscaricabile.
+
+### DDT
+
+**Spedizioni → DDT** collega le righe consegnate al DDT emesso dal gestionale.
+
+1. Seleziona le righe consegnate in attesa di DDT.
+2. Scrivi **numero** e **data** del DDT (numero + anno devono essere unici).
+3. **Registra e invia**: DuMetodo crea il file tecnico del DDT e lo invia.
+
+**DDT registrati** elenca i DDT con il file tecnico e lo stato dell'invio; **Reinvia** ripete l'invio non
+riuscito.
+
+### Importazione ordini
+
+Gli ordini del Cliente arrivano come file `.txt`:
+
+- **dalla casella email**, letta automaticamente ogni 30 minuti (**Leggi ora** forza una lettura);
+- **a mano**, con **Carica file ordine** e **Importa**.
+
+Ogni ordine nel file è la versione completa: le righe nuove vengono create, quelle cambiate aggiornate, quelle
+non più presenti annullate. Le righe già in bolla non vengono mai toccate. Un file identico a uno già importato
+viene saltato.
+
+- **File elaborati**: ogni file con l'esito (ordini nuovi, aggiornati, scartati). Dal dettaglio puoi scaricare
+  il file originale o **Rielaborarlo**.
+- **Problemi da gestire**: righe o ordini che non è stato possibile importare. Leggi il problema, correggi (di
+  solito nell'ordine o nel file) e premi **Gestito**.
+
+## Magazzino
+
+### Richiesta materiali
+
+Ogni reparto chiede al magazzino i codici che gli mancano.
+
+1. Apri **Magazzino → Richiesta materiali** e scegli il reparto.
+2. **Nuova richiesta**: scrivi codice e variante, spunta *Urgente* se serve, **Richiedi**. Se il codice è già
+   richiesto e non ancora arrivato, aumenta il numero di richieste (sollecito).
+3. Seleziona le richieste e comunicale al magazzino via email: si vede l'**anteprima** prima di confermare.
+4. All'arrivo del materiale premi **Ricevi**; **Elimina** cancella una richiesta.
+
+Le richieste si chiudono da sole quando arriva un DDT in ingresso con quei codici. **Esporta Excel** scarica
+l'elenco.
+
+### Inventario
+
+- **Registra conteggio**: codice, variante e quantità contata. Un codice nuovo viene aggiunto ai componenti.
+- Le tabelle mostrano l'ultimo conteggio per componente e lo storico, filtrabili per codice e anno.
+- **Esportazioni**: giacenze (ultimo conteggio), somma dei conteggi, tutti i conteggi.
+
+### Distinte base
+
+Una distinta elenca i componenti che servono per un articolo finito.
+
+- **Nuova distinta**: codice articolo, variante, descrizione. Un articolo che non esiste viene aggiunto
+  all'anagrafica.
+- Nella distinta: **Aggiungi componente** (codice, quantità, UM, note), modifica le righe, spostale con ↑ ↓,
+  eliminale.
+- La ricerca trova le distinte anche per codice di un componente. **Esporta Excel** scarica tutte le distinte.
+
+### DDT in ingresso
+
+Registra il materiale che arriva dai fornitori.
+
+- **Importa da file**: carica il file del gestionale (CSV/TXT con separatore `;` o XML). Le righe sono
+  raggruppate per fornitore, numero e data del DDT; reimportare lo stesso file non duplica nulla.
+- **Nuovo DDT**: inserimento a mano di numero, data e fornitore, poi delle righe dei materiali.
+- Nel DDT le righe sono **Da verificare** finché non le controlli: seleziona e **Segna verificate**, oppure
+  **Verifica tutto il DDT**.
+- Il DDT mostra le richieste materiali chiuse dal suo arrivo e quelle ancora aperte per gli stessi codici.
+- **Ricerca materiali**: trova i materiali arrivati per codice, fornitore e periodo, esportabili in Excel.
+
+### Componenti e articoli
+
+- **Componenti**: anagrafica di codici, varianti, descrizione, UM, prezzo medio e fornitore. Un componente non
+  attivo non viene più proposto, ma resta nelle distinte e nello storico.
+- **Articoli finiti**: codice, descrizione, reparto, UM, tabulato e prezzo di riferimento (usato da Pianificazione
+  e Controllo prezzi). *Nuovo* segna gli articoli appena introdotti.
+
+## Qualità e tracciabilità
+
+### Controlli qualità
+
+**Qualità → Nuovo controllo**: scegli l'ordine (o lo stock), il codice prodotto e il **test**. DuMetodo mostra i
+controlli da eseguire:
+
+- per i controlli a numeri, scrivi il **campione** controllato e quanti pezzi sono **KO**;
+- per i controlli di presenza, indica **Presente** o **Assente**.
+
+**Registra controllo** salva. **Controlli qualità** elenca i controlli per periodo, esportabili in Excel.
+
+### Tracce
+
+Una traccia registra la storia di un elemento (scheda, lotto, componente) con un codice.
+
+- **Nuova traccia**: codice, data, chiave e valore dell'evento, ordine e reparto. Se il codice esiste già,
+  l'evento si aggiunge alla sua storia.
+- Dalla traccia: **Aggiungi evento** e **Stampa etichetta**.
+- Nel dettaglio dell'ordine si registrano anche **lotto di produzione** e **busta**.
+
+### Foto e file
+
+- **Carica foto**: scegli l'ordine e scatta una foto (da telefono o tablet) o scegli una foto o un PDF. Le foto
+  vengono ridotte prima dell'invio.
+- **Foto e file**: tutti i file caricati, per ordine e periodo. I file si vedono e si caricano anche dal
+  dettaglio dell'ordine.
+
+## Report
+
+- **Dashboard**: ordini in ritardo, carico della settimana, ordini da consegnare, righe consegnate senza DDT,
+  problemi di importazione, pezzi consegnati nelle ultime 12 settimane e prossime scadenze.
+- **Produttività**: pezzi consegnati per settimana con valore e ore teoriche. Inserisci le **ore lavorate** per
+  avere pezzi/ora ed efficienza; il dettaglio mostra i singoli giorni.
+- **Materiale per reparto**: ore a scadenza e ore consegnate per reparto e settimana.
+- **Controllo prezzi**: confronta il prezzo delle righe con il prezzo di riferimento dell'articolo, sulle righe
+  in lavorazione (da correggere prima di consegnare) o su quelle già consegnate.
+
+Nei report scegli il periodo (*Fino alla settimana del*, numero di settimane) e premi **Aggiorna**; **Excel**
+scarica i dati.
+
+## Utilità
+
+- **Errori di importazione**: i problemi dei file d'ordine, da verificare e segnare come gestiti.
+- **Ristampa etichette da DDT**: scrivi numero e anno del DDT, scegli gli ordini e rigenera il file delle
+  etichette.
+- **Gestione annunci**: crea i messaggi mostrati a tutti gli utenti. Un annuncio *Permanente* resta finché non lo
+  disattivi; altrimenti è visibile per un giorno.
+- **Scorporazione di massa**: cerca le righe consegnate di un articolo in un periodo e scegli quali escludere
+  dalla fatturazione.
+- **Cambia ordine**: corregge serie, numero, appendice, anno e scadenza di un ordine (con il motivo, che finisce
+  nello storico scadenze). Righe, note, tracce e file seguono l'ordine automaticamente.
+
+## Amministrazione
+
+### Configurazione
+
+**Amministrazione → Configurazione** raccoglie i parametri di funzionamento in riquadri chiusi: clicca un titolo
+per aprirlo, oppure **Espandi tutto**.
+
+- **Azienda**: nome del Fornitore e del Cliente, **logo** (compare in alto e nel menu del tasto destro).
+- **Casella ordini (IMAP)**: server, utente, password, mittenti ammessi. **Prova connessione** verifica i dati
+  senza leggere i messaggi. La password è salvata cifrata e non viene mai mostrata.
+- **Produzione**, **Ordini**, **Importazione ordini**, **Pianificazione e tabulati**, **Magazzino**,
+  **Tracciabilità**: i parametri di calcolo e di funzionamento di ciascuna sezione (resa oraria, serie
+  Fast/Express, reparti per le richieste materiali…).
+- **Indirizzi email** e **Note e comunicazioni**: destinatari dei report, delle richieste materiali e degli
+  avvisi.
+- **Consegna e file per il gestionale**: i **tracciati** dei file per il gestionale (bolla, DDT).
+  **Anteprima con dati d'esempio** mostra il risultato; **Guida al linguaggio** spiega come scriverli.
+- **Client desktop**: voci del menu del tasto destro e scorciatoie da tastiera.
+
+Ogni parametro è controllato prima del salvataggio; **Ripristina predefinito** torna al valore iniziale.
+**Storico modifiche** mostra chi ha cambiato cosa e quando.
+
+### Aggiornamenti del client desktop
+
+**Amministrazione → Aggiornamenti del client** distribuisce le nuove versioni del client.
+
+1. Scarica `dumetodo-client-X.Y.Z.exe` dalla Release su GitHub.
+2. **Nuova versione**: scrivi il numero di versione (es. 0.3.0), scegli il file e, se vuoi, le novità da mostrare
+   agli utenti. **Carica**.
+3. I client con una versione più vecchia propongono l'aggiornamento.
+
+Viene sempre proposta la versione più alta tra quelle attive. **Ritira** smette di proporre una versione (per
+tornare indietro); **Riattiva** la ripropone; **Elimina** la cancella con il suo file e libera il numero di
+versione.
+
+### Utenti e permessi
+
+**Amministrazione → Utenti e permessi** gestisce gli accessi senza passare dall'admin tecnico.
+
+- **Nuovo utente**: nome utente, nome, email, password iniziale e un **profilo** di partenza (Operatore,
+  Caporeparto, Amministratore, Cliente). Al primo accesso l'utente dovrà cambiare la password.
+- *Utente del Cliente*: scrive le note come Cliente e non vede le note interne.
+- **Password**: *Genera password temporanea* (consigliato) mostra una password **una sola volta**, da comunicare
+  all'utente, che la cambierà al primo accesso. In alternativa puoi impostarne una.
+- **Attivo**: togli la spunta per impedire l'accesso senza cancellare l'utente.
+- **Permessi**: ogni funzione si abilita singolarmente, divisa per sezione. **Applica profilo** sostituisce tutti i
+  permessi con quelli di un profilo; *inverti* rovescia le spunte di una sezione.
+- **Storico modifiche**: ogni cambio di dati, password e permessi, con chi l'ha fatto.
+
+Regole di sicurezza: non puoi assegnare permessi che tu stesso non hai, né modificare chi ne ha più di te.
+Il **superuser** ha tutti i permessi e accede all'admin tecnico di Django: va dato solo a chi gestisce il server.
+
+### Reparti
+
+**Amministrazione → Reparti**: codice, nome, **capacità settimanale in ore** (usata dalla Pianificazione), gruppo
+per i report e stato attivo/disattivato.
+
+### Test e controlli qualità
+
+**Amministrazione → Test e controlli qualità** definisce cosa si verifica nei controlli qualità.
+
+- Un **controllo** è una singola verifica: a numeri (campione / KO) oppure di presenza (presente / assente).
+- Un **test** è l'insieme dei controlli da eseguire su un tipo di prodotto (es. *Pulsantiere*: visivo,
+  funzionale, distinta, disegno).
+
+Crea prima i controlli, poi i test che li usano.
+
+## Domande frequenti
+
+**Non vedo una sezione del menu.** Non hai il permesso: chiedilo a un amministratore.
+
+**La pagina degli ordini è vuota.** È voluto: imposta un filtro e premi Cerca.
+
+**Ho dimenticato la password.** Chiedi a un amministratore una password temporanea.
+
+**Il client dice che c'è un aggiornamento.** Premi *Aggiorna ora*: il client si riavvia da solo con le stesse
+schede.
+
+**Non arrivano gli ordini via email.** In Importazione ordini controlla l'ultima lettura e l'ultimo errore della
+casella; un amministratore può verificare i dati con *Prova connessione* in Configurazione.
+
+**Come scarico il manuale?** Dalla pagina del manuale, con **Scarica (.md)**.

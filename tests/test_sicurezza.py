@@ -13,7 +13,14 @@ PUBBLICHE = {
     "configurazione:logo",  # il logo compare anche nella pagina di accesso (404 se non caricato)
 }
 # Solo login: servono a ogni utente collegato e restituiscono dati già filtrati per i suoi permessi.
-SOLO_LOGIN = {"client:configurazione", "client:aggiornamento", "client:scarica", "utenti:mia_password"}
+SOLO_LOGIN = {
+    "client:configurazione",
+    "client:aggiornamento",
+    "client:scarica",
+    "utenti:mia_password",
+    "manuale",
+    "manuale_md",
+}
 
 
 def _rotte(resolver: URLResolver = None, prefisso: str = "", ns: str = ""):  # type: ignore[assignment]

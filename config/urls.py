@@ -18,6 +18,8 @@ urlpatterns = [
     path("", core_views.home, name="home"),
     # I browser chiedono /favicon.ico anche senza <link>: si rimanda all'icona statica.
     path("favicon.ico", FaviconView.as_view()),
+    path("manuale/", core_views.manuale, name="manuale"),
+    path("manuale/manuale-utente.md", core_views.manuale_md, name="manuale_md"),
     path("accesso/", auth_views.LoginView.as_view(), name="login"),
     path("uscita/", auth_views.LogoutView.as_view(), name="logout"),
     path("ordini/", include("dumetodo.ordini.urls")),

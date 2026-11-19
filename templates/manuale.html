@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titolo %}Manuale utente{% endblock %}
+{% block contenuto %}
+<div class="dm-manuale">
+  <aside class="dm-manuale-indice">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="small fw-semibold text-uppercase text-muted me-auto">Indice</span>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'manuale_md' %}" title="Scarica il manuale in formato Markdown">Scarica (.md)</a>
+    </div>
+    {{ indice|safe }}
+  </aside>
+  <article class="dm-manuale-testo">
+    <h1 class="h3">Manuale utente di DuMetodo</h1>
+    {{ corpo|safe }}
+  </article>
+</div>
+{% endblock %}

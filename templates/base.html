@@ -54,6 +54,8 @@
       {{ vai_ordine.ordine }}
     </form>
     {% endif %}
+    {% if not nel_manuale %}<a class="dm-aiuto" href="{% url 'manuale' %}{% if capitolo_manuale %}#{{ capitolo_manuale }}{% endif %}" target="_blank" rel="noopener"
+      title="Manuale: istruzioni per questa pagina (si apre in una scheda separata)" aria-label="Manuale">?</a>{% endif %}
     <button type="button" class="dm-pulsante-icona" data-dm-reparto title="Modalità reparto: testi e pulsanti più grandi">
       <svg class="dm-icona"><use href="#i-reparto"/></svg></button>
     <div class="dropdown">
@@ -63,6 +65,7 @@
         <li><span class="dropdown-item-text small">{{ user.get_full_name|default:user.get_username }}<br><span class="text-muted">utente {{ user.get_username }}</span></span></li>
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item" href="{% url 'utenti:mia_password' %}">Cambia password</a></li>
+        <li><a class="dropdown-item" href="{% url 'manuale' %}" target="_blank" rel="noopener">Manuale utente</a></li>
         <li><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="dropdown-item">Esci</button></form></li>
       </ul>
     </div>

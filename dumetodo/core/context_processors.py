@@ -42,4 +42,9 @@ def navigazione(request: HttpRequest) -> dict[str, object]:
             )
 
         contesto["vai_ordine"] = VaiOrdine()
+        from .manuale import capitolo_per
+
+        vista = getattr(getattr(request, "resolver_match", None), "view_name", None)
+        contesto["capitolo_manuale"] = capitolo_per(vista)
+        contesto["nel_manuale"] = vista == "manuale"
     return contesto

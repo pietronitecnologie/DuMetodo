@@ -25,3 +25,20 @@ def home(request: HttpRequest) -> HttpResponse:
         if ha_permesso(request.user, codice):
             return redirect(pagina)
     return render(request, "nessun_permesso.html", status=403)
+
+
+@login_required
+def manuale(request: HttpRequest) -> HttpResponse:
+    from . import manuale as m
+
+    indice, corpo = m.html()
+    return render(request, "manuale.html", {"indice": indice, "corpo": corpo})
+
+
+@login_required
+def manuale_md(request: HttpRequest) -> HttpResponse:
+    from . import manuale as m
+
+    r = HttpResponse(m.testo(), content_type="text/markdown; charset=utf-8")
+    r["Content-Disposition"] = 'attachment; filename="manuale-utente-dumetodo.md"'
+    return r
