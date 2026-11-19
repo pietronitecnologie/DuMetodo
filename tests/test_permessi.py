@@ -126,6 +126,14 @@ def test_password_temporanea_e_cambio_obbligatorio(client, db):
     # l'utente deve cambiarla prima di fare altro
     client.force_login(User.objects.get(pk=op.pk))
     assert client.get("/ordini/")["Location"] == "/utenti/password/"
+    # htmx dalla pagina del cambio password (annunci di base.html): nessun rimando, niente ricarica infinita
+    hx = {"HTTP_HX_REQUEST": "true", "HTTP_HX_CURRENT_URL": "http://server/utenti/password/"}
+    r = client.get("/utilita/annunci/attivi/", **hx)
+    assert r.status_code == 204 and "HX-Redirect" not in r
+    hx["HTTP_HX_CURRENT_URL"] = "http://server/ordini/"
+    assert client.get("/utilita/annunci/attivi/", **hx)["HX-Redirect"] == "/utenti/password/"
+    # le richieste di dati (client, chat) ricevono un errore, non la pagina HTML
+    assert client.get("/client/configurazione.json", HTTP_ACCEPT="application/json").status_code == 403
     r = client.post("/utenti/password/", {"attuale": temporanea, "nuova": "x", "conferma": "x"}, follow=True)
     assert "troppo corta" in r.content.decode() or "short" in r.content.decode()
     nuova = "una-nuova-password-99"
