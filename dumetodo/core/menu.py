@@ -110,8 +110,10 @@ MENU: tuple[Sezione, ...] = (
         "impostazioni",
         (
             Voce("Configurazione", "configurazione:pagina", (F.CONFIGURAZIONE,)),
-            Voce("Utenti e permessi", "utenti:lista", (F.UTENTI,)),
-            Voce("Admin tecnico", "admin:index", solo_staff=True),
+            Voce("Utenti e permessi", "utenti:lista", (F.UTENTI_VEDERE, F.UTENTI_GESTIRE, F.UTENTI_PERMESSI)),
+            Voce("Reparti", "reparti:lista", (F.REPARTI,)),
+            Voce("Test e controlli qualità", "tracciabilita:test_lista", (F.QUALITA_TEST,)),
+            Voce("Admin tecnico (Django)", "admin:index", solo_staff=True),
         ),
     ),
 )
@@ -126,7 +128,8 @@ def menu_utente(user: Any, percorso: str) -> dict[str, Any]:
     for s in MENU:
         voci = []
         for v in s.voci:
-            visibile = user.is_staff if v.solo_staff else ha_permesso(user, *v.permessi)
+            # L'admin di Django serve solo per interventi tecnici: lo vede solo il superuser.
+            visibile = user.is_superuser if v.solo_staff else ha_permesso(user, *v.permessi)
             if not visibile:
                 continue
             try:

@@ -1,14 +1,41 @@
 {% extends "base.html" %}
 {% block titolo %}Utenti e permessi{% endblock %}
 {% block contenuto %}
-<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Utenti e permessi</h1>
-  <a class="btn btn-sm btn-primary" href="{% url 'utenti:nuovo' %}">Nuovo utente</a></div>
-<table class="table table-sm bg-white align-middle"><thead><tr><th>Utente</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Permessi</th><th>Ultimo accesso</th></tr></thead><tbody>
-{% for u in utenti %}<tr class="{% if not u.is_active %}text-muted{% endif %}">
-  <td><a href="{% url 'utenti:modifica' u.pk %}">{{ u.username }}</a>{% if not u.is_active %} <span class="badge text-bg-secondary">disattivo</span>{% endif %}{% if u.is_superuser %} <span class="badge text-bg-dark">superuser</span>{% endif %}</td>
-  <td>{{ u.get_full_name }}</td><td>{{ u.email }}</td>
-  <td>{% if u.cliente %}{{ nome_cliente }}{% else %}{{ nome_fornitore }}{% endif %}</td>
-  <td>{% if u.is_superuser %}tutti{% else %}{{ u.n_permessi }} / {{ totale_funzioni }}{% endif %}</td>
-  <td>{{ u.last_login|date:"d/m/Y H:i"|default:"mai" }}</td></tr>{% endfor %}
-</tbody></table>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><h1 class="h4 me-auto mb-0">Utenti e permessi</h1>
+  {% if perms.core.utenti_gestire %}<a class="btn btn-sm btn-primary" href="{% url 'utenti:nuovo' %}">Nuovo utente</a>{% endif %}</div>
+<form method="get" class="card card-body py-2 mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-4"><label class="form-label">Cerca</label>
+      <input type="search" name="q" class="form-control form-control-sm" value="{{ filtri.q }}" placeholder="Nome utente, nome, email"></div>
+    <div class="col-6 col-md-2"><label class="form-label">Stato</label>
+      <select name="stato" class="form-select form-select-sm">
+        <option value="attivi" {% if filtri.stato == "attivi" %}selected{% endif %}>Attivi</option>
+        <option value="disattivi" {% if filtri.stato == "disattivi" %}selected{% endif %}>Disattivati</option>
+        <option value="tutti" {% if filtri.stato == "tutti" %}selected{% endif %}>Tutti</option></select></div>
+    <div class="col-6 col-md-2"><label class="form-label">Tipo</label>
+      <select name="tipo" class="form-select form-select-sm">
+        <option value="">Tutti</option>
+        <option value="fornitore" {% if filtri.tipo == "fornitore" %}selected{% endif %}>{{ nome_fornitore }}</option>
+        <option value="cliente" {% if filtri.tipo == "cliente" %}selected{% endif %}>{{ nome_cliente }}</option></select></div>
+    <div class="col-12 col-md-auto d-flex gap-2"><button class="btn btn-sm btn-primary">Cerca</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'utenti:lista' %}">Azzera</a></div>
+  </div>
+</form>
+<div class="table-responsive">
+<table class="table table-hover align-middle">
+  <thead><tr><th>Utente</th><th>Nome</th><th>Email</th><th>Tipo</th><th>Permessi</th><th>Ultimo accesso</th></tr></thead>
+  <tbody>
+  {% for u in utenti %}<tr class="{% if not u.is_active %}text-muted{% endif %}">
+    <td><a href="{% url 'utenti:modifica' u.pk %}">{{ u.username }}</a>
+      {% if not u.is_active %} <span class="badge text-bg-secondary">disattivato</span>{% endif %}
+      {% if u.is_superuser %} <span class="badge text-bg-dark">superuser</span>{% endif %}
+      {% if u.profilo_dumetodo.deve_cambiare_password %} <span class="badge text-bg-warning" title="Al prossimo accesso deve scegliere una nuova password">password da cambiare</span>{% endif %}</td>
+    <td>{{ u.get_full_name }}</td><td>{{ u.email }}</td>
+    <td>{% if u.cliente %}{{ nome_cliente }}{% else %}{{ nome_fornitore }}{% endif %}</td>
+    <td>{% if u.is_superuser %}tutti{% else %}{{ u.n_permessi }} / {{ totale_funzioni }}{% endif %}</td>
+    <td>{{ u.last_login|date:"d/m/Y H:i"|default:"mai" }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Nessun utente.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
 {% endblock %}

@@ -2,6 +2,7 @@ import pytest
 from django.contrib.auth.models import Permission, User
 
 from dumetodo.core.permessi import FUNZIONI, F, applica_profilo, codici_profilo, ha_permesso, is_cliente
+from dumetodo.core.utenti import PERMESSI_AREA_UTENTI as PERMESSI_AREA
 
 
 @pytest.fixture
@@ -38,34 +39,128 @@ def test_pagina_utenti(client, gestore):
     assert client.get("/utenti/").status_code == 200
     r = client.post(
         "/utenti/nuovo/",
-        {
-            "username": "mario",
-            "password": "una-password-sicura-9",
-            "attivo": "on",
-            "permesso": [F.ORDINI_VEDERE, F.REPORT_DASHBOARD, "inventato"],
-        },
+        {"azione": "dati", "username": "mario", "password": "una-password-sicura-9", "profilo": "Operatore"},
     )
     mario = User.objects.get(username="mario")
     assert r["Location"] == f"/utenti/{mario.pk}/"
-    assert {p.codename for p in mario.user_permissions.all()} == {F.ORDINI_VEDERE, F.REPORT_DASHBOARD}
-    # profilo + identità Cliente
-    client.post(
-        f"/utenti/{mario.pk}/", {"username": "mario", "attivo": "on", "azione": "profilo", "profilo": "Cliente"}
-    )
+    assert ha_permesso(mario, F.CONSEGNA) and mario.profilo_dumetodo.deve_cambiare_password
+    # permessi singoli (quelli inventati ignorati)
+    client.post(f"/utenti/{mario.pk}/", {"azione": "permessi", "permesso": [F.ORDINI_VEDERE, F.REPORT_DASHBOARD, "x"]})
+    assert {p.codename for p in User.objects.get(pk=mario.pk).user_permissions.all()} == {
+        F.ORDINI_VEDERE,
+        F.REPORT_DASHBOARD,
+    }
+    # profilo Cliente
+    client.post(f"/utenti/{mario.pk}/", {"azione": "profilo", "profilo": "Cliente"})
     assert is_cliente(User.objects.get(pk=mario.pk))
     # password debole rifiutata, utente duplicato rifiutato
-    r = client.post("/utenti/nuovo/", {"username": "luigi", "password": "123", "attivo": "on"}, follow=True)
+    r = client.post("/utenti/nuovo/", {"username": "luigi", "password": "123"}, follow=True)
     assert not User.objects.filter(username="luigi").exists() and b"password" in r.content.lower()
-    client.post("/utenti/nuovo/", {"username": "MARIO", "password": "una-password-sicura-9", "attivo": "on"})
+    client.post("/utenti/nuovo/", {"username": "MARIO", "password": "una-password-sicura-9"})
     assert User.objects.filter(username__iexact="mario").count() == 1
+    # storico
+    from dumetodo.core.models import EventoUtente
+
+    azioni = set(EventoUtente.objects.filter(utente=mario).values_list("azione", flat=True))
+    assert {"CRE", "PRO", "PER"} <= azioni
 
 
 def test_non_ci_si_chiude_fuori(client, gestore):
     client.force_login(gestore)
-    client.post(f"/utenti/{gestore.pk}/", {"username": "gestore", "attivo": "on", "permesso": [F.ORDINI_VEDERE]})
-    assert ha_permesso(User.objects.get(pk=gestore.pk), F.UTENTI)
-    client.post(f"/utenti/{gestore.pk}/", {"username": "gestore", "permesso": [F.UTENTI]})
+    r = client.post(f"/utenti/{gestore.pk}/", {"azione": "permessi", "permesso": [F.ORDINI_VEDERE]}, follow=True)
+    assert ha_permesso(User.objects.get(pk=gestore.pk), F.UTENTI_PERMESSI) and "toglierti" in r.content.decode()
+    client.post(f"/utenti/{gestore.pk}/", {"azione": "dati", "username": "gestore"})  # senza "attivo"
     assert User.objects.get(pk=gestore.pk).is_active
+
+
+def _utente(nome, *codici):
+    from dumetodo.core.permessi import permessi_di
+
+    u = User.objects.create_user(nome, password="password-lunga-123")
+    u.user_permissions.set(permessi_di(codici))
+    return User.objects.get(pk=u.pk)
+
+
+def test_nessuna_auto_promozione(client, db):
+    """Chi gestisce gli utenti non può dare (né darsi) permessi che non ha."""
+    capo = _utente("capo", F.UTENTI_VEDERE, F.UTENTI_PERMESSI, F.ORDINI_VEDERE, F.CONSEGNA)
+    op = _utente("op", F.ORDINI_VEDERE)
+    client.force_login(capo)
+    client.post(f"/utenti/{op.pk}/", {"azione": "permessi", "permesso": [F.CONSEGNA, F.CONFIGURAZIONE]})
+    assert {p.codename for p in User.objects.get(pk=op.pk).user_permissions.all()} == {F.CONSEGNA}
+    miei = [F.UTENTI_VEDERE, F.UTENTI_PERMESSI, F.ORDINI_VEDERE, F.CONSEGNA]
+    client.post(f"/utenti/{capo.pk}/", {"azione": "permessi", "permesso": [*miei, F.CONFIGURAZIONE, F.UTENTI_GESTIRE]})
+    assert not ha_permesso(User.objects.get(pk=capo.pk), F.CONFIGURAZIONE)
+    # profilo con permessi che non ha: rifiutato
+    r = client.post(f"/utenti/{op.pk}/", {"azione": "profilo", "profilo": "Amministratore"}, follow=True)
+    t = r.content.decode()
+    assert "permessi che non hai" in t
+
+
+def test_non_si_tocca_chi_ha_piu_permessi(client, db):
+    """Chi reimposta password non può prendere il controllo di un amministratore."""
+    capo = _utente("capo", F.UTENTI_VEDERE, F.UTENTI_PASSWORD, F.UTENTI_GESTIRE, F.UTENTI_PERMESSI)
+    admin = _utente("adm", *[f.codice for f in FUNZIONI])
+    root = User.objects.create_superuser("root", password="password-lunga-123")
+    client.force_login(capo)
+    for bersaglio in (admin, root):
+        client.post(f"/utenti/{bersaglio.pk}/", {"azione": "password_temporanea"})
+        client.post(f"/utenti/{bersaglio.pk}/", {"azione": "dati", "username": bersaglio.username})
+        u = User.objects.get(pk=bersaglio.pk)
+        assert u.check_password("password-lunga-123") and u.is_active
+    assert "puoi vederlo ma non modificarlo" in client.get(f"/utenti/{admin.pk}/").content.decode()
+    # superuser solo da superuser
+    client.post(f"/utenti/{capo.pk}/", {"azione": "superuser", "valore": "1"})
+    assert not User.objects.get(pk=capo.pk).is_superuser
+
+
+def test_password_temporanea_e_cambio_obbligatorio(client, db):
+    capo = _utente("capo", F.UTENTI_VEDERE, F.UTENTI_PASSWORD, F.ORDINI_VEDERE)
+    op = _utente("op", F.ORDINI_VEDERE)
+    client.force_login(capo)
+    r = client.post(f"/utenti/{op.pk}/", {"azione": "password_temporanea"})
+    import re
+
+    temporanea = re.search(r'id="pwd-temp">([^<]+)<', r.content.decode()).group(1)
+    assert r["Cache-Control"] == "no-store" and User.objects.get(pk=op.pk).check_password(temporanea)
+    # l'utente deve cambiarla prima di fare altro
+    client.force_login(User.objects.get(pk=op.pk))
+    assert client.get("/ordini/")["Location"] == "/utenti/password/"
+    r = client.post("/utenti/password/", {"attuale": temporanea, "nuova": "x", "conferma": "x"}, follow=True)
+    assert "troppo corta" in r.content.decode() or "short" in r.content.decode()
+    nuova = "una-nuova-password-99"
+    r = client.post("/utenti/password/", {"attuale": temporanea, "nuova": nuova, "conferma": nuova})
+    assert r.status_code == 302 and client.get("/ordini/").status_code == 200
+    assert User.objects.get(pk=op.pk).check_password(nuova)
+
+
+def test_permessi_separati_dell_area_utenti(client, db):
+    solo_vedere = _utente("v", F.UTENTI_VEDERE)
+    op = _utente("op", F.ORDINI_VEDERE)
+    client.force_login(solo_vedere)
+    assert client.get("/utenti/").status_code == 200 and client.get(f"/utenti/{op.pk}/").status_code == 200
+    assert client.get("/utenti/nuovo/").status_code == 403
+    client.post(f"/utenti/{op.pk}/", {"azione": "dati", "username": "cambiato", "attivo": "on"})
+    client.post(f"/utenti/{op.pk}/", {"azione": "password_temporanea"})
+    u = User.objects.get(pk=op.pk)
+    assert u.username == "op" and u.check_password("password-lunga-123")
+
+
+def test_vecchio_permesso_utenti_diviso(db):
+    from django.contrib.auth.models import Permission
+    from django.contrib.contenttypes.models import ContentType
+
+    from dumetodo.core.models import Funzionalita
+    from dumetodo.core.permessi import sincronizza_permessi
+
+    ct = ContentType.objects.get_for_model(Funzionalita, for_concrete_model=False)
+    vecchio = Permission.objects.create(content_type=ct, codename="utenti", name="Utenti e permessi")
+    u = User.objects.create_user("x")
+    u.user_permissions.add(vecchio)
+    sincronizza_permessi()
+    u = User.objects.get(pk=u.pk)
+    assert all(ha_permesso(u, c) for c in PERMESSI_AREA)
+    assert not Permission.objects.filter(codename="utenti").exists()
 
 
 def test_senza_permesso_403(client, db):

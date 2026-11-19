@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from simple_history.models import HistoricalRecords
 
@@ -61,3 +62,54 @@ class Funzionalita(models.Model):
 
     def __str__(self) -> str:
         return "funzionalità"
+
+
+class ProfiloUtente(models.Model):
+    """Dati di DuMetodo legati all'utente, oltre a quelli standard di Django."""
+
+    utente = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profilo_dumetodo")
+    deve_cambiare_password = models.BooleanField(
+        "deve cambiare la password al prossimo accesso",
+        default=False,
+        help_text="Impostato quando un amministratore genera una password temporanea.",
+    )
+    note = models.TextField("note", blank=True, default="", help_text="Es. reparto, turno, telefono interno.")
+
+    class Meta:
+        verbose_name = "profilo utente"
+        verbose_name_plural = "profili utente"
+
+    def __str__(self) -> str:
+        return str(self.utente)
+
+
+class EventoUtente(models.Model):
+    """Storico delle modifiche fatte da Utenti e permessi (chi, a chi, cosa). Le password non compaiono mai."""
+
+    class Azione(models.TextChoices):
+        CREATO = "CRE", "Utente creato"
+        DATI = "DAT", "Dati modificati"
+        ATTIVATO = "ATT", "Attivato"
+        DISATTIVATO = "DIS", "Disattivato"
+        PERMESSI = "PER", "Permessi modificati"
+        PROFILO = "PRO", "Profilo applicato"
+        PASSWORD = "PWD", "Password reimpostata"
+        PASSWORD_TEMPORANEA = "PWT", "Password temporanea generata"
+        PASSWORD_PROPRIA = "PWP", "Password cambiata dall'utente"
+        SUPERUSER = "SUP", "Superuser modificato"
+
+    quando = models.DateTimeField("quando", auto_now_add=True, db_index=True)
+    attore = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    utente = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="eventi_utente")
+    azione = models.CharField("azione", max_length=3, choices=Azione.choices)
+    dettaglio = models.TextField("dettaglio", blank=True, default="")
+
+    class Meta:
+        verbose_name = "evento utente"
+        verbose_name_plural = "eventi utenti"
+        ordering = ["-quando", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.utente}: {self.get_azione_display()}"

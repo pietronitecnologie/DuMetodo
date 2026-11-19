@@ -37,6 +37,7 @@ class Sezione(StrEnum):
     REPORT = "Report"
     UTILITA = "Utilità"
     AMMINISTRAZIONE = "Amministrazione"
+    UTENTI = "Utenti e permessi"
 
 
 @dataclass(frozen=True)
@@ -88,7 +89,12 @@ class F:
     UTILITA_SCORPORAZIONE = "utilita_scorporazione"
     UTILITA_CAMBIA_ORDINE = "utilita_cambia_ordine"
     CONFIGURAZIONE = "configurazione"
-    UTENTI = "utenti"
+    UTENTI_VEDERE = "utenti_vedere"
+    UTENTI_GESTIRE = "utenti_gestire"
+    UTENTI_PASSWORD = "utenti_password"  # noqa: S105 - nome di un permesso, non una password
+    UTENTI_PERMESSI = "utenti_permessi"
+    REPARTI = "reparti"
+    QUALITA_TEST = "qualita_test"
 
 
 FUNZIONI: list[Funzione] = [
@@ -159,7 +165,32 @@ FUNZIONI: list[Funzione] = [
     Funzione(F.UTILITA_SCORPORAZIONE, Sezione.UTILITA, "Scorporazione di massa"),
     Funzione(F.UTILITA_CAMBIA_ORDINE, Sezione.UTILITA, "Cambia ordine (numero, serie, appendice, scadenza)"),
     Funzione(F.CONFIGURAZIONE, Sezione.AMMINISTRAZIONE, "Configurazione"),
-    Funzione(F.UTENTI, Sezione.AMMINISTRAZIONE, "Utenti e permessi"),
+    Funzione(F.REPARTI, Sezione.AMMINISTRAZIONE, "Gestire i reparti", "Codice, nome, capacità settimanale, gruppo."),
+    Funzione(
+        F.QUALITA_TEST,
+        Sezione.QUALITA,
+        "Definire test e controlli qualità",
+        "Crea e modifica i test e i loro controlli (campione/KO o presente/assente).",
+    ),
+    Funzione(F.UTENTI_VEDERE, Sezione.UTENTI, "Vedere utenti e permessi", "Elenco utenti, permessi e storico."),
+    Funzione(
+        F.UTENTI_GESTIRE,
+        Sezione.UTENTI,
+        "Creare e modificare utenti",
+        "Nome utente, nome, email, tipo (Fornitore/Cliente), attivazione e disattivazione.",
+    ),
+    Funzione(
+        F.UTENTI_PASSWORD,
+        Sezione.UTENTI,
+        "Reimpostare le password",
+        "Imposta o genera una password temporanea (da cambiare al primo accesso).",
+    ),
+    Funzione(
+        F.UTENTI_PERMESSI,
+        Sezione.UTENTI,
+        "Assegnare permessi e profili",
+        "Si possono assegnare solo i permessi che si hanno già.",
+    ),
 ]
 
 _OPERATORE = {
@@ -183,7 +214,7 @@ _OPERATORE = {
     F.TRACCIABILITA_CONSULTA,
     F.TRACCIABILITA_REGISTRA,
 }
-_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA}
+_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.UTENTI_VEDERE}
 PROFILI: dict[str, set[str]] = {
     "Operatore": _OPERATORE,
     "Caporeparto": _CAPOREPARTO,
@@ -283,6 +314,10 @@ def sincronizza_permessi(**kwargs: Any) -> None:
 
     ct = ContentType.objects.get_for_model(Funzionalita, for_concrete_model=False)
     dichiarati = {f.codice: f.etichetta[:255] for f in FUNZIONI}
+    # Funzioni divise in più funzioni: chi aveva la vecchia riceve tutte le nuove (prima che venga eliminata).
+    titolari_rinominati = {
+        vecchio: list(esistenti_utenti(ct, vecchio)) for vecchio in RINOMINATI if vecchio not in dichiarati
+    }
     esistenti = {p.codename: p for p in Permission.objects.filter(content_type=ct)}
     # Chi ha TUTTE le funzioni esistenti (amministratore completo) riceverà anche quelle nuove:
     # altrimenti ogni aggiornamento che aggiunge una funzione la renderebbe inaccessibile a tutti.
@@ -295,11 +330,27 @@ def sincronizza_permessi(**kwargs: Any) -> None:
         elif p.name != nome:
             p.name = nome
             p.save(update_fields=["name"])
+    for vecchio, utenti in titolari_rinominati.items():
+        nuovi_perm = list(Permission.objects.filter(content_type=ct, codename__in=RINOMINATI[vecchio]))
+        for u in utenti:
+            u.user_permissions.add(*nuovi_perm)
     Permission.objects.filter(content_type=ct).exclude(codename__in=dichiarati).delete()
     if nuovi:
         for u in amministratori:
             u.user_permissions.add(*nuovi)
     _converti_gruppi_ruolo()
+
+
+# Vecchio codice -> codici che lo sostituiscono.
+RINOMINATI: dict[str, tuple[str, ...]] = {
+    "utenti": (F.UTENTI_VEDERE, F.UTENTI_GESTIRE, F.UTENTI_PASSWORD, F.UTENTI_PERMESSI),
+}
+
+
+def esistenti_utenti(ct: Any, codice: str) -> Any:
+    from django.contrib.auth.models import User
+
+    return User.objects.filter(user_permissions__content_type=ct, user_permissions__codename=codice).distinct()
 
 
 def _utenti_con_tutti(permessi: Iterable[Any]) -> list[Any]:

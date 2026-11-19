@@ -23,5 +23,8 @@ class Command(BaseCommand):
         password = secrets.token_urlsafe(12)
         u = User.objects.create_user(nome, password=password, is_staff=True, is_superuser=True)
         applica_profilo(u, "Amministratore")
+        from dumetodo.core.models import ProfiloUtente
+
+        ProfiloUtente.objects.update_or_create(utente=u, defaults={"deve_cambiare_password": True})
         self.stdout.write(self.style.SUCCESS(f"Creato l'amministratore '{nome}' con password: {password}"))
-        self.stdout.write("Annotala e cambiala dopo il primo accesso (Amministrazione > Utenti e permessi).")
+        self.stdout.write("Annotala: al primo accesso DuMetodo chiederà di sceglierne una nuova.")

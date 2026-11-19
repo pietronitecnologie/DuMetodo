@@ -15,7 +15,7 @@ PAGINE_INIZIALI = (
     (F.TRACCIABILITA_CONSULTA, "tracciabilita:qualita"),
     (F.UTILITA_ANNUNCI, "utilita:indice"),
     (F.CONFIGURAZIONE, "configurazione:pagina"),
-    (F.UTENTI, "utenti:lista"),
+    (F.UTENTI_VEDERE, "utenti:lista"),
 )
 
 

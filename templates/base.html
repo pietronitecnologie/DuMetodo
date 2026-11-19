@@ -62,6 +62,7 @@
       <ul class="dropdown-menu dropdown-menu-end shadow">
         <li><span class="dropdown-item-text small">{{ user.get_full_name|default:user.get_username }}<br><span class="text-muted">utente {{ user.get_username }}</span></span></li>
         <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="{% url 'utenti:mia_password' %}">Cambia password</a></li>
         <li><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="dropdown-item">Esci</button></form></li>
       </ul>
     </div>

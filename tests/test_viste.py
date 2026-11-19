@@ -74,6 +74,7 @@ def test_dati_demo_si_caricano_e_le_pagine_rispondono(client):
     from dumetodo.ordini.models import Ordine
 
     call_command("crea_amministratore", stdout=StringIO())
+    User.objects.get(username="admin").profilo_dumetodo.__class__.objects.update(deve_cambiare_password=False)
     out = StringIO()
     call_command("carica_dati_demo", stdout=out, stderr=StringIO())
     assert "Dati di prova caricati" in out.getvalue()
