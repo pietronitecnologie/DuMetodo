@@ -42,8 +42,122 @@
       });
     });
   }
-  document.addEventListener("DOMContentLoaded", function () { adattaTabelle(document); });
-  document.addEventListener("htmx:afterSettle", function (e) { adattaTabelle(e.target); });
+  // ---- Tutte le tabelle: ordinamento con un clic sull'intestazione e filtri per colonna (lente).
+  // Si escludono le griglie con celle unite nell'intestazione; data-dm-ordina="no" per escluderne una.
+  // Vale per le righe mostrate nella pagina (negli elenchi lunghi: quelle della pagina corrente).
+  var RE_DATA = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/;
+  var RE_NUMERO = /^[-+]?[\d.]*\d(,\d+)?$/;
+
+  function testoCella(cella) {
+    if (!cella) return "";
+    var campo = cella.querySelector("input:not([type=hidden]):not([type=checkbox]), select, textarea");
+    if (campo) return (campo.tagName === "SELECT" ? (campo.options[campo.selectedIndex] || {}).text || "" : campo.value).trim();
+    return (cella.innerText || cella.textContent || "").replace(/\s+/g, " ").trim();
+  }
+  function chiave(testo) {
+    var t = testo.replace(/[€%h]|pz|ore/gi, "").trim();
+    var d = t.match(RE_DATA);
+    if (d) {
+      var anno = d[3].length === 2 ? 2000 + Number(d[3]) : Number(d[3]);
+      return { tipo: 0, v: new Date(anno, d[2] - 1, d[1], d[4] || 0, d[5] || 0).getTime() };
+    }
+    var n = t.replace(/\s/g, "");
+    if (RE_NUMERO.test(n)) return { tipo: 0, v: parseFloat(n.replace(/\./g, "").replace(",", ".")) };
+    return { tipo: 1, v: testo.toLocaleLowerCase("it") };
+  }
+  function confronta(a, b) {
+    if (a.tipo !== b.tipo) return a.tipo - b.tipo;
+    if (a.tipo === 1) return a.v.localeCompare(b.v, "it", { numeric: true });
+    return a.v - b.v;
+  }
+  function righeDati(tabella) {
+    var righe = [];
+    Array.prototype.forEach.call(tabella.tBodies, function (corpo) {
+      Array.prototype.forEach.call(corpo.rows, function (r) {
+        if (!(r.cells.length === 1 && r.cells[0].colSpan > 1)) righe.push(r); // "Nessun risultato"
+      });
+    });
+    return righe;
+  }
+  function filtra(tabella) {
+    var filtri = Array.prototype.map.call(tabella.tHead.rows[0].cells, function (th) {
+      var i = th.querySelector(".dm-filtro-colonna");
+      return i ? i.value.trim().toLocaleLowerCase("it") : "";
+    });
+    var visibili = 0, totali = 0;
+    righeDati(tabella).forEach(function (r) {
+      totali++;
+      var ok = filtri.every(function (f, i) { return !f || testoCella(r.cells[i]).toLocaleLowerCase("it").indexOf(f) !== -1; });
+      r.hidden = !ok;
+      if (ok) visibili++;
+    });
+    var attivi = filtri.some(Boolean);
+    tabella.classList.toggle("dm-filtrata", attivi);
+    var info = tabella.parentElement.querySelector(":scope > .dm-info-filtro");
+    if (attivi) {
+      if (!info) {
+        info = document.createElement("div");
+        info.className = "dm-info-filtro";
+        tabella.parentElement.insertBefore(info, tabella.nextSibling);
+      }
+      info.textContent = visibili + " di " + totali + " righe";
+    } else if (info) info.remove();
+  }
+  function ordina(tabella, indice, th) {
+    var verso = th.getAttribute("aria-sort") === "ascending" ? -1 : 1;
+    Array.prototype.forEach.call(tabella.tHead.rows[0].cells, function (c) { c.removeAttribute("aria-sort"); });
+    th.setAttribute("aria-sort", verso === 1 ? "ascending" : "descending");
+    Array.prototype.forEach.call(tabella.tBodies, function (corpo) {
+      var righe = Array.prototype.filter.call(corpo.rows, function (r) { return !(r.cells.length === 1 && r.cells[0].colSpan > 1); });
+      righe
+        .map(function (r, pos) { return { r: r, k: chiave(testoCella(r.cells[indice])), pos: pos }; })
+        .sort(function (a, b) { return verso * confronta(a.k, b.k) || a.pos - b.pos; })
+        .forEach(function (x) { corpo.appendChild(x.r); });
+    });
+  }
+  function preparaTabelle(radice) {
+    (radice || document).querySelectorAll(".dm-contenuto table").forEach(function (t) {
+      if (t.dataset.dmOrdinabile || t.dataset.dmOrdina === "no" || !t.tHead || t.tHead.rows.length !== 1 || !t.tBodies.length) return;
+      var titoli = Array.prototype.slice.call(t.tHead.rows[0].cells);
+      if (titoli.some(function (c) { return c.colSpan > 1 || c.rowSpan > 1; })) return;
+      t.dataset.dmOrdinabile = "1";
+      t.classList.add("dm-ordinabile");
+      titoli.forEach(function (th, i) {
+        if (!th.textContent.trim() || th.querySelector("input, select, button, a")) return; // colonne di azioni
+        th.classList.add("dm-th-ordina");
+        th.title = "Clic per ordinare";
+        var lente = document.createElement("button");
+        lente.type = "button";
+        lente.className = "dm-lente";
+        lente.title = "Filtra questa colonna";
+        lente.setAttribute("aria-label", "Filtra " + th.textContent.trim());
+        lente.innerHTML = '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+        var campo = document.createElement("input");
+        campo.type = "search";
+        campo.className = "dm-filtro-colonna";
+        campo.placeholder = "Filtra…";
+        campo.setAttribute("aria-label", "Filtra " + th.textContent.trim());
+        th.append(lente, campo);
+        th.addEventListener("click", function (e) {
+          if (e.target.closest(".dm-filtro-colonna")) return;
+          if (e.target.closest(".dm-lente")) {
+            t.classList.add("dm-filtri-aperti");
+            campo.focus();
+            return;
+          }
+          ordina(t, i, th);
+        });
+        campo.addEventListener("input", function () { filtra(t); });
+        campo.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") { campo.value = ""; filtra(t); if (!t.classList.contains("dm-filtrata")) t.classList.remove("dm-filtri-aperti"); }
+          if (e.key === "Enter") e.preventDefault();
+        });
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () { adattaTabelle(document); preparaTabelle(document); });
+  document.addEventListener("htmx:afterSettle", function (e) { adattaTabelle(e.target); preparaTabelle(e.target); });
 
   // ---- Selezione dell'ordine: si sceglie da un elenco, il form invia la chiave primaria.
   function scegli(box, bottone) {
