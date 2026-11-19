@@ -269,6 +269,59 @@
     azioniTasti[s.azione](s);
   }, true);
 
+  // ---- Aggiornamento del client: il server propone l'ultima versione caricata in Amministrazione.
+  const versioneInUso = (navigator.userAgent.match(/DuMetodoClient\/([\d.]+)/) || [])[1] || "";
+  const numeri = (v) => String(v || "").split(".").map((x) => parseInt(x, 10) || 0);
+  const piuRecente = (a, b) => {
+    const x = numeri(a), y = numeri(b);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+    }
+    return false;
+  };
+  const controllaAggiornamento = () => {
+    if (!versioneInUso) return;
+    fetch("/client/aggiornamento.json", { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((d) => {
+        const a = d && d.aggiornamento;
+        if (!a || !piuRecente(a.versione, versioneInUso)) return;
+        try { if (sessionStorage.getItem("dm-aggiornamento-rimandato") === a.versione) return; } catch (e) {}
+        const box = document.createElement("div");
+        box.id = "dm-aggiornamento";
+        box.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:99997;max-width:360px;background:#fff;color:#18212e;" +
+          "border:1px solid #c9d8f5;border-left:4px solid #2f74f0;border-radius:10px;box-shadow:0 8px 28px rgba(16,24,40,.18);" +
+          "padding:12px 14px;font:14px 'Segoe UI',system-ui,sans-serif";
+        const titolo = document.createElement("div");
+        titolo.style.cssText = "font-weight:650;margin-bottom:4px";
+        titolo.textContent = `È disponibile DuMetodo Client ${a.versione}`;
+        const testo = document.createElement("div");
+        testo.style.cssText = "font-size:13px;color:#46536a;white-space:pre-line";
+        testo.textContent = `Versione in uso: ${versioneInUso}.` + (a.note ? `\n${a.note}` : "");
+        const pulsanti = document.createElement("div");
+        pulsanti.style.cssText = "display:flex;gap:8px;justify-content:flex-end;margin-top:10px";
+        const dopo = document.createElement("button");
+        dopo.textContent = "Più tardi";
+        dopo.style.cssText = "border:1px solid #c9d2df;background:#fff;border-radius:6px;padding:5px 12px;cursor:pointer";
+        const ora = document.createElement("button");
+        ora.textContent = "Aggiorna ora";
+        ora.style.cssText = "border:0;background:#2f74f0;color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:600";
+        dopo.addEventListener("click", () => {
+          try { sessionStorage.setItem("dm-aggiornamento-rimandato", a.versione); } catch (e) {}
+          box.remove();
+        });
+        ora.addEventListener("click", () => {
+          ora.disabled = true;
+          ora.textContent = "Scaricamento…";
+          invia({ tipo: "aggiorna_client", versione: a.versione, sha256: a.sha256, url: a.url });
+        });
+        pulsanti.append(dopo, ora);
+        box.append(titolo, testo, pulsanti);
+        document.body.append(box);
+      })
+      .catch(() => {});
+  };
+
   window.DuMetodoClient = {
     esegui(id) {
       const scelta = inAttesa[id];
@@ -293,4 +346,6 @@
   };
 
   carica();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", controllaAggiornamento);
+  else controllaAggiornamento();
 })();

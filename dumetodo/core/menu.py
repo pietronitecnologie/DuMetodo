@@ -110,6 +110,7 @@ MENU: tuple[Sezione, ...] = (
         "impostazioni",
         (
             Voce("Configurazione", "configurazione:pagina", (F.CONFIGURAZIONE,)),
+            Voce("Aggiornamenti del client", "client:versioni", (F.CONFIGURAZIONE,)),
             Voce("Utenti e permessi", "utenti:lista", (F.UTENTI_VEDERE, F.UTENTI_GESTIRE, F.UTENTI_PERMESSI)),
             Voce("Reparti", "reparti:lista", (F.REPARTI,)),
             Voce("Test e controlli qualità", "tracciabilita:test_lista", (F.QUALITA_TEST,)),

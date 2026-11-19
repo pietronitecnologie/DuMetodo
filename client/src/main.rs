@@ -7,6 +7,7 @@
 
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
+mod aggiorna;
 mod avvio;
 mod barra;
 mod configurazione;
@@ -49,6 +50,12 @@ enum Evento {
     VoceMenu(MenuId),
     /// Pagina del server da aprire in una nuova scheda (Ctrl+clic, clic centrale, target=_blank).
     NuovaScheda(String),
+    /// Il file dell'aggiornamento è stato scaricato (o il download è fallito).
+    AggiornamentoScaricato {
+        scheda: u32,
+        percorso: Option<PathBuf>,
+        riuscito: bool,
+    },
     DownloadCompletato {
         scheda: u32,
         percorso: Option<PathBuf>,
@@ -125,6 +132,7 @@ fn collega(webview: &WebView, origine: &Origine, url: &Url) {
 }
 
 fn main() {
+    aggiorna::pulisci_versione_precedente();
     let percorso_conf = argomento("--configurazione")
         .map(PathBuf::from)
         .or_else(configurazione::percorso_predefinito)
@@ -383,6 +391,19 @@ fn main() {
                         apri = Some(interno);
                     }
                     Some(Messaggio::ChiudiScheda) => chiudi = Some(scheda),
+                    Some(Messaggio::AggiornaClient { versione, sha256, url }) if dal_server => {
+                        if !aggiorna::richiesta_valida(&versione, &sha256, &url) {
+                            avvisa(webview, "Aggiornamento non valido");
+                        } else if let Some(server) = origine_testo(&origine) {
+                            let percorso = aggiorna::percorso_download(&versione);
+                            aggiorna::IN_CORSO.with(|c| {
+                                *c.borrow_mut() =
+                                    Some(aggiorna::InAttesa { versione, sha256: sha256.to_ascii_lowercase(), percorso })
+                            });
+                            avvisa(webview, "Scaricamento dell'aggiornamento…");
+                            let _ = webview.load_url(&format!("{server}{url}"));
+                        }
+                    }
                     Some(Messaggio::CambiaScheda { passo }) => {
                         let n = schede.len() as i64;
                         let nuova = (attiva as i64 + i64::from(passo.signum())).rem_euclid(n) as usize;
@@ -412,6 +433,42 @@ fn main() {
                     ));
                 }
                 menu_aperto.take();
+            }
+            Event::UserEvent(Evento::AggiornamentoScaricato { scheda, percorso, riuscito }) => {
+                let in_corso = aggiorna::IN_CORSO.with(|c| c.borrow_mut().take());
+                let pagina = schede.iter().find(|s| s.id == scheda).map(|s| &s.pagina);
+                let esito = match (in_corso, percorso, riuscito) {
+                    (Some(a), Some(p), true) => match aggiorna::impronta(&p) {
+                        Ok(h) if h == a.sha256 => aggiorna::installa(&p).map(|exe| (exe, a.versione)),
+                        Ok(_) => {
+                            let _ = std::fs::remove_file(&p);
+                            Err("il file scaricato non corrisponde (impronta diversa): aggiornamento annullato".into())
+                        }
+                        Err(e) => Err(format!("file scaricato illeggibile: {e}")),
+                    },
+                    _ => Err("scaricamento non riuscito".into()),
+                };
+                match esito {
+                    Ok((exe, versione)) => {
+                        registra(&percorso_conf, &format!("Client aggiornato alla versione {versione}"));
+                        salva_sessione(&percorso_sessione, &origine, &schede, attiva);
+                        // Il nuovo client riparte con gli stessi argomenti e riapre le schede.
+                        match std::process::Command::new(&exe).args(std::env::args().skip(1)).spawn() {
+                            Ok(_) => *control_flow = ControlFlow::Exit,
+                            Err(e) => {
+                                if let Some(p) = pagina {
+                                    avvisa(p, &format!("Aggiornato: riavvia il client ({e})"));
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        registra(&percorso_conf, &format!("Aggiornamento del client non riuscito: {e}"));
+                        if let Some(p) = pagina {
+                            avvisa(p, &format!("Aggiornamento non riuscito: {e}"));
+                        }
+                    }
+                }
             }
             Event::UserEvent(Evento::DownloadCompletato { scheda, percorso, riuscito }) => {
                 let testo = match (riuscito, percorso) {
@@ -706,6 +763,12 @@ fn costruisci_pagina(
                 proxy_ipc.send_event(Evento::DallaPagina { scheda: id, testo: richiesta.body().clone(), dal_server });
         })
         .with_download_started_handler(move |indirizzo, percorso| {
+            // L'aggiornamento del client va nella cartella temporanea, mai dove dice una regola.
+            if let Some(dest) = aggiorna::destinazione(&indirizzo) {
+                let _ = std::fs::remove_file(&dest);
+                *percorso = dest;
+                return true;
+            }
             // Le regole sono locali a questo PC: il server non può scegliere dove scrivere.
             if let Some(cartella) = regole_dl.cartella_per(&indirizzo)
                 && std::fs::create_dir_all(&cartella).is_ok()
@@ -716,7 +779,14 @@ fn costruisci_pagina(
             true
         })
         .with_download_completed_handler(move |_, percorso, riuscito| {
-            let _ = proxy_dl.send_event(Evento::DownloadCompletato { scheda: id, percorso, riuscito });
+            let aggiornamento = percorso.as_deref().and_then(aggiorna::concluso).is_some()
+                || (!riuscito && aggiorna::IN_CORSO.with(|c| c.borrow().is_some()) && percorso.is_none());
+            let evento = if aggiornamento {
+                Evento::AggiornamentoScaricato { scheda: id, percorso, riuscito }
+            } else {
+                Evento::DownloadCompletato { scheda: id, percorso, riuscito }
+            };
+            let _ = proxy_dl.send_event(evento);
         });
     let builder = match iniziale {
         Iniziale::Url(u) => builder.with_url(u),

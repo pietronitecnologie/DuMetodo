@@ -114,3 +114,76 @@ def test_normalizza_tasto():
 
     assert normalizza_tasto("shift + ctrl + k") == "CTRL+SHIFT+K"
     assert normalizza_tasto("alt+3") == "ALT+3"
+
+
+# =========================================================================== aggiornamenti del client
+@pytest.fixture
+def media(settings, tmp_path):
+    settings.STORAGES = {**settings.STORAGES, "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"}}
+    settings.MEDIA_ROOT = tmp_path
+    return tmp_path
+
+
+def _exe(contenuto=b"MZ" + b"\x00" * 500):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    return SimpleUploadedFile("dumetodo-client.exe", contenuto, content_type="application/octet-stream")
+
+
+def test_caricamento_e_proposta_aggiornamento(client, db, media):
+    import hashlib
+
+    from django.contrib.auth.models import User
+
+    from dumetodo.core.permessi import F, permessi_di
+
+    admin = User.objects.create_user("a")
+    admin.user_permissions.set(permessi_di([F.CONFIGURAZIONE]))
+    client.force_login(admin)
+    assert client.get("/client/aggiornamento.json").json() == {"aggiornamento": None}
+    contenuto = b"MZ" + b"x" * 1000
+    r = client.post("/client/versioni/", {"versione": "0.3.0", "file": _exe(contenuto), "note": "Novità"})
+    assert r.status_code == 302
+    client.post("/client/versioni/", {"versione": "0.10.0", "file": _exe()})
+    client.post("/client/versioni/", {"versione": "0.9.1", "file": _exe()})
+    a = client.get("/client/aggiornamento.json").json()["aggiornamento"]
+    assert a["versione"] == "0.10.0"  # confronto numerico, non alfabetico
+    # ritirando la 0.10.0 si torna a proporre la più alta rimasta
+    from dumetodo.client.models import VersioneClient
+
+    v10 = VersioneClient.objects.get(versione="0.10.0")
+    client.post("/client/versioni/", {"azione": "disattiva", "pk": v10.pk})
+    a = client.get("/client/aggiornamento.json").json()["aggiornamento"]
+    assert a["versione"] == "0.9.1"
+    v3 = VersioneClient.objects.get(versione="0.3.0")
+    assert v3.sha256 == hashlib.sha256(contenuto).hexdigest()
+    r = client.get(f"/client/scarica/{v3.pk}/")
+    assert b"".join(r.streaming_content) == contenuto and "dumetodo-client-0.3.0.exe" in r["Content-Disposition"]
+    assert client.get(f"/client/scarica/{v10.pk}/").status_code == 404  # ritirata
+
+
+@pytest.mark.parametrize(
+    ("versione", "contenuto", "errore"),
+    [
+        ("tre", b"MZ...", "Versione non valida"),
+        ("0.4.0", b"\x7fELF...", "non è un programma Windows"),
+    ],
+)
+def test_caricamento_rifiutato(client, db, media, versione, contenuto, errore):
+    from django.contrib.auth.models import User
+
+    from dumetodo.core.permessi import F, permessi_di
+
+    u = User.objects.create_user("a")
+    u.user_permissions.set(permessi_di([F.CONFIGURAZIONE]))
+    client.force_login(u)
+    r = client.post("/client/versioni/", {"versione": versione, "file": _exe(contenuto)}, follow=True)
+    assert errore in r.content.decode()
+
+
+def test_aggiornamenti_solo_con_permesso(client, db):
+    from django.contrib.auth.models import User
+
+    client.force_login(User.objects.create_user("x"))
+    assert client.get("/client/versioni/").status_code == 403
+    assert client.get("/client/aggiornamento.json").status_code == 200  # ogni client collegato lo legge

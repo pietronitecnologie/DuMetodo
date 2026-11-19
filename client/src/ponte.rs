@@ -26,6 +26,12 @@ pub enum Messaggio {
         url: Option<String>,
     },
     ChiudiScheda,
+    /// "Aggiorna ora": il client scarica `url` (percorso interno fisso) e controlla l'impronta `sha256`.
+    AggiornaClient {
+        versione: String,
+        sha256: String,
+        url: String,
+    },
     /// Passa alla scheda successiva (+1) o precedente (-1).
     CambiaScheda {
         passo: i32,

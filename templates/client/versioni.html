@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titolo %}Aggiornamenti del client{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Aggiornamenti del client desktop</h1>
+<p class="small text-muted" style="max-width:52rem">Carica qui il nuovo <code>dumetodo-client.exe</code> (da GitHub → Actions → workflow «client»)
+con il suo numero di versione. Ogni client collegato, se ha una versione più vecchia, mostra l'avviso «È disponibile
+un aggiornamento»: con un clic lo scarica, controlla che il file sia integro (impronta SHA-256) e si riavvia aggiornato.</p>
+<div class="row g-3">
+  <div class="col-lg-5">
+    <form method="post" enctype="multipart/form-data" class="card">{% csrf_token %}
+      <input type="hidden" name="azione" value="carica">
+      <div class="card-header">Nuova versione</div>
+      <div class="card-body">
+        <label class="form-label" for="versione">Versione *</label>
+        <input class="form-control form-control-sm mb-2" id="versione" name="versione" required placeholder="es. 0.3.0" pattern="\d+\.\d+\.\d+">
+        <label class="form-label" for="file">File dumetodo-client.exe *</label>
+        <input class="form-control form-control-sm mb-2" type="file" id="file" name="file" accept=".exe" required>
+        <label class="form-label" for="note">Novità (mostrate agli utenti)</label>
+        <textarea class="form-control form-control-sm" id="note" name="note" rows="3"></textarea>
+      </div>
+      <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Carica</button></div>
+    </form>
+  </div>
+  <div class="col-lg-7">
+    <div class="table-responsive"><table class="table align-middle">
+      <thead><tr><th>Versione</th><th>Caricata</th><th>Dimensione</th><th>Novità</th><th>Stato</th><th></th></tr></thead>
+      <tbody>{% for v in versioni %}<tr class="{% if not v.attiva %}text-muted{% endif %}">
+        <td class="fw-semibold">{{ v.versione }}{% if v == ultima %} <span class="badge text-bg-primary">proposta</span>{% endif %}</td>
+        <td class="small">{{ v.caricata_il|date:"d/m/Y H:i" }}{% if v.caricata_da %} · {{ v.caricata_da }}{% endif %}</td>
+        <td class="small">{{ v.dimensione|filesizeformat }}</td>
+        <td class="small">{{ v.note|linebreaksbr }}</td>
+        <td>{% if v.attiva %}<span class="badge text-bg-success">attiva</span>{% else %}<span class="badge text-bg-secondary">ritirata</span>{% endif %}</td>
+        <td><form method="post">{% csrf_token %}<input type="hidden" name="pk" value="{{ v.pk }}">
+          {% if v.attiva %}<button class="btn btn-sm btn-outline-secondary" name="azione" value="disattiva" title="I client non la proporranno più">Ritira</button>
+          {% else %}<button class="btn btn-sm btn-outline-primary" name="azione" value="attiva">Riattiva</button>{% endif %}</form></td></tr>
+      {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Nessuna versione caricata.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <div class="form-text">Si propone sempre la versione più alta tra quelle attive: per tornare indietro ritira quella difettosa.</div>
+  </div>
+</div>
+{% endblock %}

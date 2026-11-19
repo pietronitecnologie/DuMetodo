@@ -471,7 +471,7 @@ dependencies = [
 
 [[package]]
 name = "dumetodo-client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arboard",
  "base64 0.22.1",
@@ -482,6 +482,7 @@ dependencies = [
  "png 0.17.16",
  "serde",
  "serde_json",
+ "sha2",
  "tao",
  "toml 1.2.1+spec-1.1.0",
  "url",
