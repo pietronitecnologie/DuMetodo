@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titolo %}{{ titolo }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <a href="{{ indietro }}" class="btn btn-sm btn-outline-secondary">← {{ etichetta_indietro }}</a>
+  <h1 class="h4 mb-0 me-auto">{{ titolo }}</h1>
+</div>
+<form method="post" class="card" style="max-width: 48rem">{% csrf_token %}
+  <div class="card-body">
+    {% for e in form.non_field_errors %}<div class="alert alert-danger py-1">{{ e }}</div>{% endfor %}
+    <div class="row g-2">
+    {% for campo in form %}
+      <div class="{% if campo.field.widget.input_type == 'checkbox' %}col-12{% elif campo.name == 'controlli' or campo.name == 'descrizione' %}col-12{% else %}col-sm-6{% endif %}">
+        {% if campo.name == "controlli" %}
+        <label class="form-label">{{ campo.label }}</label>
+        <div class="border rounded p-2" style="max-height: 18rem; overflow:auto">{% for c in campo %}<div class="form-check">{{ c.tag }}<label class="form-check-label small" for="{{ c.id_for_label }}">{{ c.choice_label }}</label></div>{% empty %}<span class="text-muted small">Nessun controllo: creane prima qualcuno.</span>{% endfor %}</div>
+        {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
+        {% for e in campo.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        {% else %}{% include "_campo.html" %}{% endif %}
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+  <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Salva</button></div>
+</form>
+<script>document.querySelectorAll('form.card input:not([type=hidden]):not([type=checkbox]), form.card textarea, form.card select').forEach(e => e.classList.add(e.tagName === 'SELECT' ? 'form-select' : 'form-control', e.tagName === 'SELECT' ? 'form-select-sm' : 'form-control-sm'));
+document.querySelectorAll('form.card input[type=checkbox]').forEach(e => e.classList.add('form-check-input'));</script>
+{% endblock %}

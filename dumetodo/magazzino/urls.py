@@ -10,6 +10,7 @@ urlpatterns = [
     path("componenti/<int:pk>/", views.componente_modifica, name="componente"),
     path("componenti/suggerimenti/", views.suggerimenti_componenti, name="suggerimenti"),
     path("articoli/", views.articoli, name="articoli"),
+    path("articoli/crea/", views.articolo_crea, name="articolo_crea"),
     path("articoli/<int:pk>/modifica/", views.articolo_modifica, name="articolo_modifica"),
     path("articoli/<int:pk>/nuovo/", views.articolo_nuovo, name="articolo_nuovo"),
     # inventario

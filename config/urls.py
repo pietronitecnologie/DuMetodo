@@ -30,6 +30,7 @@ urlpatterns = [
     path("magazzino/", include("dumetodo.magazzino.urls")),
     path("configurazione/", include("dumetodo.configurazione.urls")),
     path("utenti/", include("dumetodo.core.urls_utenti")),
+    path("reparti/", include("dumetodo.core.urls_reparti")),
     path("tracciabilita/", include("dumetodo.tracciabilita.urls")),
     path("client/", include("dumetodo.client.urls")),
     path("admin/", admin.site.urls),

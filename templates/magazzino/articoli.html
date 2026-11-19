@@ -2,7 +2,19 @@
 {% block titolo %}Anagrafica articoli finiti{% endblock %}
 {% block contenuto %}
 <div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Anagrafica articoli finiti</h1>
-  {% if user.is_staff %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'admin:anagrafica_articolo_add' %}">Nuovo articolo (admin)</a>{% endif %}</div>
+  <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#nuovo-articolo">Nuovo articolo</button></div>
+<form method="post" action="{% url 'magazzino:articolo_crea' %}" class="card card-body py-2 mb-2 collapse" id="nuovo-articolo">{% csrf_token %}
+  <input type="hidden" name="torna" value="{{ request.get_full_path }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-2"><label class="form-label">Codice *</label><input class="form-control form-control-sm" name="codice" required maxlength="50"></div>
+    <div class="col-12 col-md-4"><label class="form-label">Descrizione</label><input class="form-control form-control-sm" name="descrizione"></div>
+    <div class="col-6 col-md-2"><label class="form-label">Reparto</label><select class="form-select form-select-sm" name="reparto"><option value="">—</option>{% for r in reparti %}<option value="{{ r.pk }}">{{ r.nome }}</option>{% endfor %}</select></div>
+    <div class="col-4 col-md-1"><label class="form-label">UM</label><select class="form-select form-select-sm" name="um">{% for v, l in unita %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+    <div class="col-4 col-md-1"><label class="form-label">Tabulato</label><select class="form-select form-select-sm" name="tabulato">{% for v, l in tabulati %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+    <div class="col-4 col-md-1"><label class="form-label">Prezzo €</label><input class="form-control form-control-sm" name="prezzo" inputmode="decimal"></div>
+    <div class="col-12 col-md-1"><button class="btn btn-sm btn-primary w-100">Crea</button></div>
+  </div>
+</form>
 <form method="get" class="card card-body py-2 mb-2">
   <div class="row g-2 align-items-end">
     <div class="col-md-3"><label class="form-label small mb-0">Cerca</label><input type="search" class="form-control form-control-sm" name="q" value="{{ f.q|default:'' }}" placeholder="codice o descrizione"></div>

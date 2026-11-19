@@ -156,7 +156,7 @@ tracce, lotto/busta, controlli qualità, foto e file dell'ordine.
 * **Tracce generiche:** chiave = valore su un codice; a un codice esistente si aggiungono eventi.
 * **Lotto/busta** dalla pagina dell'ordine; un doppio invio non crea doppioni.
 * **Etichette:** Code128 generato nel browser (JsBarcode, in `static/vendor`), pagina di stampa.
-* **Controllo qualità:** i **test** (con i loro **controlli**) si definiscono in Amministrazione. Un
+* **Controllo qualità:** i **test** (con i loro **controlli**) si definiscono in Amministrazione → Test e controlli qualità. Un
   controllo è "campione/KO" (numeri interi, KO ≤ campione) oppure "presente/assente". Distinta e
   disegno sono controlli di presenza con codice `distinta` e `disegno` (in Metodo: id 8 e 9 nel codice).
 * **Foto e file per ordine:** dal telefono le foto vengono ridotte a 1024 px prima dell'invio. Sono
@@ -178,6 +178,16 @@ Amministrazione). I **profili** (Operatore, Caporeparto, Amministratore, Cliente
 applicati a un utente, gli assegnano un insieme di permessi che poi si personalizza funzione per funzione.
 Il catalogo delle funzioni è in `dumetodo/core/permessi.py`; un test controlla che ogni pagina richieda
 login e permesso.
+
+**Utenti e permessi** ha quattro permessi propri: *vedere*, *creare e modificare utenti*, *reimpostare le
+password*, *assegnare permessi e profili*. Regole: si possono dare solo i permessi che si hanno; un utente
+con più permessi di chi lo gestisce (o un superuser) si può solo vedere; non ci si può disattivare né togliersi
+i permessi dell'area; il ruolo superuser lo cambia solo un superuser. Le password temporanee (generate,
+mostrate una volta) e quelle dei nuovi utenti vanno cambiate al primo accesso; ognuno cambia la propria da
+*Cambia password* nel menu utente. Ogni modifica finisce nello storico dell'utente.
+
+Tutto si gestisce da DuMetodo: utenti, reparti, test e controlli qualità, articoli. L'admin di Django
+(menu *Admin tecnico*, solo superuser) serve solo per interventi tecnici.
 
 Da riga di comando: `python manage.py assegna_profilo <utente> Amministratore`.
 

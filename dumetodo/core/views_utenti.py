@@ -186,4 +186,3 @@ def mia_password(request: HttpRequest) -> HttpResponse:
             messages.success(request, "Password cambiata.")
             return redirect("home")
     return render(request, "utenti/mia_password.html", {"obbligatoria": obbligatoria})
-

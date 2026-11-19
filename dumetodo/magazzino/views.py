@@ -231,6 +231,25 @@ def articolo_modifica(request: HttpRequest, pk: int) -> HttpResponse:
 
 @require_POST
 @richiede_permesso(F.MAGAZZINO_ANAGRAFICHE)
+def articolo_crea(request: HttpRequest) -> HttpResponse:
+    p = request.POST
+    tabulato = p.get("tabulato", "0")
+    _esegui(
+        request,
+        servizi.crea_articolo,
+        codice=p.get("codice", ""),
+        descrizione=p.get("descrizione", ""),
+        reparto_id=int(p["reparto"]) if p.get("reparto", "").isdigit() else None,
+        um=p.get("um", ""),
+        tabulato=int(tabulato) if tabulato.isdigit() else -1,
+        prezzo=p.get("prezzo", ""),
+        ok="Articolo {r} creato.",
+    )
+    return _torna(request, reverse("magazzino:articoli"))
+
+
+@require_POST
+@richiede_permesso(F.MAGAZZINO_ANAGRAFICHE)
 def articolo_nuovo(request: HttpRequest, pk: int) -> HttpResponse:
     nuovo = request.POST.get("nuovo") == "1"
     _esegui(

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_test
 
 app_name = "tracciabilita"
 urlpatterns = [
@@ -21,4 +21,10 @@ urlpatterns = [
     path("qualita/", views.qualita, name="qualita"),
     path("qualita/nuovo/", views.qualita_nuovo, name="qualita_nuovo"),
     path("qualita/controlli/", views.qualita_controlli, name="qualita_controlli"),
+    # definizione di test e controlli
+    path("qualita/test/", views_test.lista, name="test_lista"),
+    path("qualita/test/nuovo/", views_test.test_modifica, name="test_nuovo"),
+    path("qualita/test/<int:pk>/", views_test.test_modifica, name="test_modifica"),
+    path("qualita/controlli/nuovo/", views_test.controllo_modifica, name="controllo_nuovo"),
+    path("qualita/controlli/<int:pk>/", views_test.controllo_modifica, name="controllo_modifica"),
 ]
