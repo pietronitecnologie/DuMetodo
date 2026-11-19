@@ -77,7 +77,7 @@
   {% endfor %}
   {% block contenuto %}{% endblock %}
 </main>
-<footer class="dm-piede">DuMetodo · {{ nome_fornitore }} · versione {{ versione_dumetodo }}</footer>
+<footer class="dm-piede">DuMetodo · {{ nome_fornitore }} · server {{ versione_dumetodo }}{% if versione_client %} · client {{ versione_client }}{% endif %}</footer>
 {% if user.is_authenticated %}<div hx-get="{% url 'utilita:annunci_attivi' %}" hx-trigger="load"></div>{% endif %}
 </body>
 </html>

@@ -52,7 +52,7 @@ pub fn script_aggiorna(voci: &[VoceScheda<'_>], server: &str, chat_non_letti: u3
 pub fn pagina() -> String {
     use base64::Engine;
     let icona = base64::engine::general_purpose::STANDARD.encode(include_bytes!("../../static/img/dumetodo-32.png"));
-    MODELLO.replace("{ICONA}", &icona)
+    MODELLO.replace("{ICONA}", &icona).replace("{VERSIONE}", env!("CARGO_PKG_VERSION"))
 }
 
 const MODELLO: &str = r##"<!doctype html>
@@ -88,7 +88,7 @@ const MODELLO: &str = r##"<!doctype html>
   #server .punto { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #3ccf7a; }
   #server.scollegato .punto { background: #e0a030; }
 </style></head>
-<body><div id="schede"><img id="icona" alt="" src="data:image/png;base64,{ICONA}"></div>
+<body><div id="schede"><img id="icona" alt="" title="DuMetodo Client {VERSIONE}" src="data:image/png;base64,{ICONA}"></div>
 <script>
 (() => {
   const invia = (m) => window.ipc.postMessage(JSON.stringify(m));

@@ -68,3 +68,22 @@ cargo test && cargo clippy --all-targets -- -D warnings
 Su Linux servono `libwebkit2gtk-4.1-dev` e `libgtk-3-dev`. Su Windows serve WebView2, già presente in
 Windows 10 e 11. L'eseguibile per Windows viene compilato automaticamente da GitHub Actions
 (workflow `client`) e scaricato come artefatto della build.
+
+
+## Versioni e pubblicazione
+
+Il **server** si identifica con il commit (es. `55cc04a`, in fondo a ogni pagina); il **client** con un numero
+`X.Y.Z` scritto in `client/Cargo.toml` (es. `0.3.0`), usato dall'aggiornamento automatico per capire cosa è
+più recente. La versione del client in uso si vede in fondo alle pagine («client 0.2.0»), passando il mouse
+sull'icona a sinistra della barra delle schede e in testa all'elenco F1.
+
+Pubblicare una nuova versione (serve solo git, compila GitHub):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\client\pubblica-versione.ps1 0.3.0
+```
+
+Lo script porta `Cargo.toml` alla nuova versione, fa commit, crea il tag `client-v0.3.0` e lo invia. Il
+workflow *client* controlla il tag, compila e crea la Release **DuMetodo Client 0.3.0** con allegato
+`dumetodo-client-0.3.0.exe` e la sua impronta SHA-256. Per distribuirla: in DuMetodo, *Amministrazione →
+Aggiornamenti del client*, carica quel file con la versione `0.3.0`; i client la propongono da soli.

@@ -217,7 +217,7 @@
     box.style.cssText = "background:#fff;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:18px 22px;" +
       "width:min(460px,92vw);max-height:85vh;overflow:auto;font:14px 'Segoe UI',system-ui,sans-serif;color:#18212e";
     const titolo = document.createElement("div");
-    titolo.textContent = "Scorciatoie da tastiera";
+    titolo.textContent = "Scorciatoie da tastiera" + (versioneInUso ? ` · DuMetodo Client ${versioneInUso}` : "");
     titolo.style.cssText = "font-weight:650;font-size:16px;margin-bottom:10px";
     box.append(titolo);
     const riga = (tasto, testo) => {
