@@ -11,6 +11,7 @@ mod avvio;
 mod barra;
 mod configurazione;
 mod ponte;
+mod sessione;
 mod sicurezza;
 
 use std::cell::RefCell;
@@ -163,7 +164,8 @@ fn main() {
 
     let contenitore = crea_contenitore(&window);
     // Un solo contesto per tutte le schede: stessi cookie, quindi un solo accesso a DuMetodo.
-    let mut contesto = WebContext::new(None);
+    // Cartella fissa per i dati del motore web (cookie compresi): l'accesso resta valido tra un avvio e l'altro.
+    let mut contesto = WebContext::new(percorso_conf.parent().map(|c| c.join("dati-web")));
     let origine: Origine = Rc::new(RefCell::new(None));
 
     let barra = match costruisci_barra(&contenitore, &window, proxy.clone()) {
@@ -209,6 +211,38 @@ fn main() {
     {
         collega(&schede[0].pagina, &origine, u);
     }
+    // Riapre le schede dell'ultima volta (solo se il server è lo stesso e risponde).
+    let percorso_sessione = sessione::percorso(&percorso_conf);
+    if conf.ripristina_schede.unwrap_or(true)
+        && let Some(server) = origine_testo(&origine)
+        && let Some(salvata) = sessione::carica(&percorso_sessione, &server)
+    {
+        let _ = schede[0].pagina.load_url(&salvata.schede[0]);
+        for indirizzo in salvata.schede.iter().skip(1) {
+            match costruisci_pagina(
+                &contenitore,
+                &window,
+                &mut contesto,
+                &conf,
+                origine.clone(),
+                prossimo_id,
+                Iniziale::Url(indirizzo),
+                proxy.clone(),
+            ) {
+                Ok(pagina) => {
+                    let _ = pagina.zoom(zoom);
+                    let _ = pagina.set_visible(false);
+                    schede.push(Scheda { id: prossimo_id, pagina, titolo: "DuMetodo".into() });
+                    prossimo_id += 1;
+                }
+                Err(e) => registra(&percorso_conf, &format!("Ripristino scheda non riuscito: {e}")),
+            }
+        }
+        attiva = salvata.attiva.min(schede.len() - 1);
+        for (i, s) in schede.iter().enumerate() {
+            let _ = s.pagina.set_visible(i == attiva);
+        }
+    }
     aggiorna_barra(&barra, &schede, attiva, &origine);
 
     // Il menu nativo deve restare in vita finché è aperto (su Linux la scelta arriva in modo asincrono).
@@ -224,7 +258,10 @@ fn main() {
         let mut cambia_server = false;
         let mut ridisegna = false;
         match event {
-            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *control_flow = ControlFlow::Exit,
+            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+                salva_sessione(&percorso_sessione, &origine, &schede, attiva);
+                *control_flow = ControlFlow::Exit;
+            }
             Event::WindowEvent { event: WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. }, .. } => {
                 disponi(&window, &barra, &schede);
             }
@@ -244,6 +281,7 @@ fn main() {
                     // "Ordini · DuMetodo · Fornitore" -> "Ordini": nella scheda basta la pagina.
                     let breve = titolo.split(" · DuMetodo").next().unwrap_or(&titolo).trim();
                     s.titolo = breve.chars().take(120).collect();
+                    salva_sessione(&percorso_sessione, &origine, &schede, attiva);
                     aggiorna_barra(&barra, &schede, attiva, &origine);
                     if schede.get(attiva).is_some_and(|s| s.id == scheda) {
                         window.set_title(&format!("{} - DuMetodo", schede[attiva].titolo));
@@ -438,7 +476,8 @@ fn main() {
             && let Some(pos) = schede.iter().position(|s| s.id == id)
         {
             if schede.len() == 1 {
-                // Ultima scheda: si chiude il client, come un browser.
+                // Ultima scheda: si chiude il client, come un browser (la scheda verrà riaperta).
+                salva_sessione(&percorso_sessione, &origine, &schede, attiva);
                 *control_flow = ControlFlow::Exit;
             } else {
                 let tolta = schede.remove(pos);
@@ -464,6 +503,7 @@ fn main() {
             let _ = schede[attiva].pagina.focus();
             window.set_title(&format!("{} - DuMetodo", schede[attiva].titolo));
             aggiorna_barra(&barra, &schede, attiva, &origine);
+            salva_sessione(&percorso_sessione, &origine, &schede, attiva);
         }
     });
 }
@@ -471,6 +511,32 @@ fn main() {
 /// Icona di DuMetodo (quadrante di misura), 64×64 RGBA, ricavata da static/img/dumetodo-64.png.
 fn icona_finestra() -> Option<tao::window::Icon> {
     tao::window::Icon::from_rgba(include_bytes!("icona-64.rgba").to_vec(), 64, 64).ok()
+}
+
+/// Origine del server collegato, es. "http://srv:8000" (None se nessun server è collegato).
+fn origine_testo(origine: &Origine) -> Option<String> {
+    origine.borrow().as_ref().map(|u| u.origin().ascii_serialization())
+}
+
+/// Salva gli indirizzi delle schede del server collegato (le pagine locali del client sono escluse).
+fn salva_sessione(percorso: &Path, origine: &Origine, schede: &[Scheda], attiva: usize) {
+    let Some(server) = origine_testo(origine) else { return };
+    let mut indirizzi = Vec::new();
+    let mut nuova_attiva = 0;
+    for (i, s) in schede.iter().enumerate() {
+        if let Ok(u) = s.pagina.url()
+            && (u.starts_with(&format!("{server}/")) || u == server)
+        {
+            if i == attiva {
+                nuova_attiva = indirizzi.len();
+            }
+            indirizzi.push(u);
+        }
+    }
+    if indirizzi.is_empty() {
+        return;
+    }
+    sessione::salva(percorso, &sessione::Sessione { server, schede: indirizzi, attiva: nuova_attiva });
 }
 
 /// Contenuto iniziale di una scheda.

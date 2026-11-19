@@ -17,6 +17,9 @@ schermo_intero = false
 # Zoom iniziale della pagina (1.0 = 100%).
 zoom = 1.0
 
+# Riapre le schede che erano aperte alla chiusura del client (sullo stesso server).
+ripristina_schede = true
+
 [download]
 # Cartella dei file scaricati (vuoto = cartella Download dell'utente).
 cartella = ""
@@ -35,6 +38,8 @@ pub struct Configurazione {
     pub schermo_intero: bool,
     pub zoom: Option<f64>,
     pub strumenti_sviluppatore: bool,
+    /// None = sì (predefinito).
+    pub ripristina_schede: Option<bool>,
     pub download: Download,
 }
 

@@ -10,6 +10,8 @@ propria. Aggiunge solo ciò che un browser normale non può fare:
 | Menu del tasto destro **nativi**, diversi per tipo di elemento (ordine, riga, pagina…) e filtrati per i permessi dell'utente | sul **server**: Configurazione → Client desktop |
 | Aggiorna pagina, Copia tabella / colonna / riga (si incollano in Excel), Copia selezione, Incolla (anche su http) | voci predefinite del menu, modificabili sul server |
 | **Logo dell'azienda** in testa al menu del tasto destro (con il nome) | sul **server**: Configurazione → Azienda → Logo |
+| **Riapertura delle schede**: alla chiusura il client ricorda le schede aperte (file `schede.json` accanto a `client.toml`) e le riapre al prossimo avvio sullo stesso server; l'accesso resta valido. `ripristina_schede = false` in `client.toml` per disattivarla | sul client |
+| **Scorciatoie da tastiera** (F1 elenco, F2 cerca ordine, F3 ordini, …) | sul **server**: Configurazione → Client desktop → Scorciatoie |
 | **Cambia server**: il pulsante a destra nella barra delle schede mostra il server collegato; cliccandolo si indica un altro indirizzo (Annulla = resta su quello attuale). In alternativa `url` in `client.toml` o `--url` | sul client |
 | **Schede**: più pagine nella stessa finestra. Ctrl+T nuova, Ctrl+W chiudi, Ctrl+Tab / Ctrl+PagSu-PagGiù per passare, Ctrl+clic o clic centrale su un link e *Apri in nuova scheda* dal tasto destro; clic centrale sulla scheda per chiuderla. Un solo accesso vale per tutte le schede | sul client |
 | Navigazione limitata al server configurato; i link esterni si aprono nel browser di sistema | automatico |
