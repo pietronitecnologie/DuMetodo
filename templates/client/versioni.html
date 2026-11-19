@@ -32,10 +32,13 @@ un aggiornamento»: con un clic lo scarica, controlla che il file sia integro (i
         <td>{% if v.attiva %}<span class="badge text-bg-success">attiva</span>{% else %}<span class="badge text-bg-secondary">ritirata</span>{% endif %}</td>
         <td><form method="post">{% csrf_token %}<input type="hidden" name="pk" value="{{ v.pk }}">
           {% if v.attiva %}<button class="btn btn-sm btn-outline-secondary" name="azione" value="disattiva" title="I client non la proporranno più">Ritira</button>
-          {% else %}<button class="btn btn-sm btn-outline-primary" name="azione" value="attiva">Riattiva</button>{% endif %}</form></td></tr>
+          {% else %}<button class="btn btn-sm btn-outline-primary" name="azione" value="attiva">Riattiva</button>{% endif %}
+          <button class="btn btn-sm btn-outline-danger" name="azione" value="elimina" title="Cancella versione e file: il numero torna libero"
+            onclick="return confirm('Eliminare definitivamente il client {{ v.versione|escapejs }} e il suo file? Il numero di versione potrà essere ricaricato.')">Elimina</button></form></td></tr>
       {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Nessuna versione caricata.</td></tr>{% endfor %}</tbody>
     </table></div>
-    <div class="form-text">Si propone sempre la versione più alta tra quelle attive: per tornare indietro ritira quella difettosa.</div>
+    <div class="form-text">Si propone sempre la versione più alta tra quelle attive: per tornare indietro ritira quella difettosa.
+      «Elimina» cancella anche il file e libera il numero di versione (per ricaricarla corretta).</div>
   </div>
 </div>
 {% endblock %}

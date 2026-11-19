@@ -99,6 +99,14 @@ def versioni(request: HttpRequest) -> HttpResponse:
         elif azione in ("attiva", "disattiva"):
             VersioneClient.objects.filter(pk=request.POST.get("pk")).update(attiva=azione == "attiva")
             return redirect("client:versioni")
+        elif azione == "elimina":
+            try:
+                versione = aggiornamenti.elimina(request.user, request.POST.get("pk"))
+            except aggiornamenti.AggiornamentoNonValido as exc:
+                messages.error(request, str(exc))
+            else:
+                messages.success(request, f"Client {versione} eliminato: il numero di versione si può ricaricare.")
+            return redirect("client:versioni")
     return render(
         request,
         "client/versioni.html",

@@ -181,6 +181,36 @@ def test_caricamento_rifiutato(client, db, media, versione, contenuto, errore):
     assert errore in r.content.decode()
 
 
+def test_eliminazione_libera_la_versione(client, db, media, django_capture_on_commit_callbacks):
+    from django.contrib.auth.models import User
+
+    from dumetodo.client.models import VersioneClient
+    from dumetodo.core.permessi import F, permessi_di
+
+    u = User.objects.create_user("a")
+    u.user_permissions.set(permessi_di([F.CONFIGURAZIONE]))
+    client.force_login(u)
+    client.post("/client/versioni/", {"versione": "0.3.0", "file": _exe()})
+    v = VersioneClient.objects.get(versione="0.3.0")
+    percorso = media / v.file.name
+    assert percorso.exists()
+    from dumetodo.client import aggiornamenti
+
+    with pytest.raises(aggiornamenti.AggiornamentoNonValido, match="già stata caricata"):
+        aggiornamenti.carica(u, "0.3.0", _exe())
+    with django_capture_on_commit_callbacks(execute=True):
+        r = client.post("/client/versioni/", {"azione": "elimina", "pk": v.pk}, follow=True)
+    assert "Client 0.3.0 eliminato" in r.content.decode()
+    assert not VersioneClient.objects.exists() and not percorso.exists()
+    client.post("/client/versioni/", {"versione": "0.3.0", "file": _exe()})
+    assert VersioneClient.objects.filter(versione="0.3.0").exists()
+    # senza permesso: niente
+    client.force_login(User.objects.create_user("x"))
+    v = VersioneClient.objects.get()
+    assert client.post("/client/versioni/", {"azione": "elimina", "pk": v.pk}).status_code == 403
+    assert VersioneClient.objects.exists()
+
+
 def test_aggiornamenti_solo_con_permesso(client, db):
     from django.contrib.auth.models import User
 

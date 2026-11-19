@@ -59,6 +59,24 @@ def carica(utente: Any, versione: str, file: UploadedFile, note: str = "") -> Ve
     )
 
 
+@transaction.atomic
+def elimina(utente: Any, pk: Any) -> str:
+    """Cancella una versione caricata e il suo file: il numero di versione torna libero."""
+    from dumetodo.core.permessi import F, ha_permesso
+
+    if not ha_permesso(utente, F.CONFIGURAZIONE):
+        raise AggiornamentoNonValido("Non hai i permessi per eliminare aggiornamenti del client.")
+    v = VersioneClient.objects.select_for_update().filter(pk=pk).first()
+    if v is None:
+        raise AggiornamentoNonValido("Versione non trovata (forse è già stata eliminata).")
+    nome_file, archivio = v.file.name, v.file.storage
+    v.delete()
+    # Il file si cancella solo a transazione riuscita: mai un record che punta a un file sparito.
+    if nome_file:
+        transaction.on_commit(lambda: archivio.delete(nome_file))
+    return v.versione
+
+
 def piu_recente_di(versione_client: str) -> VersioneClient | None:
     v = ultima()
     if v is None or v.numeri <= numeri_versione(versione_client):
