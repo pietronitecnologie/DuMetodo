@@ -23,6 +23,8 @@ pub enum Comando {
     Nuova,
     /// Apre la schermata di collegamento per indicare un altro server.
     CambiaServer,
+    /// Mostra / nasconde il pannello della chat.
+    Chat,
 }
 
 pub fn interpreta(testo: &str) -> Option<Comando> {
@@ -40,10 +42,10 @@ pub struct VoceScheda<'a> {
 }
 
 /// Script che ridisegna la barra con lo stato attuale; `server` = server collegato (host[:porta]), vuoto se nessuno.
-pub fn script_aggiorna(voci: &[VoceScheda<'_>], server: &str) -> String {
+pub fn script_aggiorna(voci: &[VoceScheda<'_>], server: &str, chat_non_letti: u32, chat_aperta: bool) -> String {
     let json = serde_json::to_string(voci).unwrap_or_else(|_| "[]".into());
     let server = serde_json::to_string(server).unwrap_or_else(|_| "\"\"".into());
-    format!("window.aggiorna && window.aggiorna({json}, {server})")
+    format!("window.aggiorna && window.aggiorna({json}, {server}, {chat_non_letti}, {chat_aperta})")
 }
 
 /// Pagina della barra con l'icona di DuMetodo (PNG 32 px incorporato).
@@ -73,7 +75,13 @@ const MODELLO: &str = r##"<!doctype html>
   #nuova { width: 28px; height: 26px; margin: 0 0 2px 4px; border: 0; border-radius: 6px; background: none; color: #5b6676;
     font-size: 20px; line-height: 1; }
   #nuova:hover { background: #dde3ec; color: #18212e; }
-  #server { margin: 0 2px 4px auto; align-self: center; display: flex; align-items: center; gap: 6px; max-width: 280px;
+  #chat { margin: 0 6px 4px auto; align-self: center; display: flex; align-items: center; gap: 6px; height: 24px;
+    padding: 0 10px; border: 1px solid #c9d2df; border-radius: 6px; background: #fff; color: #4a5567; font: inherit; font-size: 12px; }
+  #chat:hover { background: #eef3fc; color: #18212e; border-color: #9fbdf3; }
+  #chat.aperta { background: #e6efff; color: #2160d4; border-color: #9fbdf3; }
+  #chat .conta { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e5484d; color: #fff;
+    font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  #server { margin: 0 2px 4px 0; align-self: center; display: flex; align-items: center; gap: 6px; max-width: 280px;
     height: 24px; padding: 0 10px; border: 1px solid #c9d2df; border-radius: 6px; background: #fff; color: #4a5567;
     font: inherit; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #server:hover { background: #eef3fc; color: #18212e; border-color: #9fbdf3; }
@@ -87,11 +95,11 @@ const MODELLO: &str = r##"<!doctype html>
   const contenitore = document.getElementById("schede");
   let ultimo = "";
   // Ridisegna solo se qualcosa è cambiato: ridisegnare durante un clic farebbe perdere il clic.
-  window.aggiorna = (schede, server) => {
-    const firma = JSON.stringify([schede, server]);
+  window.aggiorna = (schede, server, nonLetti, chatAperta) => {
+    const firma = JSON.stringify([schede, server, nonLetti, chatAperta]);
     if (firma === ultimo) return;
     ultimo = firma;
-    contenitore.querySelectorAll(".scheda, #nuova, #server").forEach((el) => el.remove());
+    contenitore.querySelectorAll(".scheda, #nuova, #server, #chat").forEach((el) => el.remove());
     for (const s of schede) {
       const d = document.createElement("div");
       d.className = "scheda" + (s.attiva ? " attiva" : "");
@@ -114,6 +122,21 @@ const MODELLO: &str = r##"<!doctype html>
     n.textContent = "+";
     n.title = "Nuova scheda (Ctrl+T)";
     contenitore.append(n);
+    const ch = document.createElement("button");
+    ch.id = "chat";
+    ch.type = "button";
+    ch.className = chatAperta ? "aperta" : "";
+    ch.title = chatAperta ? "Nascondi la chat" : "Apri la chat";
+    const ct = document.createElement("span");
+    ct.textContent = "💬 Chat";
+    ch.append(ct);
+    if (nonLetti) {
+      const n = document.createElement("span");
+      n.className = "conta";
+      n.textContent = nonLetti > 99 ? "99+" : String(nonLetti);
+      ch.append(n);
+    }
+    contenitore.append(ch);
     const sv = document.createElement("button");
     sv.id = "server";
     sv.type = "button";
@@ -130,6 +153,7 @@ const MODELLO: &str = r##"<!doctype html>
   contenitore.addEventListener("click", (e) => {
     if (e.target.closest("#nuova")) { invia({ tipo: "nuova" }); return; }
     if (e.target.closest("#server")) { invia({ tipo: "cambia_server" }); return; }
+    if (e.target.closest("#chat")) { invia({ tipo: "chat" }); return; }
     const scheda = e.target.closest(".scheda");
     if (!scheda) return;
     const id = Number(scheda.dataset.id);
@@ -156,7 +180,7 @@ mod test {
         assert!(matches!(interpreta(r#"{"tipo":"nuova"}"#), Some(Comando::Nuova)));
         assert!(matches!(interpreta(r#"{"tipo":"cambia_server"}"#), Some(Comando::CambiaServer)));
         assert!(interpreta(r#"{"tipo":"esegui","cmd":"x"}"#).is_none());
-        let s = script_aggiorna(&[VoceScheda { id: 1, titolo: "<b>x</b>\"", attiva: true }], "srv:8000");
+        let s = script_aggiorna(&[VoceScheda { id: 1, titolo: "<b>x</b>\"", attiva: true }], "srv:8000", 2, false);
         assert!(s.starts_with("window.aggiorna") && s.contains(r#""titolo":"<b>x</b>\"""#));
     }
 }

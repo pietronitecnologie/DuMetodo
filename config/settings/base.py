@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "dumetodo.client",
     "dumetodo.magazzino",
     "dumetodo.tracciabilita",
+    "dumetodo.chat",
 ]
 
 MIDDLEWARE = [

@@ -26,6 +26,18 @@ pub enum Messaggio {
         url: Option<String>,
     },
     ChiudiScheda,
+    /// Dal pannello chat: messaggio nuovo da notificare.
+    ChatNotifica {
+        con: u64,
+        nome: String,
+        testo: String,
+        non_letti: u32,
+    },
+    /// Dal pannello chat: totale dei messaggi non letti (per la barra delle schede).
+    ChatNonLetti {
+        n: u32,
+    },
+    ChatNascondi,
     /// "Aggiorna ora": il client scarica `url` (percorso interno fisso) e controlla l'impronta `sha256`.
     AggiornaClient {
         versione: String,

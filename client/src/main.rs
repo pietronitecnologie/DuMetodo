@@ -10,6 +10,7 @@
 mod aggiorna;
 mod avvio;
 mod barra;
+mod chat;
 mod configurazione;
 mod ponte;
 mod sessione;
@@ -32,6 +33,8 @@ use ponte::Messaggio;
 use sicurezza::Destinazione;
 
 const VERSIONE: &str = env!("CARGO_PKG_VERSION");
+/// Id riservato al pannello chat (le schede partono da 1).
+const ID_CHAT: u32 = 0;
 
 #[derive(Debug)]
 enum Evento {
@@ -207,6 +210,22 @@ fn main() {
         Err(e) => errore_fatale(&percorso_conf, &format!("Impossibile creare la pagina: {e}")),
     };
     let mut schede: Vec<Scheda> = vec![Scheda { id: prossimo_id, pagina: prima, titolo: "DuMetodo".into() }];
+    // Pannello chat: una pagina del server (id 0), sempre caricata anche se nascosta, per le notifiche.
+    let chat_web = match costruisci_pagina(
+        &contenitore,
+        &window,
+        &mut contesto,
+        &conf,
+        origine.clone(),
+        ID_CHAT,
+        Iniziale::Html("<!doctype html><meta charset=utf-8><title>Chat</title><body>"),
+        proxy.clone(),
+    ) {
+        Ok(w) => w,
+        Err(e) => errore_fatale(&percorso_conf, &format!("Impossibile creare il pannello chat: {e}")),
+    };
+    let _ = chat_web.set_visible(false);
+    let mut finestra_attiva = true;
     let mut attiva: usize = 0;
     prossimo_id += 1;
 
@@ -251,6 +270,7 @@ fn main() {
             let _ = s.pagina.set_visible(i == attiva);
         }
     }
+    carica_chat(&chat_web, &origine);
     aggiorna_barra(&barra, &schede, attiva, &origine);
 
     // Il menu nativo deve restare in vita finché è aperto (su Linux la scelta arriva in modo asincrono).
@@ -270,8 +290,9 @@ fn main() {
                 salva_sessione(&percorso_sessione, &origine, &schede, attiva);
                 *control_flow = ControlFlow::Exit;
             }
+            Event::WindowEvent { event: WindowEvent::Focused(attiva_ora), .. } => finestra_attiva = attiva_ora,
             Event::WindowEvent { event: WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. }, .. } => {
-                disponi(&window, &barra, &schede);
+                disponi(&contenitore, &window, &barra, &schede, &chat_web);
             }
             Event::UserEvent(Evento::DallaBarra(testo)) => match barra::interpreta(&testo) {
                 // Clic sulla scheda già attiva: niente da fare (e niente ridisegno della barra).
@@ -282,6 +303,22 @@ fn main() {
                 Some(barra::Comando::Chiudi { id }) => chiudi = Some(id),
                 Some(barra::Comando::Nuova) => apri = Some(None),
                 Some(barra::Comando::CambiaServer) => cambia_server = true,
+                Some(barra::Comando::Chat) => {
+                    let ora_visibile = !chat::visibile();
+                    chat::VISIBILE.with(|v| v.set(ora_visibile));
+                    disponi(&contenitore, &window, &barra, &schede, &chat_web);
+                    if ora_visibile {
+                        let _ = chat_web.focus();
+                        let script = match chat::DA_APRIRE.with(|d| d.take()) {
+                            Some(con) => format!("window.DuMetodoChat && window.DuMetodoChat.apri({con})"),
+                            None => "window.DuMetodoChat && window.DuMetodoChat.apriNonLetti()".to_string(),
+                        };
+                        let _ = chat_web.evaluate_script(&script);
+                    } else if let Some(s) = schede.get(attiva) {
+                        let _ = s.pagina.focus();
+                    }
+                    ridisegna = true;
+                }
                 None => {}
             },
             Event::UserEvent(Evento::Titolo { scheda, titolo }) => {
@@ -290,6 +327,10 @@ fn main() {
                     let breve = titolo.split(" · DuMetodo").next().unwrap_or(&titolo).trim();
                     s.titolo = breve.chars().take(120).collect();
                     salva_sessione(&percorso_sessione, &origine, &schede, attiva);
+                    // Dopo l'accesso in una scheda, il pannello chat (fermo sulla pagina di accesso) si ricarica.
+                    if chat_web.url().is_ok_and(|u| u.contains("/accesso/")) && !breve.starts_with("Accesso") {
+                        carica_chat(&chat_web, &origine);
+                    }
                     aggiorna_barra(&barra, &schede, attiva, &origine);
                     if schede.get(attiva).is_some_and(|s| s.id == scheda) {
                         window.set_title(&format!("{} - DuMetodo", schede[attiva].titolo));
@@ -297,6 +338,44 @@ fn main() {
                 }
             }
             Event::UserEvent(Evento::NuovaScheda(indirizzo)) => apri = Some(Some(indirizzo)),
+            Event::UserEvent(Evento::DallaPagina { scheda: ID_CHAT, testo, dal_server: true }) => {
+                match ponte::interpreta(&testo) {
+                    Some(Messaggio::ChatNonLetti { n }) => {
+                        if n != chat::non_letti() {
+                            chat::NON_LETTI.with(|c| c.set(n));
+                            aggiorna_barra(&barra, &schede, attiva, &origine);
+                        }
+                    }
+                    Some(Messaggio::ChatNotifica { con, nome, testo, non_letti }) => {
+                        chat::NON_LETTI.with(|c| c.set(non_letti));
+                        chat::DA_APRIRE.with(|d| d.set(Some(con)));
+                        aggiorna_barra(&barra, &schede, attiva, &origine);
+                        let nome: String = nome.chars().take(60).collect();
+                        // Se la chat è già davanti agli occhi basta il messaggio nel pannello.
+                        if !(chat::visibile() && finestra_attiva) {
+                            if let Some(s) = schede.get(attiva) {
+                                avvisa(
+                                    &s.pagina,
+                                    &format!("💬 {nome}: {}", testo.chars().take(120).collect::<String>()),
+                                );
+                            }
+                            chat::notifica_di_sistema(&nome, &testo);
+                            if !finestra_attiva {
+                                window.request_user_attention(Some(tao::window::UserAttentionType::Informational));
+                            }
+                        }
+                    }
+                    Some(Messaggio::ChatNascondi) => {
+                        chat::VISIBILE.with(|v| v.set(false));
+                        disponi(&contenitore, &window, &barra, &schede, &chat_web);
+                        if let Some(s) = schede.get(attiva) {
+                            let _ = s.pagina.focus();
+                        }
+                        aggiorna_barra(&barra, &schede, attiva, &origine);
+                    }
+                    _ => {}
+                }
+            }
             Event::UserEvent(Evento::DallaPagina { scheda, testo, dal_server }) => {
                 let Some(pos) = schede.iter().position(|s| s.id == scheda) else { return };
                 let webview = &schede[pos].pagina;
@@ -309,6 +388,7 @@ fn main() {
                             }
                             url_corrente = Some(u.clone());
                             collega(webview, &origine, &u);
+                            carica_chat(&chat_web, &origine);
                             ridisegna = true;
                         }
                         Err(e) => {
@@ -318,6 +398,7 @@ fn main() {
                     Some(Messaggio::Riprova) if !dal_server => {
                         if let Some(u) = &url_corrente {
                             collega(webview, &origine, u);
+                            carica_chat(&chat_web, &origine);
                             ridisegna = true;
                         }
                     }
@@ -553,7 +634,7 @@ fn main() {
             && let Some(pos) = schede.iter().position(|s| s.id == id)
         {
             attiva = pos;
-            disponi(&window, &barra, &schede);
+            disponi(&contenitore, &window, &barra, &schede, &chat_web);
             for (i, s) in schede.iter().enumerate() {
                 let _ = s.pagina.set_visible(i == attiva);
             }
@@ -618,25 +699,60 @@ fn crea_contenitore(window: &Window) -> Contenitore {
 }
 
 /// Posizioni: la barra in alto, le pagine sotto (tutte nello stesso posto, visibile solo l'attiva).
-fn aree(window: &Window) -> (Rect, Rect) {
+/// Aree della finestra: barra delle schede, pagine e (se aperto) pannello chat a destra.
+fn aree(window: &Window) -> (Rect, Rect, Rect) {
     let scala = window.scale_factor();
     let dim = window.inner_size().to_logical::<f64>(scala);
+    let altezza = (dim.height - barra::ALTEZZA).max(1.0);
+    let chat_l = if chat::visibile() { chat::LARGHEZZA.min(dim.width * 0.6) } else { 0.0 };
     let barra = Rect {
         position: tao::dpi::LogicalPosition::new(0.0, 0.0).into(),
         size: tao::dpi::LogicalSize::new(dim.width, barra::ALTEZZA).into(),
     };
     let pagina = Rect {
         position: tao::dpi::LogicalPosition::new(0.0, barra::ALTEZZA).into(),
-        size: tao::dpi::LogicalSize::new(dim.width, (dim.height - barra::ALTEZZA).max(1.0)).into(),
+        size: tao::dpi::LogicalSize::new((dim.width - chat_l).max(1.0), altezza).into(),
     };
-    (barra, pagina)
+    let pannello = Rect {
+        position: tao::dpi::LogicalPosition::new(dim.width - chat_l, barra::ALTEZZA).into(),
+        size: tao::dpi::LogicalSize::new(chat_l.max(1.0), altezza).into(),
+    };
+    (barra, pagina, pannello)
 }
 
-fn disponi(window: &Window, barra_web: &WebView, schede: &[Scheda]) {
-    let (b, p) = aree(window);
-    let _ = barra_web.set_bounds(b);
+fn disponi(contenitore: &Contenitore, window: &Window, barra_web: &WebView, schede: &[Scheda], chat_web: &WebView) {
+    let (b, p, c) = aree(window);
+    posiziona(contenitore, barra_web, b);
     for s in schede {
-        let _ = s.pagina.set_bounds(p);
+        posiziona(contenitore, &s.pagina, p);
+    }
+    posiziona(contenitore, chat_web, c);
+    let _ = chat_web.set_visible(chat::visibile());
+}
+
+/// Sposta e ridimensiona una pagina. Su Linux il solo `set_bounds` è temporaneo (GTK ripristina la misura
+/// richiesta al primo ridisegno): si aggiornano anche posizione e misura nel contenitore a posizioni fisse.
+fn posiziona(contenitore: &Contenitore, webview: &WebView, area: Rect) {
+    let _ = webview.set_bounds(area);
+    #[cfg(target_os = "linux")]
+    {
+        use gtk::prelude::*;
+        use wry::WebViewExtUnix;
+        let widget = webview.webview();
+        let scala = widget.scale_factor() as f64;
+        let (x, y): (i32, i32) = area.position.to_logical::<i32>(scala).into();
+        let (l, a): (i32, i32) = area.size.to_logical::<i32>(scala).into();
+        contenitore.move_(&widget, x, y);
+        widget.set_size_request(l.max(1), a.max(1));
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = contenitore;
+}
+
+/// Carica il pannello chat del server collegato (resta attivo anche nascosto, per le notifiche).
+fn carica_chat(chat_web: &WebView, origine: &Origine) {
+    if let Some(server) = origine_testo(origine) {
+        let _ = chat_web.load_url(&format!("{server}/chat/"));
     }
 }
 
@@ -655,7 +771,7 @@ fn aggiorna_barra(barra_web: &WebView, schede: &[Scheda], attiva: usize, origine
             _ => String::new(),
         })
         .unwrap_or_default();
-    let _ = barra_web.evaluate_script(&barra::script_aggiorna(&voci, &server));
+    let _ = barra_web.evaluate_script(&barra::script_aggiorna(&voci, &server, chat::non_letti(), chat::visibile()));
 }
 
 /// Piccolo avviso in basso a destra nella pagina (lo disegna lo script iniziale).
@@ -679,7 +795,7 @@ fn aggancia(builder: WebViewBuilder<'_>, window: &Window, contenitore: &Contenit
 }
 
 fn costruisci_barra(contenitore: &Contenitore, window: &Window, proxy: EventLoopProxy<Evento>) -> wry::Result<WebView> {
-    let (b, _) = aree(window);
+    let (b, _, _) = aree(window);
     let builder = WebViewBuilder::new()
         .with_bounds(b)
         .with_html(barra::pagina())
@@ -712,7 +828,7 @@ fn costruisci_pagina(
     let proxy_tit = proxy.clone();
     let proxy_dl = proxy;
     let regole_dl = conf.download.clone();
-    let (_, area) = aree(window);
+    let (_, area, _) = aree(window);
 
     let builder = WebViewBuilder::new_with_web_context(contesto)
         .with_bounds(area)

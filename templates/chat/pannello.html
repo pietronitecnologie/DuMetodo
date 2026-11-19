@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat · DuMetodo</title>
+<style>
+  :root { --bordo:#e2e6ec; --testo:#18212e; --testo2:#5b6676; --accento:#2f74f0; --chiaro:#e6efff; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; font:14px "Segoe UI", system-ui, sans-serif; color:var(--testo); background:#fff; }
+  body { display:flex; flex-direction:column; border-left:1px solid var(--bordo); }
+  header { display:flex; align-items:center; gap:8px; height:44px; padding:0 10px; border-bottom:1px solid var(--bordo); background:#f8fafc; flex:0 0 auto; }
+  header h1 { font-size:14px; margin:0; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  button { font:inherit; cursor:pointer; }
+  .icona { border:0; background:none; color:var(--testo2); border-radius:6px; width:28px; height:28px; font-size:16px; }
+  .icona:hover { background:#eef2f7; color:var(--testo); }
+  #elenco, #conversazione { flex:1; min-height:0; display:flex; flex-direction:column; }
+  .scorre { flex:1; overflow-y:auto; }
+  .sezione { padding:8px 12px 4px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--testo2); }
+  .voce { display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; border:0; background:none; text-align:left; border-bottom:1px solid #f1f3f6; }
+  .voce:hover { background:#f5f8fe; }
+  .voce .nome { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .voce .anteprima { display:block; font-size:12px; color:var(--testo2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .punto { width:8px; height:8px; border-radius:50%; background:#c4cbd6; flex:0 0 8px; }
+  .punto.on { background:#2fb36b; }
+  .badge { min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:#e5484d; color:#fff; font-size:11px; font-weight:700; display:grid; place-items:center; }
+  #cerca { margin:8px 12px; padding:6px 9px; border:1px solid #d5dbe3; border-radius:6px; font:inherit; width:calc(100% - 24px); }
+  #messaggi { padding:10px; display:flex; flex-direction:column; gap:6px; background:#f5f7fa; }
+  .msg { max-width:85%; padding:6px 10px; border-radius:12px; white-space:pre-wrap; word-wrap:break-word; line-height:1.35; box-shadow:0 1px 1px rgba(0,0,0,.04); }
+  .msg.altro { align-self:flex-start; background:#fff; border:1px solid var(--bordo); border-bottom-left-radius:4px; }
+  .msg.mio { align-self:flex-end; background:var(--accento); color:#fff; border-bottom-right-radius:4px; }
+  .msg .ora { display:block; font-size:10.5px; opacity:.7; margin-top:2px; text-align:right; }
+  .giorno { align-self:center; font-size:11px; color:var(--testo2); }
+  form { display:flex; gap:6px; padding:8px; border-top:1px solid var(--bordo); flex:0 0 auto; background:#fff; }
+  textarea { flex:1; resize:none; height:38px; max-height:120px; padding:8px 10px; border:1px solid #d5dbe3; border-radius:8px; font:inherit; }
+  textarea:focus, #cerca:focus { outline:none; border-color:#8db4f5; box-shadow:0 0 0 2px rgba(47,116,240,.15); }
+  .invia { border:0; border-radius:8px; background:var(--accento); color:#fff; padding:0 14px; font-weight:600; }
+  .vuoto { padding:14px 12px; color:var(--testo2); font-size:13px; }
+  #errore { display:none; margin:6px 8px 0; padding:6px 9px; border-radius:6px; background:#fde8e8; color:#9b1c1c; font-size:12.5px; }
+  .stato { font-size:11.5px; color:var(--testo2); }
+  [hidden] { display:none !important; }
+</style></head>
+<body>
+<div id="elenco">
+  <header><h1>Chat</h1><button class="icona" id="nascondi" title="Nascondi la chat">✕</button></header>
+  <div class="scorre">
+    <div class="sezione">Conversazioni</div>
+    <div id="conversazioni"></div>
+    <div class="sezione">Persone</div>
+    <input id="cerca" type="search" placeholder="Cerca una persona…" autocomplete="off">
+    <div id="persone"></div>
+  </div>
+</div>
+<div id="conversazione" hidden>
+  <header>
+    <button class="icona" id="indietro" title="Tutte le conversazioni">←</button>
+    <span class="punto" id="punto-con"></span>
+    <h1 id="nome-con"></h1>
+    <button class="icona" id="chiudi-con" title="Chiudi la conversazione (i messaggi restano salvati)">✕</button>
+  </header>
+  <div class="scorre" id="messaggi"></div>
+  <div id="errore"></div>
+  <form id="modulo"><textarea id="testo" maxlength="2000" placeholder="Scrivi un messaggio… (Invio per inviare)"></textarea><button class="invia">Invia</button></form>
+</div>
+<script>
+(() => {
+  "use strict";
+  const CSRF = "{{ csrf_token }}";
+  const $ = (id) => document.getElementById(id);
+  const ipc = (m) => { if (window.ipc && window.ipc.postMessage) window.ipc.postMessage(JSON.stringify(m)); };
+  let dati = { persone: [], conversazioni: [], non_letti: 0, ultimo_ricevuto: 0 };
+  let aperta = null;            // id della persona della conversazione aperta
+  let ultimoNotificato = null;  // per notificare solo i messaggi nuovi
+  let ultimoMostrato = 0;
+
+  const post = (url, campi) => {
+    const corpo = new URLSearchParams(campi);
+    return fetch(url, { method: "POST", body: corpo, credentials: "same-origin",
+      headers: { "X-CSRFToken": CSRF, "Content-Type": "application/x-www-form-urlencoded" } });
+  };
+  const voce = (nome, collegato, extra, badge, al_clic) => {
+    const b = document.createElement("button");
+    b.className = "voce";
+    const p = document.createElement("span"); p.className = "punto" + (collegato ? " on" : "");
+    p.title = collegato ? "Collegato" : "Non collegato";
+    const n = document.createElement("span"); n.className = "nome"; n.textContent = nome;
+    if (extra) { const a = document.createElement("span"); a.className = "anteprima"; a.textContent = extra; n.append(a); }
+    b.append(p, n);
+    if (badge) { const k = document.createElement("span"); k.className = "badge"; k.textContent = badge; b.append(k); }
+    b.addEventListener("click", al_clic);
+    return b;
+  };
+  const disegnaElenco = () => {
+    const conv = $("conversazioni"); conv.textContent = "";
+    if (!dati.conversazioni.length) { const v = document.createElement("div"); v.className = "vuoto"; v.textContent = "Nessuna conversazione aperta."; conv.append(v); }
+    for (const c of dati.conversazioni) {
+      const ultimo = c.messaggi[c.messaggi.length - 1];
+      conv.append(voce(c.nome, c.collegato, ultimo ? (ultimo.mio ? "Tu: " : "") + ultimo.testo : "", c.non_letti, () => apri(c.con)));
+    }
+    const filtro = $("cerca").value.trim().toLowerCase();
+    const pers = $("persone"); pers.textContent = "";
+    const elenco = dati.persone.filter((p) => !filtro || p.nome.toLowerCase().includes(filtro))
+      .sort((a, b) => (b.collegato - a.collegato) || a.nome.localeCompare(b.nome, "it"));
+    for (const p of elenco) pers.append(voce(p.nome, p.collegato, p.collegato ? "collegato" : "", 0, () => apri(p.id)));
+    if (!elenco.length) { const v = document.createElement("div"); v.className = "vuoto"; v.textContent = "Nessuno."; pers.append(v); }
+  };
+  const disegnaConversazione = () => {
+    const c = dati.conversazioni.find((x) => x.con === aperta);
+    const p = dati.persone.find((x) => x.id === aperta) || c || { nome: "?" };
+    $("nome-con").textContent = p.nome;
+    $("punto-con").className = "punto" + ((c ? c.collegato : p.collegato) ? " on" : "");
+    const box = $("messaggi");
+    const messaggi = c ? c.messaggi : [];
+    const ultimo = messaggi.length ? messaggi[messaggi.length - 1].id : 0;
+    if (ultimo === ultimoMostrato && box.childElementCount) return;
+    const inFondo = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+    box.textContent = "";
+    if (!messaggi.length) { const v = document.createElement("div"); v.className = "vuoto"; v.textContent = "Scrivi il primo messaggio."; box.append(v); }
+    for (const m of messaggi) {
+      const d = document.createElement("div"); d.className = "msg " + (m.mio ? "mio" : "altro"); d.textContent = m.testo;
+      const o = document.createElement("span"); o.className = "ora"; o.textContent = m.ora + (m.mio && m.letto ? " · letto" : ""); d.append(o);
+      box.append(d);
+    }
+    if (inFondo || ultimo !== ultimoMostrato) box.scrollTop = box.scrollHeight;
+    ultimoMostrato = ultimo;
+    if (c && c.non_letti && document.visibilityState === "visible") post("{% url 'chat:letti' %}", { con: aperta });
+  };
+  const disegna = () => { if (aperta) disegnaConversazione(); else disegnaElenco(); };
+  const notifica = () => {
+    if (ultimoNotificato === null) { ultimoNotificato = dati.ultimo_ricevuto; return; }  // primo giro: niente notifiche vecchie
+    if (dati.ultimo_ricevuto <= ultimoNotificato) return;
+    for (const c of dati.conversazioni) {
+      for (const m of c.messaggi) {
+        if (!m.mio && m.id > ultimoNotificato) ipc({ tipo: "chat_notifica", con: c.con, nome: c.nome, testo: m.testo.slice(0, 200), non_letti: dati.non_letti });
+      }
+    }
+    ultimoNotificato = dati.ultimo_ricevuto;
+  };
+  const aggiorna = () => fetch("{% url 'chat:stato' %}", { credentials: "same-origin", headers: { Accept: "application/json" } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (!d) return; dati = d; notifica(); ipc({ tipo: "chat_non_letti", n: d.non_letti }); disegna(); })
+    .catch(() => {});
+  const apri = (con) => {
+    aperta = con; ultimoMostrato = -1;
+    $("elenco").hidden = true; $("conversazione").hidden = false; $("errore").style.display = "none";
+    post("{% url 'chat:riapri' %}", { con });
+    disegnaConversazione(); $("testo").focus();
+    post("{% url 'chat:letti' %}", { con }).then(aggiorna);
+  };
+  const indietro = () => { aperta = null; $("conversazione").hidden = true; $("elenco").hidden = false; disegnaElenco(); };
+  $("indietro").addEventListener("click", indietro);
+  $("chiudi-con").addEventListener("click", () => { const con = aperta; indietro(); post("{% url 'chat:chiudi' %}", { con }).then(aggiorna); });
+  $("nascondi").addEventListener("click", () => ipc({ tipo: "chat_nascondi" }));
+  $("cerca").addEventListener("input", disegnaElenco);
+  $("modulo").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const t = $("testo"); const testo = t.value.trim();
+    if (!testo || !aperta) return;
+    post("{% url 'chat:invia' %}", { a: aperta, testo }).then((r) => r.json().then((j) => {
+      if (!r.ok) { $("errore").textContent = j.errore || "Messaggio non inviato."; $("errore").style.display = "block"; return; }
+      $("errore").style.display = "none"; t.value = ""; aggiorna();
+    }));
+  });
+  $("testo").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("modulo").requestSubmit(); } });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") aggiorna(); });
+  // Il client chiama DuMetodoChat.apri(id) quando si clicca una notifica o si apre il pannello con messaggi nuovi.
+  window.DuMetodoChat = {
+    apri: (con) => apri(Number(con)),
+    apriNonLetti: () => { const c = dati.conversazioni.find((x) => x.non_letti); if (c) apri(c.con); },
+  };
+  aggiorna();
+  setInterval(aggiorna, 3000);
+})();
+</script>
+</body></html>

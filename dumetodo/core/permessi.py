@@ -94,6 +94,7 @@ class F:
     UTENTI_PASSWORD = "utenti_password"  # noqa: S105 - nome di un permesso, non una password
     UTENTI_PERMESSI = "utenti_permessi"
     REPARTI = "reparti"
+    CHAT = "chat"
     QUALITA_TEST = "qualita_test"
 
 
@@ -163,6 +164,7 @@ FUNZIONI: list[Funzione] = [
     Funzione(F.UTILITA_RISTAMPA_ETICHETTE, Sezione.UTILITA, "Ristampa etichette da DDT"),
     Funzione(F.UTILITA_ANNUNCI, Sezione.UTILITA, "Gestione annunci"),
     Funzione(F.UTILITA_SCORPORAZIONE, Sezione.UTILITA, "Scorporazione di massa"),
+    Funzione(F.CHAT, Sezione.UTILITA, "Usare la chat", "Chat 1 a 1 con gli altri utenti nel client desktop."),
     Funzione(F.UTILITA_CAMBIA_ORDINE, Sezione.UTILITA, "Cambia ordine (numero, serie, appendice, scadenza)"),
     Funzione(F.CONFIGURAZIONE, Sezione.AMMINISTRAZIONE, "Configurazione"),
     Funzione(F.REPARTI, Sezione.AMMINISTRAZIONE, "Gestire i reparti", "Codice, nome, capacità settimanale, gruppo."),
@@ -213,6 +215,7 @@ _OPERATORE = {
     F.MAGAZZINO_DDT,
     F.TRACCIABILITA_CONSULTA,
     F.TRACCIABILITA_REGISTRA,
+    F.CHAT,
 }
 _CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.UTENTI_VEDERE}
 PROFILI: dict[str, set[str]] = {
