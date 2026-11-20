@@ -281,6 +281,9 @@
   };
   const controllaAggiornamento = () => {
     if (!versioneInUso) return;
+    // Il server distribuisce solo l'eseguibile Windows (i client più vecchi non indicano il sistema: sono Windows).
+    const sistema = (navigator.userAgent.match(/DuMetodoSistema\/(\w+)/) || [])[1] || "windows";
+    if (sistema !== "windows") return;
     fetch("/client/aggiornamento.json", { credentials: "same-origin", headers: { Accept: "application/json" } })
       .then((r) => (r.ok ? r.json() : {}))
       .then((d) => {

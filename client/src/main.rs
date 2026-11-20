@@ -473,7 +473,11 @@ fn main() {
                     }
                     Some(Messaggio::ChiudiScheda) => chiudi = Some(scheda),
                     Some(Messaggio::AggiornaClient { versione, sha256, url }) if dal_server => {
-                        if !aggiorna::richiesta_valida(&versione, &sha256, &url) {
+                        // Gli aggiornamenti caricati sul server sono eseguibili Windows: su Linux il client
+                        // si aggiorna installando il nuovo pacchetto .deb.
+                        if !cfg!(windows) {
+                            avvisa(webview, "Su Linux il client si aggiorna installando il nuovo pacchetto .deb");
+                        } else if !aggiorna::richiesta_valida(&versione, &sha256, &url) {
                             avvisa(webview, "Aggiornamento non valido");
                         } else if let Some(server) = origine_testo(&origine) {
                             let percorso = aggiorna::percorso_download(&versione);
@@ -833,7 +837,8 @@ fn costruisci_pagina(
     let builder = WebViewBuilder::new_with_web_context(contesto)
         .with_bounds(area)
         .with_user_agent(format!(
-            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 DuMetodoClient/{VERSIONE}"
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 DuMetodoClient/{VERSIONE} DuMetodoSistema/{}",
+            std::env::consts::OS
         ))
         .with_devtools(conf.strumenti_sviluppatore && !conf.schermo_intero)
         .with_clipboard(true)

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=DuMetodo
+GenericName=Gestione della produzione
+Comment=Client desktop di DuMetodo
+Exec=dumetodo-client
+Icon=dumetodo-client
+Terminal=false
+Categories=Office;Network;
+StartupNotify=true

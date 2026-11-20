@@ -58,6 +58,25 @@ cartella = 'C:\ReadyPro\Import'   # ...va direttamente qui
 
 Opzioni da riga di comando: `--url https://...` e `--configurazione percorso\client.toml`.
 
+## Installazione su Debian / Ubuntu
+
+Ogni versione pubblicata (Release di GitHub *DuMetodo Client X.Y.Z*) contiene, oltre all'`.exe` per Windows,
+il pacchetto `dumetodo-client_X.Y.Z_amd64.deb` per **Debian 12 o più recente** e **Ubuntu 24.04 o più recente**.
+Si installa con le dipendenze, che apt scarica da solo (WebKitGTK):
+
+```bash
+sudo apt install ./dumetodo-client_0.3.0_amd64.deb
+```
+
+Il client compare nel menu delle applicazioni come **DuMetodo**; da terminale si avvia con `dumetodo-client`
+(anche `dumetodo-client --url https://dumetodo.azienda.it`). Configurazione e schede salvate sono per utente,
+in `~/.config/dumetodoclient/`.
+
+**Aggiornamenti.** Su Linux il client non si aggiorna da solo (l'aggiornamento automatico distribuisce
+l'eseguibile Windows): per una versione nuova si installa il nuovo `.deb` con lo stesso comando. Il pacchetto
+di prova si crea anche a mano su un PC Debian 12 con `client/pacchetto-deb.sh` (serve `dpkg-dev` oltre ai
+pacchetti di compilazione sotto).
+
 ## Compilazione
 
 ```bash
@@ -65,7 +84,9 @@ cargo build --release          # eseguibile in target/release/
 cargo test && cargo clippy --all-targets -- -D warnings
 ```
 
-Su Linux servono `libwebkit2gtk-4.1-dev` e `libgtk-3-dev`. Su Windows serve WebView2, già presente in
+Su Linux servono `libwebkit2gtk-4.1-dev`, `libgtk-3-dev` e `libxdo-dev`. Il pacchetto `.deb` va compilato
+sulla versione di Debian più vecchia da supportare (lo fa GitHub Actions in un container Debian 12): compilato
+su un sistema più recente richiederebbe librerie più nuove. Su Windows serve WebView2, già presente in
 Windows 10 e 11. L'eseguibile per Windows viene compilato automaticamente da GitHub Actions
 (workflow `client`) e scaricato come artefatto della build.
 
@@ -85,5 +106,5 @@ powershell -ExecutionPolicy Bypass -File .\client\pubblica-versione.ps1 0.3.0
 
 Lo script porta `Cargo.toml` alla nuova versione, fa commit, crea il tag `client-v0.3.0` e lo invia. Il
 workflow *client* controlla il tag, compila e crea la Release **DuMetodo Client 0.3.0** con allegato
-`dumetodo-client-0.3.0.exe` e la sua impronta SHA-256. Per distribuirla: in DuMetodo, *Amministrazione →
+`dumetodo-client-0.3.0.exe` e `dumetodo-client_0.3.0_amd64.deb` con le loro impronte SHA-256. Per distribuirla: in DuMetodo, *Amministrazione →
 Aggiornamenti del client*, carica quel file con la versione `0.3.0`; i client la propongono da soli.

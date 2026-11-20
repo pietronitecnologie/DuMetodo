@@ -10,6 +10,7 @@ attuale=$(sed -n 's/^version = "\(.*\)"$/\1/p' client/Cargo.toml)
 [ -z "$(git status --porcelain)" ] || { echo "Ci sono modifiche non salvate:" >&2; git status --short >&2; exit 1; }
 git pull --ff-only
 sed -i "s/^version = \".*\"$/version = \"$versione\"/" client/Cargo.toml
-git add client/Cargo.toml && git commit -m "Client $versione" && git tag "client-v$versione"
+sed -i "/^name = \"dumetodo-client\"$/{n;s/^version = .*/version = \"$versione\"/}" client/Cargo.lock
+git add client/Cargo.toml client/Cargo.lock && git commit -m "Client $versione" && git tag "client-v$versione"
 git push && git push origin "client-v$versione"
 echo "Pubblicazione avviata: tra qualche minuto in GitHub > Releases trovi 'DuMetodo Client $versione'."

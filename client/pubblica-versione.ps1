@@ -21,7 +21,14 @@ git pull --ff-only
 # Scrittura senza BOM: Cargo.toml deve restare UTF-8 semplice.
 $righe = (Get-Content $cargo) -replace '^version = ".+"$', "version = `"$Versione`""
 [System.IO.File]::WriteAllLines((Resolve-Path $cargo), $righe, (New-Object System.Text.UTF8Encoding $false))
-git add $cargo
+# Anche la versione in Cargo.lock (la riga dopo name = "dumetodo-client"), o le build --locked falliscono.
+$lock = "client\Cargo.lock"
+$righe = Get-Content $lock
+for ($i = 0; $i -lt $righe.Count - 1; $i++) {
+    if ($righe[$i] -eq 'name = "dumetodo-client"') { $righe[$i + 1] = "version = `"$Versione`"" }
+}
+[System.IO.File]::WriteAllLines((Resolve-Path $lock), $righe, (New-Object System.Text.UTF8Encoding $false))
+git add $cargo $lock
 git commit -m "Client $Versione"
 git tag "client-v$Versione"
 git push
