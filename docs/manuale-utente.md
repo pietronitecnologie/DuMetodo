@@ -391,7 +391,8 @@ per aprirlo, oppure **Espandi tutto**.
   **Tracciabilità**: i parametri di calcolo e di funzionamento di ciascuna sezione (resa oraria, serie
   Fast/Express, reparti per le richieste materiali…).
 - **Indirizzi email** e **Note e comunicazioni**: destinatari dei report, delle richieste materiali e degli
-  avvisi.
+  avvisi; *Destinatari avvisi del server* ricevono le email di MetodoConsole (servizi fermi, backup non
+  riusciti).
 - **Consegna e file per il gestionale**: i **tracciati** dei file per il gestionale (bolla, DDT).
   **Anteprima con dati d'esempio** mostra il risultato; **Guida al linguaggio** spiega come scriverli.
 - **Client desktop**: voci del menu del tasto destro e scorciatoie da tastiera.

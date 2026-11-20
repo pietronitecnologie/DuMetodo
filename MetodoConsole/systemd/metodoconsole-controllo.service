@@ -1,0 +1,9 @@
+[Unit]
+Description=MetodoConsole: controllo di DuMetodo
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/metodoconsole diagnostica --avvisa --silenzioso
+# 1 = attenzione, 2 = errore: sono esiti del controllo, non guasti del servizio di controllo.
+SuccessExitStatus=1 2

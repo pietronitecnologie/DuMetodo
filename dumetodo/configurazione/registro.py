@@ -398,6 +398,13 @@ PARAMETRI: tuple[Parametro, ...] = (
         legacy=("EMAIL_FIETECNICO_ADDRESS",),
     ),
     Parametro(
+        "email.avvisi_server",
+        Tipo.LISTA_EMAIL,
+        Gruppo.EMAIL,
+        "Destinatari avvisi del server",
+        "Ricevono gli avvisi di MetodoConsole: servizi fermi, errori di diagnostica, backup non riusciti.",
+    ),
+    Parametro(
         "email.magazzino_fornitore",
         Tipo.LISTA_EMAIL,
         Gruppo.EMAIL,

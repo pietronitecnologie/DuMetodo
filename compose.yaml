@@ -39,6 +39,13 @@ services:
     <<: *app
     ports: ["8000:8000"]
     volumes: [media:/app/media]
+    healthcheck:
+      # /salute/ risponde se database e cache funzionano (usato anche da MetodoConsole).
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/salute/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
     depends_on:
       migrate: {condition: service_completed_successfully}
 

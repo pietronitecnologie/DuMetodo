@@ -1,0 +1,10 @@
+[Unit]
+Description=MetodoConsole: backup di DuMetodo
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/metodoconsole backup --avvisa
+Nice=10
+IOSchedulingClass=idle

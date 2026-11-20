@@ -1,0 +1,9 @@
+[Unit]
+Description=MetodoConsole: controllo di DuMetodo ogni 15 minuti
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+
+[Install]
+WantedBy=timers.target

@@ -47,6 +47,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Prima di tutto: /salute/ risponde senza controllo dell'host né redirect https (healthcheck).
+    "dumetodo.core.salute.SaluteMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
