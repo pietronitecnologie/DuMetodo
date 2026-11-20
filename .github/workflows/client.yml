@@ -1,6 +1,8 @@
 name: client
 on:
   push:
+    # Con «tags» va indicato anche «branches», altrimenti i push sui rami non avviano il workflow.
+    branches: ["**"]
     paths: ["client/**", ".github/workflows/client.yml"]
     # Un tag client-vX.Y.Z pubblica la versione come Release di GitHub (vedi client/README.md).
     tags: ["client-v*"]
