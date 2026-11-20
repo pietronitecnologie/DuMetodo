@@ -79,6 +79,11 @@ def test_dati_demo_si_caricano_e_le_pagine_rispondono(client):
     call_command("carica_dati_demo", stdout=out, stderr=StringIO())
     assert "Dati di prova caricati" in out.getvalue()
     assert Ordine.objects.count() == 48 and Ordine.objects.filter(stato="CON").exists()
+    from dumetodo.consegne.models import DDT
+    from dumetodo.gestionale.models import Fattura
+
+    assert DDT.objects.filter(origine="DUM").exists() and Fattura.objects.filter(stato="BOZ").exists()
+    assert "amministrazione" in out.getvalue()
     client.force_login(User.objects.get(username="admin"))
     for nome in [
         "ordini:lista",

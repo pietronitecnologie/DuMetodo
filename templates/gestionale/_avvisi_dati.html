@@ -1,0 +1,6 @@
+{% if problemi_ddt or problemi_fatture %}
+<div class="alert alert-warning py-2 small">
+  <div class="fw-semibold">Dati fiscali incompleti{% if puo_impostazioni %} — <a href="{% url 'gestionale:impostazioni' %}">completa le impostazioni</a>{% endif %}</div>
+  <ul class="mb-0 ps-3">{% for p in problemi_ddt %}<li>DDT: {{ p }}</li>{% endfor %}{% for p in problemi_fatture %}<li>Fatture: {{ p }}</li>{% endfor %}</ul>
+</div>
+{% endif %}

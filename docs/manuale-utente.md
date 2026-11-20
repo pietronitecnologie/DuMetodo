@@ -258,6 +258,9 @@ riscaricabile.
 **DDT registrati** elenca i DDT con il file tecnico e lo stato dell'invio; **Reinvia** ripete l'invio non
 riuscito.
 
+Se il DDT lo emette DuMetodo, con numerazione automatica e stampa di legge, si usa invece
+[Gestionale → DDT da emettere](#ddt-di-legge). Il file tecnico parte allo stesso modo.
+
 ### Importazione ordini
 
 Gli ordini del Cliente arrivano come file `.txt`:
@@ -377,6 +380,102 @@ scarica i dati.
 - **Cambia ordine**: corregge serie, numero, appendice, anno e scadenza di un ordine (con il motivo, che finisce
   nello storico scadenze). Righe, note, tracce e file seguono l'ordine automaticamente.
 
+## Gestionale
+
+La sezione **Gestionale** emette i documenti fiscali partendo dalle righe consegnate in
+[Spedizioni → Consegna](#consegna):
+
+1. i **DDT di legge**, con numerazione progressiva e stampa;
+2. le **fatture differite** in formato elettronico **FatturaPA** (XML da inviare allo SdI);
+3. le **note di credito**, per stornare una fattura.
+
+È **riservata** al profilo **Amministrazione**: non la vedono gli altri utenti, nemmeno gli amministratori di
+sistema.
+
+Il **Riepilogo** mostra a che punto è il lavoro (righe senza DDT, DDT da fatturare, bozze, fatture da inviare)
+e avvisa se mancano dati fiscali.
+
+### DDT di legge
+
+**Gestionale → DDT da emettere** elenca le righe consegnate che non hanno ancora un DDT.
+
+1. Spunta le righe da mettere nel documento. Di solito sono tutte quelle consegnate nella giornata.
+2. Compila i dati del trasporto. I valori predefiniti si impostano in [Impostazioni](#dati-fiscali-e-impostazioni):
+   - data;
+   - causale (vendita, conto lavorazione, reso…);
+   - aspetto esteriore dei beni;
+   - numero di colli e peso;
+   - trasporto a cura del mittente, del destinatario o di un vettore (indica il vettore e il suo indirizzo);
+   - porto (franco o assegnato);
+   - annotazioni.
+3. **Emetti DDT**: DuMetodo assegna il **numero progressivo dell'anno** (1, 2, 3…), genera il **file tecnico** e
+   lo invia ai destinatari configurati, come in Spedizioni → DDT.
+
+Il DDT contiene i dati richiesti dal D.P.R. 472/1996 e fotografa tutto al momento dell'emissione: mittente,
+destinatario, luogo di destinazione, righe e data e ora di inizio del trasporto. Se poi cambiano i dati fiscali,
+il documento già emesso resta com'era. **Stampa** apre il documento pronto per la stampa in A4, con gli spazi
+per le firme.
+
+**Bolle (DDT)** elenca tutti i DDT: quelli emessi da DuMetodo e quelli registrati con il numero del gestionale
+esterno. I numeri già usati da un DDT registrato a mano vengono saltati.
+
+**Annullare un DDT.** Un DDT non ancora fatturato si annulla dal suo dettaglio, indicando il motivo. Il numero
+resta consumato: non si riusa. Le righe tornano tra quelle da emettere. Il file tecnico già inviato non viene
+ritirato, quindi avvisa chi lo ha ricevuto.
+
+### Fatture elettroniche
+
+**Gestionale → Da fatturare** raggruppa per mese i DDT di vendita non ancora fatturati.
+
+1. Spunta i DDT del mese e scegli la data della fattura.
+   - La **fattura differita** (tipo TD24) raccoglie le consegne di un mese e va emessa **entro il 15 del mese
+     successivo**. La pagina indica il termine e lo segnala in rosso se è passato.
+2. **Crea bozza di fattura**: una riga per ogni riga consegnata, con il prezzo e lo sconto dell'ordine e l'aliquota
+   IVA delle impostazioni.
+   - Le righe **scorporate** non si fatturano.
+   - Le righe **senza prezzo** bloccano la bozza: correggi prima l'ordine.
+3. Controlla la bozza. Puoi cambiare data e causale, vedere l'**anteprima** o eliminarla (i DDT tornano da
+   fatturare).
+   - Se mancano dati obbligatori (partita IVA, CAP, codice destinatario…) la pagina li elenca e l'emissione
+     resta bloccata.
+4. **Emetti**: la fattura riceve il **numero definitivo** e DuMetodo scrive il file **XML FatturaPA**.
+   - Il formato del numero si sceglie nelle impostazioni, es. `1`, `1/2026`, `FT1`.
+   - Il nome del file segue le regole dello SdI, es. `IT01234567897_0IPd3.xml`.
+   - Le fatture si numerano in ordine di data: non si emette una fattura con data precedente all'ultima emessa.
+
+Dopo l'emissione:
+
+- **Scarica XML** e invia il file allo **SdI** dal portale «Fatture e Corrispettivi» dell'Agenzia delle Entrate o
+  tramite il tuo intermediario. Poi segna l'esito nel riquadro **Invio allo SdI**: inviata, consegnata o scartata,
+  con eventuali note.
+- **Copia di cortesia**: la versione stampabile da mandare al cliente. Non ha valore fiscale.
+- La fattura emessa **non si modifica e non si elimina**. Per correggerla si usa **Storna con nota di credito**:
+  - nasce una bozza di nota di credito (tipo TD04) con le stesse righe;
+  - per uno storno parziale riduci le quantità (0 toglie la riga);
+  - poi emettila come una fattura.
+
+L'XML segue le specifiche FatturaPA 1.2.2 (formato FPR12, tra privati). Contiene:
+
+- i riferimenti ai DDT (`DatiDDT`);
+- i riepiloghi per aliquota;
+- la natura e il riferimento normativo per le operazioni senza IVA;
+- il **bollo virtuale** da 2 € quando è dovuto;
+- le condizioni di pagamento con scadenza e IBAN.
+
+Prima di usarlo in produzione, controlla la prima fattura con il servizio di verifica dell'Agenzia delle Entrate.
+
+### Dati fiscali e impostazioni
+
+**Gestionale → Dati fiscali e impostazioni** raccoglie i dati che finiscono su DDT e fatture.
+
+| Riquadro | Cosa contiene |
+|---|---|
+| Fornitore (cedente) | Ragione sociale, partita IVA, codice fiscale, sede, regime fiscale, iscrizione REA e capitale sociale, contatti |
+| Cliente (cessionario e destinatario) | Ragione sociale, partita IVA o codice fiscale, sede, **codice destinatario SdI** (7 caratteri) o PEC con codice `0000000`, luogo di destinazione delle merci se diverso dalla sede |
+| IVA, pagamento e DDT | Aliquota IVA, oppure natura e riferimento normativo con aliquota 0. Esigibilità (anche split payment). Modalità e giorni di pagamento, fine mese, IBAN e banca. Formato del numero di fattura. Valori predefiniti dei DDT |
+
+Ogni modifica è registrata nello storico in fondo alla pagina. Questi dati non compaiono in Configurazione.
+
 ## Amministrazione
 
 ### Configurazione
@@ -418,7 +517,7 @@ versione.
 **Amministrazione → Utenti e permessi** gestisce gli accessi senza passare dall'admin tecnico.
 
 - **Nuovo utente**: nome utente, nome, email, password iniziale e un **profilo** di partenza (Operatore,
-  Caporeparto, Amministratore, Cliente). Al primo accesso l'utente dovrà cambiare la password.
+  Caporeparto, Amministratore, Amministrazione, Cliente). Al primo accesso l'utente dovrà cambiare la password.
 - *Utente del Cliente*: scrive le note come Cliente e non vede le note interne.
 - **Password**: *Genera password temporanea* (consigliato) mostra una password **una sola volta**, da comunicare
   all'utente, che la cambierà al primo accesso. In alternativa puoi impostarne una.
@@ -429,6 +528,10 @@ versione.
 
 Regole di sicurezza: non puoi assegnare permessi che tu stesso non hai, né modificare chi ne ha più di te.
 Il **superuser** ha tutti i permessi e accede all'admin tecnico di Django: va dato solo a chi gestisce il server.
+
+La sezione **Gestionale** è **riservata**. I suoi permessi li ha solo chi li riceve esplicitamente, di solito con
+il profilo **Amministrazione** (l'ufficio amministrativo). Non li hanno il profilo Amministratore, il superuser e
+chi «ha tutto». Li assegna un superuser.
 
 ### Reparti
 
@@ -452,6 +555,10 @@ Crea prima i controlli, poi i test che li usano.
 **La pagina degli ordini è vuota.** È voluto: imposta un filtro e premi Cerca.
 
 **Ho dimenticato la password.** Chiedi a un amministratore una password temporanea.
+
+**Non vedo la sezione Gestionale.** È riservata: serve il profilo Amministrazione, che assegna un superuser.
+
+**Ho sbagliato una fattura già emessa.** Non si cancella: stornala con una nota di credito ed emetti quella giusta.
 
 **Il client dice che c'è un aggiornamento.** Premi *Aggiorna ora*: il client si riavvia da solo con le stesse
 schede.

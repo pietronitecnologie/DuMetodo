@@ -1,0 +1,556 @@
+"""Gestionale: emissione dei DDT di legge e delle fatture elettroniche.
+
+Flusso: Spedizioni → Consegna segna le righe come consegnate (bolla per il gestionale, come prima) →
+Gestionale → DDT da emettere assegna il numero progressivo, fotografa i dati di legge e genera/invia il
+file tecnico (lo stesso di Spedizioni → DDT) → Gestionale → Da fatturare raccoglie i DDT di un mese in una
+fattura differita (TD24) → Emetti assegna il numero e scrive l'XML FatturaPA. Una fattura emessa non si
+modifica né si cancella: si storna con una nota di credito (TD04).
+
+Tutte le operazioni sono transazionali e bloccano le righe che toccano; i numeri vengono da ``Numeratore``
+bloccato in scrittura, quindi due emissioni contemporanee non prendono lo stesso numero.
+"""
+
+from __future__ import annotations
+
+import calendar
+import datetime as dt
+from collections.abc import Sequence
+from decimal import Decimal
+from typing import Any
+
+from django.db import transaction
+from django.db.models import Exists, OuterRef, Q, QuerySet
+from django.utils import timezone
+
+from dumetodo.anagrafica.models import Articolo
+from dumetodo.configurazione import servizi as config
+from dumetodo.consegne import servizi as consegne
+from dumetodo.consegne.models import DDT, OrigineDDT, RigaConsegnata
+from dumetodo.core.permessi import F, ha_permesso
+from dumetodo.ordini.servizi import OperazioneNonConsentita
+
+from . import fatturapa
+from .models import Fattura, Numeratore, RigaFattura, StatoFattura, StatoSdI
+
+CAMPI_FORNITORE = (
+    "denominazione",
+    "partita_iva",
+    "codice_fiscale",
+    "indirizzo",
+    "cap",
+    "comune",
+    "provincia",
+    "nazione",
+    "regime_fiscale",
+    "rea_ufficio",
+    "rea_numero",
+    "capitale_sociale",
+    "telefono",
+    "email",
+)
+CAMPI_CLIENTE = (
+    "denominazione",
+    "partita_iva",
+    "codice_fiscale",
+    "indirizzo",
+    "cap",
+    "comune",
+    "provincia",
+    "nazione",
+    "codice_destinatario",
+    "pec",
+)
+
+
+def _richiedi(utente: Any, codice: str) -> None:
+    if not ha_permesso(utente, codice):
+        raise OperazioneNonConsentita("Non hai i permessi per questa operazione (sezione Gestionale).")
+
+
+# ------------------------------------------------------------------------------------ dati fiscali
+def dati_fornitore() -> dict[str, str]:
+    d = {c: str(config.leggi(f"gestionale.fornitore_{c}") or "").strip() for c in CAMPI_FORNITORE}
+    d["denominazione"] = d["denominazione"] or str(config.leggi("azienda.nome_fornitore") or "")
+    d["codice_fiscale"] = d["codice_fiscale"] or d["partita_iva"]
+    return d
+
+
+def dati_cliente() -> dict[str, str]:
+    d = {c: str(config.leggi(f"gestionale.cliente_{c}") or "").strip() for c in CAMPI_CLIENTE}
+    d["denominazione"] = d["denominazione"] or str(config.leggi("azienda.nome_cliente") or "")
+    d["codice_destinatario"] = d["codice_destinatario"].upper()
+    return d
+
+
+def indirizzo_completo(s: dict[str, str]) -> str:
+    prov = f" ({s['provincia']})" if s.get("provincia") else ""
+    return f"{s.get('indirizzo', '')}, {s.get('cap', '')} {s.get('comune', '')}{prov}".strip(" ,")
+
+
+def problemi_dati_ddt() -> list[str]:
+    """Il DDT deve riportare mittente e destinatario (DPR 472/1996)."""
+    p = []
+    for chi, d in (("Fornitore", dati_fornitore()), ("Cliente", dati_cliente())):
+        if not d["denominazione"]:
+            p.append(f"{chi}: ragione sociale mancante.")
+        if not (d["indirizzo"] and d["comune"]):
+            p.append(f"{chi}: indirizzo e comune mancanti.")
+    if not dati_fornitore()["partita_iva"]:
+        p.append("Fornitore: partita IVA mancante.")
+    return p
+
+
+def problemi_dati_fattura() -> list[str]:
+    """Controlli dei dati fiscali con un documento di prova (gli stessi che farà l'emissione)."""
+    prova = _documento_prova()
+    return fatturapa.controlla(prova)
+
+
+def _documento_prova() -> fatturapa.Documento:
+    aliquota, natura = _iva()
+    return fatturapa.Documento(
+        tipo="TD01",
+        numero="1",
+        data=timezone.localdate(),
+        cedente=fatturapa.Soggetto.da_dict(dati_fornitore()),
+        cessionario=fatturapa.Soggetto.da_dict(dati_cliente()),
+        linee=[fatturapa.Linea(1, "Prova", Decimal(1), Decimal(1), aliquota, natura=natura)],
+        progressivo_invio="00001",
+    )
+
+
+def _iva() -> tuple[Decimal, str]:
+    aliquota = Decimal(config.leggi("gestionale.aliquota_iva") or 0)
+    natura = (config.leggi("gestionale.natura_iva") or "") if aliquota == 0 else ""
+    return aliquota, natura
+
+
+def scadenza(data: dt.date, giorni: int, fine_mese: bool) -> dt.date:
+    s = data + dt.timedelta(days=giorni)
+    if fine_mese:
+        s = s.replace(day=calendar.monthrange(s.year, s.month)[1])
+    return s
+
+
+# ------------------------------------------------------------------------------------- numerazione
+def prossimo_numero(tipo: str, anno: int) -> int:
+    """Incrementa e restituisce il numeratore (riga bloccata fino alla fine della transazione)."""
+    Numeratore.objects.get_or_create(tipo=tipo, anno=anno)
+    n = Numeratore.objects.select_for_update().get(tipo=tipo, anno=anno)
+    n.ultimo += 1
+    n.save(update_fields=["ultimo"])
+    return n.ultimo
+
+
+# --------------------------------------------------------------------------------------------- DDT
+def righe_da_emettere() -> QuerySet[RigaConsegnata]:
+    return consegne.righe_senza_ddt()
+
+
+def valori_predefiniti_ddt() -> dict[str, Any]:
+    return {
+        "causale": config.leggi("gestionale.ddt_causale") or "Vendita",
+        "aspetto_beni": config.leggi("gestionale.ddt_aspetto_beni") or "",
+        "trasporto_a_cura": config.leggi("gestionale.ddt_trasporto_a_cura") or "Mittente",
+        "porto": config.leggi("gestionale.ddt_porto") or "Franco",
+        "vettore": config.leggi("gestionale.ddt_vettore") or "",
+        "vettore_indirizzo": config.leggi("gestionale.ddt_vettore_indirizzo") or "",
+    }
+
+
+def _descrizione_articoli(codici: set[str]) -> dict[str, Articolo]:
+    return {a.codice: a for a in Articolo.objects.filter(codice__in=codici)}
+
+
+def _riga_documento(rc: RigaConsegnata, articoli: dict[str, Articolo]) -> dict[str, str]:
+    r = rc.riga
+    a = articoli.get(r.articolo)
+    return {
+        "ordine": r.ordine.codice,
+        "riga": r.n_riga,
+        "codice": r.articolo + (f" {r.variante}" if r.variante else ""),
+        "descrizione": (a.descrizione if a and a.descrizione else r.articolo)[:300],
+        "um": a.get_um_display() if a else "",
+        "qta": quantita_testo(rc.qta),
+    }
+
+
+def quantita_testo(q: Decimal) -> str:
+    """20.000 → «20», 2.500 → «2,5»: sul documento stampato «20.000» si leggerebbe ventimila."""
+    testo = f"{Decimal(q).normalize():f}"
+    return testo.replace(".", ",")
+
+
+@transaction.atomic
+def emetti_ddt(utente: Any, righe_ids: Sequence[int], data: dt.date, campi: dict[str, Any]) -> DDT:
+    """DDT con numerazione progressiva dell'anno e dati di legge; genera e accoda il file tecnico."""
+    _richiedi(utente, F.GESTIONALE_DDT)
+    problemi = problemi_dati_ddt()
+    if problemi:
+        raise OperazioneNonConsentita("Completa i dati fiscali (Gestionale → Impostazioni): " + " ".join(problemi))
+    if data > timezone.localdate():
+        raise OperazioneNonConsentita("La data del DDT non può essere nel futuro.")
+    if campi.get("trasporto_a_cura") == "Vettore" and not (campi.get("vettore") or "").strip():
+        raise OperazioneNonConsentita("Con il trasporto a cura del vettore indica il vettore.")
+    ultimo = DDT.objects.filter(origine=OrigineDDT.DUMETODO, anno=data.year).order_by("-progressivo").first()
+    if ultimo and ultimo.data > data:
+        raise OperazioneNonConsentita(
+            f"Il DDT n. {ultimo.numero} ha data {ultimo.data:%d/%m/%Y}: la numerazione deve seguire le date."
+        )
+    progressivo = prossimo_numero("DDT", data.year)
+    # Numero già usato da un DDT registrato a mano con lo stesso anno: si passa al successivo.
+    while DDT.objects.filter(numero=str(progressivo), anno=data.year).exists():
+        progressivo = prossimo_numero("DDT", data.year)
+    inizio = campi.get("inizio_trasporto") or timezone.now()
+    ddt = consegne.crea_ddt(
+        str(progressivo),
+        data,
+        righe_ids,
+        utente,
+        origine=OrigineDDT.DUMETODO,
+        progressivo=progressivo,
+        causale=campi.get("causale") or "Vendita",
+        aspetto_beni=(campi.get("aspetto_beni") or "")[:100],
+        colli=campi.get("colli"),
+        peso_kg=campi.get("peso_kg"),
+        trasporto_a_cura=campi.get("trasporto_a_cura") or "Mittente",
+        vettore=(campi.get("vettore") or "")[:150],
+        vettore_indirizzo=(campi.get("vettore_indirizzo") or "")[:200],
+        porto=campi.get("porto") or "",
+        inizio_trasporto=inizio,
+        note=(campi.get("note") or "")[:2000],
+    )
+    righe = list(
+        ddt.righe.select_related("riga__ordine").order_by(
+            "riga__ordine__serie", "riga__ordine__numero", "riga__ordine__appendice", "riga__n_riga"
+        )
+    )
+    articoli = _descrizione_articoli({rc.riga.articolo for rc in righe})
+    cliente = dati_cliente()
+    ddt.documento = {
+        "mittente": dati_fornitore(),
+        "destinatario": cliente,
+        "destinazione": config.leggi("gestionale.cliente_destinazione") or "",
+        "righe": [_riga_documento(rc, articoli) for rc in righe],
+    }
+    ddt.save(update_fields=["documento"])
+    return ddt
+
+
+def ddt_fatturato(ddt: DDT) -> bool:
+    return RigaFattura.objects.filter(ddt=ddt).exclude(fattura__tipo="TD04").exists()
+
+
+@transaction.atomic
+def annulla_ddt(utente: Any, ddt_id: int, motivo: str) -> DDT:
+    """Annulla un DDT emesso da DuMetodo: il numero resta (consumato), le righe tornano da emettere."""
+    _richiedi(utente, F.GESTIONALE_DDT)
+    ddt = DDT.objects.select_for_update().get(pk=ddt_id)
+    if not ddt.emesso_da_dumetodo:
+        raise OperazioneNonConsentita("Si annullano solo i DDT emessi da DuMetodo.")
+    if ddt.annullato:
+        raise OperazioneNonConsentita("Il DDT è già annullato.")
+    if ddt_fatturato(ddt):
+        raise OperazioneNonConsentita("Il DDT è già in una fattura: prima elimina la bozza o storna la fattura.")
+    motivo = (motivo or "").strip()
+    if not motivo:
+        raise OperazioneNonConsentita("Indica il motivo dell'annullamento.")
+    ddt.annullato_il, ddt.annullato_da, ddt.motivo_annullamento = timezone.now(), utente, motivo[:200]
+    ddt.save(update_fields=["annullato_il", "annullato_da", "motivo_annullamento"])
+    RigaConsegnata.objects.filter(ddt=ddt).update(ddt=None)
+    return ddt
+
+
+# ----------------------------------------------------------------------------------------- fatture
+def _righe_fatturate() -> QuerySet[RigaFattura]:
+    return RigaFattura.objects.exclude(fattura__tipo="TD04")
+
+
+def righe_da_fatturare(ddt: DDT) -> QuerySet[RigaConsegnata]:
+    """Righe del DDT non ancora in fattura (le scorporate non si fatturano)."""
+    return (
+        ddt.righe.filter(riga__scorporata=False)
+        .exclude(Exists(_righe_fatturate().filter(riga_consegnata=OuterRef("pk"))))
+        .select_related("riga__ordine")
+        .order_by("riga__ordine__serie", "riga__ordine__numero", "riga__ordine__appendice", "riga__n_riga")
+    )
+
+
+def ddt_da_fatturare() -> QuerySet[DDT]:
+    da_fatturare = RigaConsegnata.objects.filter(ddt=OuterRef("pk"), riga__scorporata=False).exclude(
+        Exists(_righe_fatturate().filter(riga_consegnata=OuterRef("pk")))
+    )
+    return (
+        DDT.objects.filter(annullato_il__isnull=True)
+        .filter(Q(causale="") | Q(causale="Vendita"))
+        .filter(Exists(da_fatturare))
+        .order_by("data", "anno", "progressivo", "numero")
+    )
+
+
+def _numero_formattato(progressivo: int, anno: int) -> str:
+    formato = config.leggi("gestionale.formato_numero_fattura") or "{numero}"
+    try:
+        return formato.format(numero=progressivo, anno=anno)[:20]
+    except (KeyError, IndexError, ValueError):
+        return str(progressivo)
+
+
+@transaction.atomic
+def crea_fattura_differita(utente: Any, ddt_ids: Sequence[int], data: dt.date) -> Fattura:
+    """Bozza di fattura differita (TD24) dai DDT di uno stesso mese: una linea per riga consegnata."""
+    _richiedi(utente, F.GESTIONALE_FATTURE)
+    ids = sorted(set(ddt_ids))
+    if not ids:
+        raise OperazioneNonConsentita("Seleziona almeno un DDT.")
+    ddts = list(DDT.objects.select_for_update().filter(pk__in=ids).order_by("data", "progressivo", "numero"))
+    if len(ddts) != len(ids) or any(d.annullato for d in ddts):
+        raise OperazioneNonConsentita("Alcuni DDT non esistono più o sono annullati: ricarica la pagina.")
+    mesi = {(d.data.year, d.data.month) for d in ddts}
+    if len(mesi) > 1:
+        raise OperazioneNonConsentita("La fattura differita raccoglie i DDT di un solo mese: selezionali per mese.")
+    if data < ddts[-1].data:
+        raise OperazioneNonConsentita("La data della fattura non può precedere quella dei DDT.")
+    aliquota, natura = _iva()
+    fattura = Fattura.objects.create(tipo="TD24", data=data, anno=data.year, creata_da=utente)
+    n = 0
+    senza_prezzo = []
+    for ddt in ddts:
+        righe = list(righe_da_fatturare(ddt).select_for_update(of=("self",)))
+        articoli = _descrizione_articoli({rc.riga.articolo for rc in righe})
+        for rc in righe:
+            r = rc.riga
+            if rc.prezzo_unitario is None:
+                senza_prezzo.append(f"{r.ordine.codice} riga {r.n_riga}")
+                continue
+            n += 1
+            sconto = r.sconto or Decimal("0")
+            a = articoli.get(r.articolo)
+            descr = a.descrizione if a and a.descrizione else r.articolo
+            RigaFattura.objects.create(
+                fattura=fattura,
+                n_linea=n,
+                ddt=ddt,
+                riga_consegnata=rc,
+                codice=r.articolo + (f" {r.variante}" if r.variante else ""),
+                descrizione=f"{descr} – ordine {r.ordine.codice} riga {r.n_riga}"[:1000],
+                qta=rc.qta,
+                um=a.get_um_display()[:10] if a else "",
+                prezzo_unitario=rc.prezzo_unitario,
+                sconto_unitario=sconto,
+                totale=fatturapa.arrotonda(rc.qta * (rc.prezzo_unitario - sconto)),
+                aliquota=aliquota,
+                natura=natura,
+            )
+    if senza_prezzo:
+        raise OperazioneNonConsentita(
+            "Righe senza prezzo (correggi l'ordine prima di fatturare): " + ", ".join(senza_prezzo[:10])
+        )
+    if n == 0:
+        raise OperazioneNonConsentita("Nessuna riga da fatturare nei DDT selezionati.")
+    _ricalcola(fattura)
+    return fattura
+
+
+def _ricalcola(fattura: Fattura) -> None:
+    doc = documento(fattura, numero="1", progressivo_invio="00001")
+    fattura.imponibile, fattura.imposta, fattura.totale = fatturapa.totali(doc)
+    fattura.save(update_fields=["imponibile", "imposta", "totale"])
+
+
+def documento(f: Fattura, *, numero: str, progressivo_invio: str) -> fatturapa.Documento:
+    righe = list(f.righe.select_related("ddt"))
+    cedente = f.cedente or dati_fornitore()
+    cessionario = f.cessionario or dati_cliente()
+    rif: dict[int, fatturapa.RiferimentoDDT] = {}
+    for r in righe:
+        if r.ddt_id is not None:
+            rif.setdefault(r.ddt_id, fatturapa.RiferimentoDDT(r.ddt.numero, r.ddt.data)).linee.append(r.n_linea)
+    pag = f.pagamento or {}
+    collegata = None
+    if f.fattura_collegata_id:
+        collegata = (f.fattura_collegata.numero, f.fattura_collegata.data)
+    causali = [f.causale] if f.causale else []
+    return fatturapa.Documento(
+        tipo=f.tipo,
+        numero=numero,
+        data=f.data,
+        cedente=fatturapa.Soggetto.da_dict(cedente),
+        cessionario=fatturapa.Soggetto.da_dict(cessionario),
+        linee=[
+            fatturapa.Linea(
+                numero=r.n_linea,
+                descrizione=r.descrizione,
+                quantita=r.qta,
+                prezzo_unitario=r.prezzo_unitario,
+                aliquota=r.aliquota,
+                codice=r.codice,
+                unita_misura=r.um,
+                sconto_unitario=r.sconto_unitario,
+                natura=r.natura,
+            )
+            for r in righe
+        ],
+        progressivo_invio=progressivo_invio,
+        esigibilita=config.leggi("gestionale.esigibilita_iva") or "I",
+        riferimento_normativo=config.leggi("gestionale.riferimento_normativo") or "",
+        causali=causali,
+        ddt=list(rif.values()),
+        fattura_collegata=collegata,
+        pagamento=fatturapa.Pagamento(
+            modalita=pag.get("modalita", "MP05"),
+            scadenza=dt.date.fromisoformat(pag["scadenza"]) if pag.get("scadenza") else None,
+            iban=pag.get("iban", ""),
+            banca=pag.get("banca", ""),
+        )
+        if pag
+        else None,
+    )
+
+
+def anteprima_errori(fattura: Fattura) -> list[str]:
+    return fatturapa.controlla(documento(fattura, numero="1", progressivo_invio="00001"))
+
+
+@transaction.atomic
+def emetti_fattura(utente: Any, fattura_id: int) -> Fattura:
+    """Assegna il numero, fotografa dati fiscali e pagamento, scrive l'XML. Da qui il documento è definitivo."""
+    _richiedi(utente, F.GESTIONALE_FATTURE)
+    f = Fattura.objects.select_for_update().get(pk=fattura_id)
+    if not f.is_bozza:
+        raise OperazioneNonConsentita("La fattura è già emessa.")
+    if f.data > timezone.localdate():
+        raise OperazioneNonConsentita("La data della fattura non può essere nel futuro.")
+    ultima = Fattura.objects.filter(anno=f.anno, stato=StatoFattura.EMESSA).order_by("-progressivo").first()
+    if ultima and ultima.data > f.data:
+        raise OperazioneNonConsentita(
+            f"L'ultima fattura emessa (n. {ultima.numero}) ha data {ultima.data:%d/%m/%Y}: "
+            "la numerazione deve seguire le date. Cambia la data della bozza."
+        )
+    f.cedente, f.cessionario = dati_fornitore(), dati_cliente()
+    if not f.is_nota_di_credito:
+        giorni = int(config.leggi("gestionale.pagamento_giorni") or 0)
+        f.scadenza = scadenza(f.data, giorni, bool(config.leggi("gestionale.pagamento_fine_mese")))
+        f.pagamento = {
+            "modalita": config.leggi("gestionale.pagamento_modalita") or "MP05",
+            "scadenza": f.scadenza.isoformat(),
+            "iban": config.leggi("gestionale.pagamento_iban") or "",
+            "banca": config.leggi("gestionale.pagamento_banca") or "",
+        }
+    errori = fatturapa.controlla(documento(f, numero="1", progressivo_invio="00001"))
+    if errori:
+        raise OperazioneNonConsentita("Fattura non emessa: " + " ".join(errori))
+    f.progressivo = prossimo_numero("FATTURA", f.anno)
+    f.numero = _numero_formattato(f.progressivo, f.anno)
+    f.progressivo_invio = fatturapa.progressivo_invio(f.pk)
+    doc = documento(f, numero=f.numero, progressivo_invio=f.progressivo_invio)
+    try:
+        f.xml = fatturapa.genera(doc).decode("utf-8")
+    except fatturapa.FatturaNonValida as exc:
+        raise OperazioneNonConsentita(f"Fattura non emessa: {exc}") from exc
+    f.xml_nome = fatturapa.nome_file(doc)
+    f.imponibile, f.imposta, f.totale = fatturapa.totali(doc)
+    f.stato, f.emessa_il, f.emessa_da = StatoFattura.EMESSA, timezone.now(), utente
+    f.save()
+    return f
+
+
+@transaction.atomic
+def modifica_bozza(utente: Any, fattura_id: int, data: dt.date, causale: str) -> Fattura:
+    _richiedi(utente, F.GESTIONALE_FATTURE)
+    f = Fattura.objects.select_for_update().get(pk=fattura_id)
+    if not f.is_bozza:
+        raise OperazioneNonConsentita("Una fattura emessa non si modifica: si storna con una nota di credito.")
+    ultimo_ddt = f.righe.exclude(ddt=None).order_by("-ddt__data").values_list("ddt__data", flat=True).first()
+    if ultimo_ddt and data < ultimo_ddt:
+        raise OperazioneNonConsentita("La data della fattura non può precedere quella dei DDT.")
+    f.data, f.anno, f.causale = data, data.year, (causale or "").strip()[:200]
+    f.save(update_fields=["data", "anno", "causale"])
+    return f
+
+
+@transaction.atomic
+def elimina_bozza(utente: Any, fattura_id: int) -> None:
+    _richiedi(utente, F.GESTIONALE_FATTURE)
+    f = Fattura.objects.select_for_update().get(pk=fattura_id)
+    if not f.is_bozza:
+        raise OperazioneNonConsentita("Una fattura emessa non si elimina: si storna con una nota di credito.")
+    f.delete()
+
+
+@transaction.atomic
+def nota_di_credito(utente: Any, fattura_id: int) -> Fattura:
+    """Bozza di nota di credito (TD04) che storna tutta la fattura: righe uguali, da ridurre se lo storno è parziale."""
+    _richiedi(utente, F.GESTIONALE_FATTURE)
+    origine = Fattura.objects.select_for_update().get(pk=fattura_id)
+    if origine.is_bozza or origine.is_nota_di_credito:
+        raise OperazioneNonConsentita("Si storna solo una fattura emessa.")
+    if origine.note_di_credito.filter(stato=StatoFattura.BOZZA).exists():
+        raise OperazioneNonConsentita("C'è già una nota di credito in bozza per questa fattura.")
+    oggi = timezone.localdate()
+    nota = Fattura.objects.create(
+        tipo="TD04",
+        data=oggi,
+        anno=oggi.year,
+        fattura_collegata=origine,
+        causale=f"Storno fattura n. {origine.numero} del {origine.data:%d/%m/%Y}",
+        creata_da=utente,
+    )
+    for r in origine.righe.all():
+        RigaFattura.objects.create(
+            fattura=nota,
+            n_linea=r.n_linea,
+            codice=r.codice,
+            descrizione=r.descrizione,
+            qta=r.qta,
+            um=r.um,
+            prezzo_unitario=r.prezzo_unitario,
+            sconto_unitario=r.sconto_unitario,
+            totale=r.totale,
+            aliquota=r.aliquota,
+            natura=r.natura,
+        )
+    _ricalcola(nota)
+    return nota
+
+
+@transaction.atomic
+def riduci_riga_nota(utente: Any, riga_id: int, qta: Decimal) -> RigaFattura:
+    """Storno parziale: quantità della riga della nota di credito (0 = la riga non si storna)."""
+    _richiedi(utente, F.GESTIONALE_FATTURE)
+    r = RigaFattura.objects.select_related("fattura").select_for_update(of=("self",)).get(pk=riga_id)
+    f = r.fattura
+    if not (f.is_bozza and f.is_nota_di_credito):
+        raise OperazioneNonConsentita("Si modificano solo le righe di una nota di credito in bozza.")
+    massimo = f.fattura_collegata.righe.filter(n_linea=r.n_linea).values_list("qta", flat=True).first() or r.qta
+    if qta < 0 or qta > massimo:
+        raise OperazioneNonConsentita(f"Quantità tra 0 e {massimo}.")
+    if qta == 0:
+        r.delete()
+        if not f.righe.exists():
+            raise OperazioneNonConsentita("La nota di credito deve avere almeno una riga.")
+    else:
+        r.qta = qta
+        r.totale = fatturapa.arrotonda(qta * (r.prezzo_unitario - r.sconto_unitario))
+        r.save(update_fields=["qta", "totale"])
+    _ricalcola(f)
+    return r
+
+
+@transaction.atomic
+def aggiorna_stato_sdi(utente: Any, fattura_id: int, stato: str, note: str) -> Fattura:
+    _richiedi(utente, F.GESTIONALE_FATTURE)
+    f = Fattura.objects.select_for_update().get(pk=fattura_id)
+    if f.is_bozza:
+        raise OperazioneNonConsentita("La bozza non si invia: prima emetti la fattura.")
+    if stato not in StatoSdI.values:
+        raise OperazioneNonConsentita("Stato non valido.")
+    f.stato_sdi, f.note_sdi = stato, (note or "").strip()[:300]
+    f.save(update_fields=["stato_sdi", "note_sdi"])
+    return f
+
+
+def scadenza_fattura_differita(ddt_data: dt.date) -> dt.date:
+    """Termine di emissione della fattura differita: il 15 del mese successivo a quello dei DDT."""
+    anno, mese = (ddt_data.year + 1, 1) if ddt_data.month == 12 else (ddt_data.year, ddt_data.month + 1)
+    return dt.date(anno, mese, 15)

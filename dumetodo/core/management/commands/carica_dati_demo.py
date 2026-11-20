@@ -131,6 +131,7 @@ class Command(BaseCommand):
         self._tracciabilita()
         self._magazzino()
         self._utilita_e_report()
+        self._gestionale()
 
         self.stdout.write(self.style.SUCCESS("Dati di prova caricati."))
         self.stdout.write(f"  ordini: {Ordine.objects.count()}  ({self._riepilogo_stati()})")
@@ -165,6 +166,7 @@ class Command(BaseCommand):
             ("operatore", "Operatore", ("Marco", "Bianchi")),
             ("caporeparto", "Caporeparto", ("Laura", "Russo")),
             ("cliente", "Cliente", ("Ufficio", "Acquisti")),
+            ("amministrazione", "Amministrazione", ("Giulia", "Conti")),
         ]:
             u, creato = User.objects.get_or_create(
                 username=nome, defaults={"first_name": nominativo[0], "last_name": nominativo[1]}
@@ -388,6 +390,40 @@ class Command(BaseCommand):
             self._prova(report.salva_ore_lavorate, lunedi, str(self.rnd.randint(140, 220)), self.admin)
 
     # ------------------------------------------------------------------ aiuti
+    def _gestionale(self) -> None:
+        """Dati fiscali di FANTASIA (partite IVA formalmente valide), un DDT di legge e una fattura in bozza."""
+        from dumetodo.configurazione import servizi as config
+        from dumetodo.gestionale import servizi as gestionale
+
+        if not config.leggi("gestionale.fornitore_partita_iva"):
+            config.scrivi_molti(
+                {
+                    "gestionale.fornitore_partita_iva": "01234567897",
+                    "gestionale.fornitore_indirizzo": "Via dell'Industria 12",
+                    "gestionale.fornitore_cap": "20090",
+                    "gestionale.fornitore_comune": "Segrate",
+                    "gestionale.fornitore_provincia": "MI",
+                    "gestionale.fornitore_email": "amministrazione@fornitore.example",
+                    "gestionale.cliente_partita_iva": "09876543217",
+                    "gestionale.cliente_indirizzo": "Viale Europa 5",
+                    "gestionale.cliente_cap": "27100",
+                    "gestionale.cliente_comune": "Pavia",
+                    "gestionale.cliente_provincia": "PV",
+                    "gestionale.cliente_codice_destinatario": "ABC1234",
+                    "gestionale.pagamento_iban": "IT60X0542811101000000123456",
+                },
+                self.admin,
+            )
+            config.invalida_cache()
+        ufficio = User.objects.get(username="amministrazione")
+        righe = list(consegne.righe_senza_ddt().values_list("pk", flat=True))
+        if not righe:
+            return
+        campi = {**gestionale.valori_predefiniti_ddt(), "colli": 3, "peso_kg": Decimal("14.5")}
+        ddt = self._prova(gestionale.emetti_ddt, ufficio, righe, self.oggi, campi)
+        if ddt is not None:
+            self._prova(gestionale.crea_fattura_differita, ufficio, [ddt.pk], self.oggi)
+
     def _prova(self, funzione: Any, *args: Any, **kwargs: Any) -> Any:
         """Esegue un servizio; un rifiuto (regola di business) non ferma il caricamento."""
         try:

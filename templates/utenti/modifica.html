@@ -88,7 +88,7 @@
     <form method="post" class="card mb-3" onsubmit="return confirm('Confermi?')">{% csrf_token %}
       <input type="hidden" name="azione" value="superuser">
       <div class="card-header">Superuser</div>
-      <div class="card-body small">Un superuser ha tutti i permessi, anche quelli futuri, e accede all'admin tecnico di Django.
+      <div class="card-body small">Un superuser ha tutti i permessi, anche quelli futuri, tranne quelli riservati della sezione Gestionale, e accede all'admin tecnico di Django.
         Da usare solo per chi gestisce il server.
         <div class="mt-2">{% if utente.is_superuser %}<button class="btn btn-sm btn-outline-danger" name="valore" value="0">Togli superuser</button>
           {% else %}<button class="btn btn-sm btn-outline-dark" name="valore" value="1">Rendi superuser</button>{% endif %}</div></div>
@@ -114,7 +114,7 @@
     <form method="post" class="card">{% csrf_token %}
       <input type="hidden" name="azione" value="permessi">
       <div class="card-header d-flex flex-wrap align-items-center gap-2"><span class="me-auto">Permessi</span>
-        {% if utente.is_superuser %}<span class="badge text-bg-dark">superuser: li ha tutti</span>{% endif %}</div>
+        {% if utente.is_superuser %}<span class="badge text-bg-dark">superuser: li ha tutti tranne il Gestionale</span>{% endif %}</div>
       <fieldset class="card-body" {% if not puo_permessi or utente.is_superuser %}disabled{% endif %}>
         {% if puo_permessi and not utente.is_superuser %}
         <div class="d-flex flex-wrap align-items-end gap-2 mb-3">

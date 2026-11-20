@@ -3,6 +3,8 @@
 {% block contenuto %}
 <div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Registra DDT e invia il file tecnico</h1>
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'consegne:ddt_storico' %}">DDT registrati</a></div>
+{% if puo_gestionale_ddt %}<div class="alert alert-info py-2 small">Il DDT si può anche <b>emettere da DuMetodo</b>, con numerazione automatica e stampa di legge:
+<a href="{% url 'gestionale:ddt_emetti' %}">Gestionale → DDT da emettere</a>. Il file tecnico viene inviato allo stesso modo.</div>{% endif %}
 <form method="post" class="row g-3">{% csrf_token %}
 <div class="col-lg-9">
   <table class="table table-sm bg-white align-middle"><thead><tr>

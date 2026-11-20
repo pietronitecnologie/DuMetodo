@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block titolo %}{{ f }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <a href="{% url 'gestionale:fatture' %}" class="btn btn-sm btn-outline-secondary">← Fatture</a>
+  <h1 class="h4 me-auto mb-0">{{ f.get_tipo_display }} {% if f.numero %}n. {{ f.numero }}{% else %}<span class="badge text-bg-warning align-middle">bozza</span>{% endif %} del {{ f.data|date:"d/m/Y" }}</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'gestionale:fattura_stampa' f.pk %}" target="_blank">{% if f.is_bozza %}Anteprima{% else %}Copia di cortesia{% endif %}</a>
+  {% if not f.is_bozza %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:fattura_xml' f.pk %}">Scarica XML</a>{% endif %}
+</div>
+{% if f.fattura_collegata %}<div class="small mb-2">Storna la fattura <a href="{{ f.fattura_collegata.get_absolute_url }}">{{ f.fattura_collegata }}</a>.</div>{% endif %}
+{% if errori %}<div class="alert alert-warning py-2 small"><b>Da sistemare prima dell'emissione:</b><ul class="mb-0 ps-3">{% for e in errori %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% if puo_impostazioni %}<a href="{% url 'gestionale:impostazioni' %}">Dati fiscali e impostazioni</a>{% endif %}</div>{% endif %}
+<div class="row g-3">
+<div class="col-xl-8">
+  <div class="table-responsive"><table class="table table-sm bg-white align-middle"><thead><tr>
+    <th>#</th><th>Codice</th><th>Descrizione</th><th class="text-end">Qtà</th><th>UM</th><th class="text-end">Prezzo</th><th class="text-end">Sconto</th><th class="text-end">Totale</th><th class="text-end">IVA</th></tr></thead><tbody>
+  {% for r in righe %}<tr><td>{{ r.n_linea }}</td><td class="small">{{ r.codice }}</td><td class="small">{{ r.descrizione }}{% if r.ddt %}<div class="text-muted">DDT {{ r.ddt.numero }}/{{ r.ddt.anno }}</div>{% endif %}</td>
+    <td class="text-end">{% if f.is_bozza and f.is_nota_di_credito and puo_fatture %}
+      <form method="post" class="d-flex gap-1 justify-content-end">{% csrf_token %}<input type="hidden" name="azione" value="riga"><input type="hidden" name="riga" value="{{ r.pk }}">
+        <input class="form-control form-control-sm text-end" style="width:6rem" name="qta" value="{{ r.qta|floatformat:'-3' }}" inputmode="decimal"><button class="btn btn-sm btn-outline-secondary" title="Aggiorna (0 = togli la riga)">✓</button></form>
+      {% else %}{{ r.qta|floatformat:"-3" }}{% endif %}</td>
+    <td>{{ r.um }}</td><td class="text-end">{{ r.prezzo_unitario|floatformat:4 }}</td><td class="text-end">{% if r.sconto_unitario %}{{ r.sconto_unitario|floatformat:4 }}{% endif %}</td>
+    <td class="text-end">{{ r.totale|floatformat:2 }}</td><td class="text-end">{% if r.natura %}{{ r.natura }}{% else %}{{ r.aliquota|floatformat:"-2" }}%{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <table class="table table-sm w-auto ms-auto bg-white"><thead><tr><th>Aliquota</th><th class="text-end">Imponibile</th><th class="text-end">Imposta</th></tr></thead><tbody>
+    {% for r in riepiloghi %}<tr><td>{% if r.natura %}{{ r.natura }}{% else %}{{ r.aliquota|floatformat:"-2" }}%{% endif %}</td><td class="text-end">{{ r.imponibile|floatformat:2 }}</td><td class="text-end">{{ r.imposta|floatformat:2 }}</td></tr>{% endfor %}
+    <tr class="fw-semibold"><td>Totale documento</td><td></td><td class="text-end">€ {{ f.totale|floatformat:2 }}</td></tr></tbody></table>
+</div>
+<div class="col-xl-4">
+  {% if f.is_bozza and puo_fatture %}
+  <form method="post" class="card mb-2">{% csrf_token %}<input type="hidden" name="azione" value="modifica">
+    <div class="card-header">Bozza</div><div class="card-body row g-2">
+      <div class="col-6"><label class="form-label" for="data">Data</label><input class="form-control form-control-sm" type="date" id="data" name="data" value="{{ f.data|date:'Y-m-d' }}" required></div>
+      <div class="col-12"><label class="form-label" for="causale">Causale (facoltativa)</label><input class="form-control form-control-sm" id="causale" name="causale" value="{{ f.causale }}" maxlength="200"></div>
+      <div class="col-12"><button class="btn btn-sm btn-outline-primary">Salva</button></div></div>
+  </form>
+  <form method="post" class="d-flex gap-2 mb-2">{% csrf_token %}
+    <button class="btn btn-primary flex-fill" name="azione" value="emetti" {% if errori %}disabled{% endif %}
+      onclick="return confirm('Emettere il documento? Riceverà il numero definitivo e non sarà più modificabile.')">Emetti</button>
+    <button class="btn btn-outline-danger" name="azione" value="elimina" onclick="return confirm('Eliminare la bozza?')">Elimina bozza</button>
+  </form>
+  <div class="form-text mb-3">All'emissione si fotografano dati fiscali e pagamento attuali e si genera l'XML FatturaPA.</div>
+  {% endif %}
+  {% if not f.is_bozza %}
+  <div class="card mb-2"><div class="card-body small">
+    <div><span class="text-muted">Emessa il</span> {{ f.emessa_il|date:"d/m/Y H:i" }}{% if f.emessa_da %} da {{ f.emessa_da }}{% endif %}</div>
+    <div><span class="text-muted">File:</span> {{ f.xml_nome }}</div>
+    {% if f.scadenza %}<div><span class="text-muted">Scadenza pagamento:</span> {{ f.scadenza|date:"d/m/Y" }}</div>{% endif %}
+  </div></div>
+  {% if puo_fatture %}
+  <form method="post" class="card mb-2">{% csrf_token %}<input type="hidden" name="azione" value="sdi">
+    <div class="card-header">Invio allo SdI</div><div class="card-body">
+      <p class="small text-muted mb-2">Scarica l'XML e invialo dal portale «Fatture e Corrispettivi» o dal tuo intermediario; poi segna qui l'esito.</p>
+      <select class="form-select form-select-sm mb-2" name="stato_sdi">{% for v, e in stati_sdi %}<option value="{{ v }}"{% if f.stato_sdi == v %} selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+      <input class="form-control form-control-sm mb-2" name="note_sdi" value="{{ f.note_sdi }}" maxlength="300" placeholder="Note (es. identificativo SdI, motivo dello scarto)">
+      <button class="btn btn-sm btn-outline-primary">Salva</button></div>
+  </form>
+  {% if not f.is_nota_di_credito %}
+  <form method="post">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" name="azione" value="nota_di_credito"
+    onclick="return confirm('Creare una nota di credito in bozza che storna questa fattura?')">Storna con nota di credito</button></form>
+  {% for n in note_di_credito %}<div class="small mt-1"><a href="{{ n.get_absolute_url }}">{{ n }}</a></div>{% endfor %}
+  {% endif %}{% endif %}{% endif %}
+  {% if ddt %}<div class="small mt-3"><span class="text-muted">DDT fatturati:</span> {% for d in ddt %}<a href="{% url 'gestionale:ddt' d.pk %}">{{ d.numero }}/{{ d.anno }}</a> del {{ d.data|date:"d/m/Y" }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+</div>
+</div>
+{% endblock %}

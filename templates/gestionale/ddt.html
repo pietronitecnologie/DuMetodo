@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titolo %}DDT {{ d.numero }}/{{ d.anno }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <a href="{% url 'gestionale:ddt_lista' %}" class="btn btn-sm btn-outline-secondary">← DDT</a>
+  <h1 class="h4 me-auto mb-0">DDT n. {{ d.numero }}/{{ d.anno }} del {{ d.data|date:"d/m/Y" }}
+    {% if d.annullato %}<span class="badge text-bg-secondary align-middle">annullato</span>{% endif %}</h1>
+  {% if d.emesso_da_dumetodo %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:ddt_stampa' d.pk %}" target="_blank">Stampa</a>{% endif %}
+  {% if d.file_nome %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'consegne:ddt_file' d.pk %}">File tecnico</a>{% endif %}
+</div>
+{% if d.annullato %}<div class="alert alert-secondary py-2 small">Annullato il {{ d.annullato_il|date:"d/m/Y H:i" }}{% if d.annullato_da %} da {{ d.annullato_da }}{% endif %}: {{ d.motivo_annullamento }}. Il numero resta consumato.</div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-4"><div class="card"><div class="card-body small">
+    <div><span class="text-muted">Origine:</span> {{ d.get_origine_display }}</div>
+    {% if d.emesso_da_dumetodo %}
+    <div><span class="text-muted">Destinatario:</span> {{ d.documento.destinatario.denominazione }}</div>
+    <div><span class="text-muted">Causale:</span> {{ d.causale }}</div>
+    <div><span class="text-muted">Aspetto dei beni:</span> {{ d.aspetto_beni|default:"—" }}</div>
+    <div><span class="text-muted">Colli / peso:</span> {{ d.colli|default:"—" }} / {% if d.peso_kg %}{{ d.peso_kg }} kg{% else %}—{% endif %}</div>
+    <div><span class="text-muted">Trasporto a cura:</span> {{ d.trasporto_a_cura }}{% if d.vettore %} ({{ d.vettore }}){% endif %} · porto {{ d.porto|lower }}</div>
+    <div><span class="text-muted">Inizio trasporto:</span> {{ d.inizio_trasporto|date:"d/m/Y H:i" }}</div>
+    {% else %}<div class="text-muted">Numero assegnato dal gestionale esterno: il documento di legge è quello del gestionale.</div>{% endif %}
+    <div class="mt-2"><span class="text-muted">Fatturazione:</span>
+      {% for f in fatture %}<a href="{{ f.get_absolute_url }}">{{ f }}</a>{% if not forloop.last %}, {% endif %}{% empty %}non ancora fatturato{% endfor %}</div>
+  </div></div>
+  {% if puo_ddt and d.emesso_da_dumetodo and not d.annullato and not fatture %}
+  <form method="post" class="card mt-2" onsubmit="return confirm('Annullare il DDT? Il numero resta consumato e le righe tornano da emettere.')">{% csrf_token %}
+    <div class="card-body"><label class="form-label" for="motivo">Annulla il DDT</label>
+      <input class="form-control form-control-sm mb-2" id="motivo" name="motivo" required maxlength="200" placeholder="Motivo (es. errore nei colli)">
+      <button class="btn btn-sm btn-outline-danger">Annulla DDT</button>
+      <div class="form-text">Il file tecnico già inviato non viene ritirato: avvisa chi lo ha ricevuto.</div></div>
+  </form>{% endif %}
+  </div>
+  <div class="col-lg-8"><div class="table-responsive"><table class="table table-sm bg-white">
+    <thead><tr><th>Ordine</th><th>Riga</th><th>Articolo</th><th>Descrizione</th><th class="text-end">Qtà</th></tr></thead><tbody>
+    {% if d.annullato or not righe %}{% for r in d.documento.righe %}<tr class="text-muted"><td>{{ r.ordine }}</td><td>{{ r.riga }}</td><td>{{ r.codice }}</td><td>{{ r.descrizione }}</td><td class="text-end">{{ r.qta }}</td></tr>{% endfor %}
+    {% else %}{% for rc in righe %}<tr><td><a href="{% url 'ordini:dettaglio' rc.riga.ordine_id %}">{{ rc.riga.ordine.codice_breve }}</a></td><td>{{ rc.riga.n_riga }}</td>
+      <td>{{ rc.riga.articolo }} {{ rc.riga.variante }}</td><td></td><td class="text-end">{{ rc.qta|floatformat:"-3" }}</td></tr>{% endfor %}{% endif %}
+    </tbody></table></div></div>
+</div>
+{% endblock %}

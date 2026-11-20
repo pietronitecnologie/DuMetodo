@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "dumetodo.report",
     "dumetodo.utilita",
     "dumetodo.client",
+    "dumetodo.gestionale",
     "dumetodo.magazzino",
     "dumetodo.tracciabilita",
     "dumetodo.chat",

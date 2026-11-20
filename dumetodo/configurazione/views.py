@@ -9,7 +9,7 @@ from dumetodo.core.permessi import F, richiede_permesso
 from . import servizi
 from .forms import ParametriGruppoForm
 from .models import ValoreParametro
-from .registro import Gruppo
+from .registro import GRUPPI_GESTIONALE, Gruppo
 
 
 @richiede_permesso(F.CONFIGURAZIONE)
@@ -18,6 +18,8 @@ def pagina(request: HttpRequest) -> HttpResponse:
     gruppo_attivo = request.POST.get("gruppo")
     forms = []
     for gruppo in Gruppo:
+        if gruppo in GRUPPI_GESTIONALE:  # dati fiscali: solo da Gestionale → Impostazioni (permessi riservati)
+            continue
         if request.method == "POST" and gruppo.name == gruppo_attivo:
             form = ParametriGruppoForm(gruppo, request.POST, request.FILES)
             if form.is_valid():
@@ -40,7 +42,11 @@ def pagina(request: HttpRequest) -> HttpResponse:
 
 @richiede_permesso(F.CONFIGURAZIONE)
 def storico(request: HttpRequest) -> HttpResponse:
-    voci = ValoreParametro.history.select_related("history_user").order_by("-history_date")[:200]
+    voci = (
+        ValoreParametro.history.select_related("history_user")
+        .exclude(chiave__startswith="gestionale.")  # storico dei dati fiscali: in Gestionale → Impostazioni
+        .order_by("-history_date")[:200]
+    )
     return render(request, "configurazione/storico.html", {"voci": voci})
 
 

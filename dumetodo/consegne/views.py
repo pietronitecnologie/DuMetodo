@@ -7,7 +7,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
-from dumetodo.core.permessi import F, richiede_permesso
+from dumetodo.core.permessi import F, ha_permesso, richiede_permesso
 from dumetodo.ordini.models import Ordine, StatoOrdine
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
@@ -49,6 +49,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
             "serie": serie,
             "disponibili": disponibili,
             "totale_righe": sum(o["n"] for o in ordini),
+            "puo_gestionale_ddt": ha_permesso(request.user, F.GESTIONALE_DDT),
         },
     )
 
@@ -144,6 +145,7 @@ def ddt(request: HttpRequest) -> HttpResponse:
         "consegne/ddt.html",
         {
             "righe": servizi.righe_senza_ddt(),
+            "puo_gestionale_ddt": ha_permesso(request.user, F.GESTIONALE_DDT),
             "oggi": oggi,
             "numero": request.POST.get("numero", ""),
             "data": request.POST.get("data", oggi.isoformat()),

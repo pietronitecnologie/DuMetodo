@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>{{ f }}</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  body { font: 11px/1.35 Arial, Helvetica, sans-serif; color: #000; margin: 0 auto; max-width: 190mm; }
+  .comandi { margin: 8px 0; } @media print { .comandi { display: none; } }
+  h1 { font-size: 16px; margin: 0; } table { width: 100%; border-collapse: collapse; }
+  .riquadri { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+  .box { border: 1px solid #000; padding: 5px 7px; } .t { display: block; font-size: 9px; text-transform: uppercase; color: #333; font-weight: bold; }
+  .righe th, .righe td { border: 1px solid #000; padding: 3px 5px; vertical-align: top; } .righe th { background: #eee; font-size: 10px; }
+  .num { text-align: right; white-space: nowrap; } .avviso { font-size: 9px; color: #333; margin-top: 10px; border-top: 1px solid #999; padding-top: 4px; }
+  .bozza { color: #b00; font-weight: bold; font-size: 18px; }
+</style></head>
+<body>
+<div class="comandi"><button onclick="window.print()">Stampa</button></div>
+<table><tr><td>
+  <h1>{{ cedente.denominazione }}</h1>{{ cedente.indirizzo }} – {{ cedente.cap }} {{ cedente.comune }}{% if cedente.provincia %} ({{ cedente.provincia }}){% endif %}<br>
+  P.IVA {{ cedente.partita_iva }}{% if cedente.codice_fiscale and cedente.codice_fiscale != cedente.partita_iva %} – C.F. {{ cedente.codice_fiscale }}{% endif %}{% if cedente.rea_numero %} – REA {{ cedente.rea_ufficio }} {{ cedente.rea_numero }}{% endif %}
+</td><td style="text-align:right;vertical-align:top">
+  <div style="font-size:14px"><b>{{ f.get_tipo_display|upper }}</b></div>
+  {% if f.numero %}<div style="font-size:14px">N. <b>{{ f.numero }}</b> del <b>{{ f.data|date:"d/m/Y" }}</b></div>{% else %}<div class="bozza">BOZZA – non valida</div>{% endif %}
+</td></tr></table>
+<div class="riquadri">
+  <div class="box"><span class="t">Cliente</span><b>{{ cessionario.denominazione }}</b><br>{{ cessionario.indirizzo }}<br>{{ cessionario.cap }} {{ cessionario.comune }}{% if cessionario.provincia %} ({{ cessionario.provincia }}){% endif %}
+    <br>{% if cessionario.partita_iva %}P.IVA {{ cessionario.partita_iva }}{% endif %}{% if cessionario.codice_fiscale %} C.F. {{ cessionario.codice_fiscale }}{% endif %}</div>
+  <div class="box"><span class="t">Riferimenti</span>
+    {% if ddt %}DDT: {% for d in ddt %}n. {{ d.numero }} del {{ d.data|date:"d/m/Y" }}{% if not forloop.last %}; {% endif %}{% endfor %}<br>{% endif %}
+    {% if f.fattura_collegata %}Storno della fattura n. {{ f.fattura_collegata.numero }} del {{ f.fattura_collegata.data|date:"d/m/Y" }}<br>{% endif %}
+    {% if f.causale %}{{ f.causale }}<br>{% endif %}
+    Codice destinatario {{ cessionario.codice_destinatario }}{% if cessionario.pec %} – PEC {{ cessionario.pec }}{% endif %}</div>
+</div>
+<table class="righe"><thead><tr><th style="width:24mm">Codice</th><th>Descrizione</th><th class="num">Qtà</th><th>UM</th><th class="num">Prezzo</th><th class="num">Sconto</th><th class="num">Importo</th><th class="num">IVA</th></tr></thead><tbody>
+{% for r in righe %}<tr><td>{{ r.codice }}</td><td>{{ r.descrizione }}</td><td class="num">{{ r.qta|floatformat:"-3" }}</td><td>{{ r.um }}</td>
+  <td class="num">{{ r.prezzo_unitario|floatformat:4 }}</td><td class="num">{% if r.sconto_unitario %}{{ r.sconto_unitario|floatformat:4 }}{% endif %}</td>
+  <td class="num">{{ r.totale|floatformat:2 }}</td><td class="num">{% if r.natura %}{{ r.natura }}{% else %}{{ r.aliquota|floatformat:"-2" }}%{% endif %}</td></tr>{% endfor %}
+</tbody></table>
+<table style="margin-top:8px"><tr><td style="vertical-align:top;width:55%">
+  {% if pagamento %}<div class="box"><span class="t">Pagamento</span>{{ modalita_pagamento }}{% if pagamento.scadenza %} – scadenza {{ f.scadenza|date:"d/m/Y" }}{% endif %}
+    {% if pagamento.iban %}<br>IBAN {{ pagamento.iban }}{% if pagamento.banca %} – {{ pagamento.banca }}{% endif %}{% endif %}</div>{% endif %}
+  {% if bollo %}<div style="margin-top:4px">Imposta di bollo assolta in modo virtuale (€ 2,00).</div>{% endif %}
+</td><td style="vertical-align:top">
+  <table class="righe"><thead><tr><th>Aliquota</th><th class="num">Imponibile</th><th class="num">Imposta</th></tr></thead><tbody>
+  {% for r in riepiloghi %}<tr><td>{% if r.natura %}{{ r.natura }}{% else %}{{ r.aliquota|floatformat:"-2" }}%{% endif %}</td><td class="num">{{ r.imponibile|floatformat:2 }}</td><td class="num">{{ r.imposta|floatformat:2 }}</td></tr>{% endfor %}
+  <tr><td><b>Totale documento</b></td><td></td><td class="num"><b>€ {{ f.totale|floatformat:2 }}</b></td></tr></tbody></table>
+</td></tr></table>
+<div class="avviso">Copia di cortesia priva di valore fiscale. Il documento valido ai fini fiscali è il file XML trasmesso tramite il Sistema di Interscambio
+(art. 21 D.P.R. 633/1972), disponibile nell'area riservata del sito dell'Agenzia delle Entrate.</div>
+</body></html>

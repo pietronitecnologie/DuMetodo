@@ -8,7 +8,9 @@
   funzione per funzione dalla pagina "Utenti e permessi".
 - Il gruppo "Cliente" resta un'IDENTITÀ (non un permesso): dice se l'utente scrive come Cliente
   o come Fornitore nelle note, e nasconde le note interne.
-- Superuser: ha tutti i permessi.
+- Superuser: ha tutti i permessi, TRANNE le funzioni RISERVATE (sezione Gestionale: DDT di legge e
+  fatture): quelle valgono solo se assegnate esplicitamente all'utente (profilo "Amministrazione"), e
+  non arrivano agli amministratori completi né con il profilo "Amministratore".
 
 Nel codice: ``@richiede_permesso(F.ORDINI_VEDERE)`` sulle viste, ``ha_permesso(utente, F.X)``
 nei servizi, ``{% if perms.core.ordini_prezzi %}`` nei template.
@@ -38,6 +40,7 @@ class Sezione(StrEnum):
     UTILITA = "Utilità"
     AMMINISTRAZIONE = "Amministrazione"
     UTENTI = "Utenti e permessi"
+    GESTIONALE = "Gestionale (riservato)"
 
 
 @dataclass(frozen=True)
@@ -46,6 +49,8 @@ class Funzione:
     sezione: Sezione
     etichetta: str
     descrizione: str = ""
+    # Riservata: mai inclusa in "tutte le funzioni" (profilo Amministratore, superuser, nuove funzioni).
+    riservata: bool = False
 
 
 class F:
@@ -96,6 +101,10 @@ class F:
     REPARTI = "reparti"
     CHAT = "chat"
     QUALITA_TEST = "qualita_test"
+    GESTIONALE_VEDERE = "gestionale_vedere"
+    GESTIONALE_DDT = "gestionale_ddt"
+    GESTIONALE_FATTURE = "gestionale_fatture"
+    GESTIONALE_IMPOSTAZIONI = "gestionale_impostazioni"
 
 
 FUNZIONI: list[Funzione] = [
@@ -167,6 +176,34 @@ FUNZIONI: list[Funzione] = [
     Funzione(F.CHAT, Sezione.UTILITA, "Usare la chat", "Chat 1 a 1 con gli altri utenti nel client desktop."),
     Funzione(F.UTILITA_CAMBIA_ORDINE, Sezione.UTILITA, "Cambia ordine (numero, serie, appendice, scadenza)"),
     Funzione(F.CONFIGURAZIONE, Sezione.AMMINISTRAZIONE, "Configurazione"),
+    Funzione(
+        F.GESTIONALE_VEDERE,
+        Sezione.GESTIONALE,
+        "Vedere bolle e fatture",
+        "Elenchi, stampa dei DDT e delle copie di cortesia, download degli XML.",
+        riservata=True,
+    ),
+    Funzione(
+        F.GESTIONALE_DDT,
+        Sezione.GESTIONALE,
+        "Emettere e annullare i DDT",
+        "Bolle di trasporto con numerazione di legge, dalle righe consegnate.",
+        riservata=True,
+    ),
+    Funzione(
+        F.GESTIONALE_FATTURE,
+        Sezione.GESTIONALE,
+        "Emettere fatture e note di credito",
+        "Fatture differite dai DDT e note di credito in formato FatturaPA (XML).",
+        riservata=True,
+    ),
+    Funzione(
+        F.GESTIONALE_IMPOSTAZIONI,
+        Sezione.GESTIONALE,
+        "Dati fiscali e impostazioni",
+        "Dati fiscali di Fornitore e Cliente, IVA, pagamento, valori predefiniti dei DDT.",
+        riservata=True,
+    ),
     Funzione(F.REPARTI, Sezione.AMMINISTRAZIONE, "Gestire i reparti", "Codice, nome, capacità settimanale, gruppo."),
     Funzione(
         F.QUALITA_TEST,
@@ -221,7 +258,19 @@ _CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.UTENT
 PROFILI: dict[str, set[str]] = {
     "Operatore": _OPERATORE,
     "Caporeparto": _CAPOREPARTO,
-    "Amministratore": {"*"},  # tutte le funzioni
+    "Amministratore": {"*"},  # tutte le funzioni non riservate
+    # Ufficio amministrativo: l'unico profilo con la sezione Gestionale (funzioni riservate).
+    "Amministrazione": {
+        F.ORDINI_VEDERE,
+        F.ORDINI_PREZZI,
+        F.NOTE_SCRIVERE,
+        F.CONSEGNA,
+        F.DDT,
+        F.GESTIONALE_VEDERE,
+        F.GESTIONALE_DDT,
+        F.GESTIONALE_FATTURE,
+        F.GESTIONALE_IMPOSTAZIONI,
+    },
     "Cliente": {F.ORDINI_VEDERE, F.NOTE_SCRIVERE, F.AGENDA, F.TRACCIABILITA_CONSULTA},
 }
 
@@ -249,9 +298,13 @@ def registra_funzioni(funzioni: Iterable[Funzione], profili: dict[str, Iterable[
         PROFILI[nome] |= set(extra)
 
 
+def riservate() -> set[str]:
+    return {f.codice for f in FUNZIONI if f.riservata}
+
+
 def codici_profilo(nome: str) -> set[str]:
     codici = PROFILI[nome]
-    return {f.codice for f in FUNZIONI} if "*" in codici else set(codici)
+    return {f.codice for f in FUNZIONI if not f.riservata} if "*" in codici else set(codici)
 
 
 # --------------------------------------------------------------------------------------------- controlli
@@ -259,7 +312,31 @@ def ha_permesso(user: Any, *codici: str) -> bool:
     """True se l'utente (attivo) ha ALMENO UNO dei permessi indicati."""
     if not getattr(user, "is_authenticated", False) or not user.is_active:
         return False
-    return any(user.has_perm(f"{APP}.{c}") for c in codici)
+    riservati = riservate()
+    for c in codici:
+        if c in riservati:
+            if c in _assegnati(user):
+                return True
+        elif user.has_perm(f"{APP}.{c}"):
+            return True
+    return False
+
+
+def _assegnati(user: Any) -> set[str]:
+    """Permessi di DuMetodo assegnati esplicitamente all'utente (anche via gruppi): per le funzioni riservate
+    non vale l'"ha tutto" del superuser. In cache sull'oggetto utente, come fa Django per has_perm."""
+    cache = getattr(user, "_dm_assegnati", None)
+    if cache is None:
+        from django.contrib.auth.models import Permission
+        from django.db.models import Q
+
+        cache = set(
+            Permission.objects.filter(content_type__app_label=APP, content_type__model="funzionalita")
+            .filter(Q(user=user) | Q(group__user=user))
+            .values_list("codename", flat=True)
+        )
+        user._dm_assegnati = cache
+    return cache
 
 
 def is_cliente(user: Any) -> bool:
@@ -324,7 +401,9 @@ def sincronizza_permessi(**kwargs: Any) -> None:
     esistenti = {p.codename: p for p in Permission.objects.filter(content_type=ct)}
     # Chi ha TUTTE le funzioni esistenti (amministratore completo) riceverà anche quelle nuove:
     # altrimenti ogni aggiornamento che aggiunge una funzione la renderebbe inaccessibile a tutti.
-    amministratori = _utenti_con_tutti(esistenti.values()) if esistenti else []
+    riservati = riservate()
+    normali = [p for c, p in esistenti.items() if c not in riservati]
+    amministratori = _utenti_con_tutti(normali) if normali else []
     nuovi = []
     for codice, nome in dichiarati.items():
         p = esistenti.get(codice)
@@ -338,6 +417,7 @@ def sincronizza_permessi(**kwargs: Any) -> None:
         for u in utenti:
             u.user_permissions.add(*nuovi_perm)
     Permission.objects.filter(content_type=ct).exclude(codename__in=dichiarati).delete()
+    nuovi = [p for p in nuovi if p.codename not in riservati]
     if nuovi:
         for u in amministratori:
             u.user_permissions.add(*nuovi)

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titolo %}Fatture{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><h1 class="h4 me-auto mb-0">Fatture e note di credito</h1>
+  <a class="btn btn-sm btn-primary" href="{% url 'gestionale:da_fatturare' %}">Da fatturare</a></div>
+<form class="d-flex flex-wrap gap-2 mb-2" method="get">
+  <select class="form-select form-select-sm w-auto" name="anno"><option value="">Tutti gli anni</option>{% for a in anni %}<option{% if anno == a|stringformat:"d" %} selected{% endif %}>{{ a }}</option>{% endfor %}</select>
+  <select class="form-select form-select-sm w-auto" name="stato"><option value="">Bozze ed emesse</option>{% for v, e in stati %}<option value="{{ v }}"{% if stato == v %} selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+  <select class="form-select form-select-sm w-auto" name="sdi"><option value="">Ogni stato SdI</option>{% for v, e in stati_sdi %}<option value="{{ v }}"{% if sdi == v %} selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+  <button class="btn btn-sm btn-outline-primary">Filtra</button>
+</form>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle"><thead><tr>
+  <th>Numero</th><th>Data</th><th>Tipo</th><th class="text-end">Imponibile</th><th class="text-end">IVA</th><th class="text-end">Totale</th><th>Stato</th><th>SdI</th><th></th></tr></thead><tbody>
+{% for f in pagina %}<tr>
+  <td><a class="fw-semibold" href="{{ f.get_absolute_url }}">{% if f.numero %}{{ f.numero }}{% else %}bozza {{ f.pk }}{% endif %}</a></td>
+  <td>{{ f.data|date:"d/m/Y" }}</td><td class="small">{{ f.get_tipo_display }}{% if f.fattura_collegata %} di {{ f.fattura_collegata.numero }}{% endif %}</td>
+  <td class="text-end">{{ f.imponibile|floatformat:2 }}</td><td class="text-end">{{ f.imposta|floatformat:2 }}</td><td class="text-end fw-semibold">{{ f.totale|floatformat:2 }}</td>
+  <td>{% if f.is_bozza %}<span class="badge text-bg-warning">bozza</span>{% else %}<span class="badge text-bg-success">emessa</span>{% endif %}</td>
+  <td class="small">{% if not f.is_bozza %}{% if f.stato_sdi == "SCA" %}<span class="text-danger fw-semibold">{{ f.get_stato_sdi_display }}</span>{% else %}{{ f.get_stato_sdi_display }}{% endif %}{% endif %}</td>
+  <td class="text-end">{% if not f.is_bozza %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'gestionale:fattura_xml' f.pk %}">XML</a>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="9" class="text-center text-muted py-4">Nessuna fattura.</td></tr>{% endfor %}
+</tbody></table></div>
+{% include "_paginazione.html" %}
+{% endblock %}

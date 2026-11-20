@@ -11,6 +11,8 @@ def _campo(p: Parametro) -> forms.Field:
     match p.tipo:
         case Tipo.BOOLEANO:
             return forms.BooleanField(**comuni)
+        case Tipo.SCELTA:
+            return forms.ChoiceField(**comuni, choices=p.scelte)
         case Tipo.INTERO:
             return forms.IntegerField(**comuni)
         case Tipo.DECIMALE:

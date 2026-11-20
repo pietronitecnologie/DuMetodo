@@ -41,6 +41,7 @@ class Tipo(StrEnum):
     TRACCIATO = "tracciato"  # formato di un file esportato, nel linguaggio di dumetodo.tracciati
     IMMAGINE = "immagine"  # PNG normalizzato (base64), vedi configurazione/immagini.py
     SEGRETO = "segreto"  # password: salvata cifrata (SegretoParametro), mai mostrata né storicizzata
+    SCELTA = "scelta"  # uno dei valori di Parametro.scelte
 
 
 class Gruppo(StrEnum):
@@ -56,6 +57,13 @@ class Gruppo(StrEnum):
     PIANIFICAZIONE = "Pianificazione e tabulati"
     CLIENT = "Client desktop"
     MAGAZZINO = "Magazzino"
+    # Sezione Gestionale (permessi riservati): si modificano da Gestionale → Impostazioni, non da Configurazione.
+    GESTIONALE_FORNITORE = "Dati fiscali del Fornitore (cedente)"
+    GESTIONALE_CLIENTE = "Dati fiscali del Cliente (cessionario e destinatario)"
+    GESTIONALE_DOCUMENTI = "IVA, pagamento e DDT"
+
+
+GRUPPI_GESTIONALE = (Gruppo.GESTIONALE_FORNITORE, Gruppo.GESTIONALE_CLIENTE, Gruppo.GESTIONALE_DOCUMENTI)
 
 
 @dataclass(frozen=True)
@@ -69,6 +77,7 @@ class Parametro:
     obbligatorio: bool = False
     minimo: Decimal | int | None = None
     legacy: tuple[str, ...] = field(default=())
+    scelte: tuple[tuple[str, str], ...] = field(default=())
 
     # --- conversioni ---------------------------------------------------------------
     def converti(self, valore: Any) -> Any:
@@ -80,6 +89,11 @@ class Parametro:
         match self.tipo:
             case Tipo.TESTO:
                 return str(valore).strip()
+            case Tipo.SCELTA:
+                v = str(valore).strip()
+                if v not in {codice for codice, _ in self.scelte}:
+                    raise ValidationError(f"{self.etichetta}: valore non ammesso ({v!r}).")
+                return v
             case Tipo.SEGRETO:
                 return str(valore)
             case Tipo.IMMAGINE:
@@ -188,6 +202,9 @@ class Parametro:
         if self.tipo == Tipo.IMMAGINE:
             return "immagine caricata"
         return str(valore)
+
+    def etichetta_scelta(self, valore: Any) -> str:
+        return dict(self.scelte).get(str(valore), str(valore or ""))
 
 
 from dumetodo.client.menu import PREDEFINITO as _MENU_PREDEFINITO  # noqa: E402
@@ -625,6 +642,118 @@ PARAMETRI: tuple[Parametro, ...] = (
         minimo=1,
     ),
 )
+
+from dumetodo.gestionale.costanti import (  # noqa: E402
+    CAUSALI_TRASPORTO,
+    ESIGIBILITA_IVA,
+    MODALITA_PAGAMENTO,
+    NATURE_IVA,
+    PORTI,
+    REGIMI_FISCALI,
+    TRASPORTO_A_CURA,
+)
+
+
+def _p(chiave: str, gruppo: Gruppo, etichetta: str, descrizione: str = "", **extra: Any) -> Parametro:
+    return Parametro(f"gestionale.{chiave}", extra.pop("tipo", Tipo.TESTO), gruppo, etichetta, descrizione, **extra)
+
+
+_FORN, _CLI, _DOC = GRUPPI_GESTIONALE
+PARAMETRI_GESTIONALE: tuple[Parametro, ...] = (
+    _p(
+        "fornitore_denominazione", _FORN, "Ragione sociale", "Vuoto = il nome del Fornitore (Configurazione → Azienda)."
+    ),
+    _p("fornitore_partita_iva", _FORN, "Partita IVA", "11 cifre, senza IT."),
+    _p("fornitore_codice_fiscale", _FORN, "Codice fiscale", "Vuoto = uguale alla partita IVA."),
+    _p("fornitore_indirizzo", _FORN, "Indirizzo (via e civico)"),
+    _p("fornitore_cap", _FORN, "CAP"),
+    _p("fornitore_comune", _FORN, "Comune"),
+    _p("fornitore_provincia", _FORN, "Provincia (sigla)"),
+    _p("fornitore_nazione", _FORN, "Nazione (sigla)", default="IT"),
+    _p("fornitore_regime_fiscale", _FORN, "Regime fiscale", tipo=Tipo.SCELTA, scelte=REGIMI_FISCALI, default="RF01"),
+    _p(
+        "fornitore_rea_ufficio", _FORN, "REA: provincia dell'ufficio", "Sigla, es. MI (vuoto = nessuna iscrizione REA)."
+    ),
+    _p("fornitore_rea_numero", _FORN, "REA: numero"),
+    _p("fornitore_capitale_sociale", _FORN, "Capitale sociale versato", "Es. 10000.00 (solo società di capitali)."),
+    _p("fornitore_telefono", _FORN, "Telefono"),
+    _p("fornitore_email", _FORN, "Email"),
+    _p("cliente_denominazione", _CLI, "Ragione sociale", "Vuoto = il nome del Cliente (Configurazione → Azienda)."),
+    _p("cliente_partita_iva", _CLI, "Partita IVA", "Senza prefisso del paese."),
+    _p("cliente_codice_fiscale", _CLI, "Codice fiscale"),
+    _p("cliente_indirizzo", _CLI, "Indirizzo (via e civico)"),
+    _p("cliente_cap", _CLI, "CAP"),
+    _p("cliente_comune", _CLI, "Comune"),
+    _p("cliente_provincia", _CLI, "Provincia (sigla)"),
+    _p("cliente_nazione", _CLI, "Nazione (sigla)", default="IT"),
+    _p("cliente_codice_destinatario", _CLI, "Codice destinatario SdI", "7 caratteri (0000000 se si usa la PEC)."),
+    _p("cliente_pec", _CLI, "PEC", "Solo con codice destinatario 0000000."),
+    _p(
+        "cliente_destinazione",
+        _CLI,
+        "Luogo di destinazione delle merci",
+        "Sui DDT, se diverso dalla sede (es. «Magazzino, via …, CAP Comune (PV)»).",
+    ),
+    _p("aliquota_iva", _DOC, "Aliquota IVA (%)", tipo=Tipo.DECIMALE, default=Decimal("22"), minimo=Decimal("0")),
+    _p(
+        "natura_iva",
+        _DOC,
+        "Natura (solo con aliquota 0)",
+        "Motivo per cui l'IVA non si applica (esente, non imponibile, reverse charge…).",
+        tipo=Tipo.SCELTA,
+        scelte=NATURE_IVA,
+        default="",
+    ),
+    _p("riferimento_normativo", _DOC, "Riferimento normativo (con aliquota 0)", "Es. «Art. 8 c.1 lett. c DPR 633/72»."),
+    _p("esigibilita_iva", _DOC, "Esigibilità IVA", tipo=Tipo.SCELTA, scelte=ESIGIBILITA_IVA, default="I"),
+    _p(
+        "pagamento_modalita", _DOC, "Modalità di pagamento", tipo=Tipo.SCELTA, scelte=MODALITA_PAGAMENTO, default="MP05"
+    ),
+    _p("pagamento_giorni", _DOC, "Giorni di pagamento", tipo=Tipo.INTERO, default=60, minimo=0),
+    _p(
+        "pagamento_fine_mese",
+        _DOC,
+        "Scadenza a fine mese",
+        "Es. 60 giorni fine mese.",
+        tipo=Tipo.BOOLEANO,
+        default=True,
+    ),
+    _p("pagamento_iban", _DOC, "IBAN (per i bonifici)"),
+    _p("pagamento_banca", _DOC, "Banca"),
+    _p(
+        "formato_numero_fattura",
+        _DOC,
+        "Formato del numero di fattura",
+        "{numero} = progressivo dell'anno, {anno} = anno. Es. «{numero}» oppure «{numero}/{anno}» o «FT{numero}».",
+        default="{numero}",
+    ),
+    _p(
+        "ddt_causale",
+        _DOC,
+        "DDT: causale del trasporto predefinita",
+        tipo=Tipo.SCELTA,
+        scelte=CAUSALI_TRASPORTO,
+        default="Vendita",
+    ),
+    _p("ddt_aspetto_beni", _DOC, "DDT: aspetto dei beni predefinito", default="Scatole"),
+    _p(
+        "ddt_trasporto_a_cura",
+        _DOC,
+        "DDT: trasporto a cura di",
+        tipo=Tipo.SCELTA,
+        scelte=TRASPORTO_A_CURA,
+        default="Mittente",
+    ),
+    _p("ddt_porto", _DOC, "DDT: porto", tipo=Tipo.SCELTA, scelte=PORTI, default="Franco"),
+    _p(
+        "ddt_vettore",
+        _DOC,
+        "DDT: vettore predefinito",
+        "Ragione sociale del corriere, se il trasporto è a cura del vettore.",
+    ),
+    _p("ddt_vettore_indirizzo", _DOC, "DDT: indirizzo del vettore"),
+)
+PARAMETRI = PARAMETRI + PARAMETRI_GESTIONALE
 
 REGISTRO: dict[str, Parametro] = {p.chiave: p for p in PARAMETRI}
 assert len(REGISTRO) == len(PARAMETRI), "chiavi duplicate nel registro parametri"

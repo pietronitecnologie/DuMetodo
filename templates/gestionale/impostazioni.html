@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titolo %}Dati fiscali e impostazioni{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-1">Dati fiscali e impostazioni</h1>
+<p class="small text-muted mb-2">Usati su DDT e fatture. Ogni documento fotografa i dati al momento dell'emissione: cambiarli non modifica i documenti già emessi.</p>
+{% include "gestionale/_avvisi_dati.html" %}
+<div class="row g-2 align-items-start">
+{% for form in forms %}
+  <div class="col-xl-4 col-lg-6">
+    <form method="post" class="card" id="gruppo-{{ form.gruppo.name }}">{% csrf_token %}
+      <input type="hidden" name="gruppo" value="{{ form.gruppo.name }}">
+      <div class="card-header">{{ form.gruppo.value }}{% if form.errors %} <span class="badge text-bg-danger ms-1">da correggere</span>{% endif %}</div>
+      <div class="card-body dm-config">{% for campo in form %}{% include "_campo.html" %}{% endfor %}</div>
+      <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Salva</button></div>
+    </form>
+  </div>
+{% endfor %}
+</div>
+<details class="card mt-3 dm-config"><summary class="card-header">Storico delle modifiche ({{ storico|length }})</summary>
+  <ul class="list-group list-group-flush small">{% for v in storico %}<li class="list-group-item"><span class="text-muted">{{ v.history_date|date:"d/m/Y H:i" }}</span>
+    · {{ v.history_user|default:"sistema" }} · {{ v.chiave }} = {{ v.valore }}</li>{% empty %}<li class="list-group-item text-muted">Nessuna modifica.</li>{% endfor %}</ul></details>
+<script>document.querySelectorAll('.dm-config input:not([type=hidden]), .dm-config textarea, .dm-config select').forEach(e => { if (e.type === 'checkbox') e.classList.add('form-check-input'); else if (e.tagName === 'SELECT') e.classList.add('form-select', 'form-select-sm'); else e.classList.add('form-control', 'form-control-sm'); });</script>
+{% endblock %}

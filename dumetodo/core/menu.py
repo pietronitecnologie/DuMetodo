@@ -106,6 +106,18 @@ MENU: tuple[Sezione, ...] = (
         ),
     ),
     Sezione(
+        "Gestionale",
+        "gestionale",
+        (
+            Voce("Riepilogo", "gestionale:indice", (F.GESTIONALE_VEDERE,)),
+            Voce("DDT da emettere", "gestionale:ddt_emetti", (F.GESTIONALE_DDT,)),
+            Voce("Bolle (DDT)", "gestionale:ddt_lista", (F.GESTIONALE_VEDERE,)),
+            Voce("Da fatturare", "gestionale:da_fatturare", (F.GESTIONALE_FATTURE,)),
+            Voce("Fatture e note di credito", "gestionale:fatture", (F.GESTIONALE_VEDERE,)),
+            Voce("Dati fiscali e impostazioni", "gestionale:impostazioni", (F.GESTIONALE_IMPOSTAZIONI,)),
+        ),
+    ),
+    Sezione(
         "Amministrazione",
         "impostazioni",
         (

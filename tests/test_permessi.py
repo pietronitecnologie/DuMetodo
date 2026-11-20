@@ -25,7 +25,9 @@ def test_profili(db):
     applica_profilo(u, "Cliente")
     u = User.objects.get(pk=u.pk)
     assert is_cliente(u) and ha_permesso(u, F.ORDINI_VEDERE) and not ha_permesso(u, F.CONSEGNA)
-    assert codici_profilo("Amministratore") == {f.codice for f in FUNZIONI}
+    # "tutte" le funzioni, tranne le riservate (Gestionale): quelle solo con il profilo Amministrazione
+    assert codici_profilo("Amministratore") == {f.codice for f in FUNZIONI if not f.riservata}
+    assert {f.codice for f in FUNZIONI if f.riservata} <= codici_profilo("Amministrazione")
 
 
 def test_utente_disattivo_non_ha_permessi(db):

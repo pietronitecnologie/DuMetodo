@@ -37,7 +37,20 @@ class Consegna(models.Model):
         return reverse("consegne:dettaglio", args=[self.pk])
 
 
+class OrigineDDT(models.TextChoices):
+    ESTERNO = "EST", "Numero dal gestionale esterno"
+    DUMETODO = "DUM", "Emesso da DuMetodo"
+
+
 class DDT(models.Model):
+    """DDT delle righe consegnate.
+
+    Due origini: il numero scritto a mano dal gestionale esterno (Spedizioni → DDT) oppure il documento di
+    trasporto EMESSO da DuMetodo (Gestionale → DDT), con numerazione progressiva per anno e i dati di legge
+    (DPR 472/1996): mittente, destinatario, destinazione e righe fotografati all'emissione, causale,
+    aspetto dei beni, colli, peso, trasporto, porto. In entrambi i casi il file tecnico è lo stesso.
+    """
+
     numero = models.CharField("numero DDT", max_length=20)
     anno = models.PositiveSmallIntegerField("anno")
     data = models.DateField("data DDT")
@@ -48,6 +61,27 @@ class DDT(models.Model):
     email = models.ForeignKey(
         "comunicazioni.EmailInUscita", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
+    origine = models.CharField(max_length=3, choices=OrigineDDT.choices, default=OrigineDDT.ESTERNO)
+    # --- dati di legge (solo DDT emessi da DuMetodo)
+    progressivo = models.PositiveIntegerField("progressivo dell'anno", null=True, blank=True)
+    # Fotografia all'emissione: mittente, destinatario, destinazione e righe stampate (il documento di legge
+    # non cambia se poi cambiano anagrafiche o configurazione).
+    documento = models.JSONField("dati del documento all'emissione", default=dict, blank=True)
+    causale = models.CharField("causale del trasporto", max_length=60, blank=True, default="")
+    aspetto_beni = models.CharField("aspetto esteriore dei beni", max_length=100, blank=True, default="")
+    colli = models.PositiveIntegerField("numero di colli", null=True, blank=True)
+    peso_kg = models.DecimalField("peso (kg)", max_digits=10, decimal_places=2, null=True, blank=True)
+    trasporto_a_cura = models.CharField("trasporto a cura di", max_length=20, blank=True, default="")
+    vettore = models.CharField("vettore", max_length=150, blank=True, default="")
+    vettore_indirizzo = models.CharField("indirizzo del vettore", max_length=200, blank=True, default="")
+    porto = models.CharField("porto", max_length=20, blank=True, default="")
+    inizio_trasporto = models.DateTimeField("inizio del trasporto", null=True, blank=True)
+    note = models.TextField("annotazioni", blank=True, default="")
+    annullato_il = models.DateTimeField(null=True, blank=True)
+    annullato_da = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    motivo_annullamento = models.CharField(max_length=200, blank=True, default="")
 
     class Meta:
         verbose_name = "DDT"
@@ -57,6 +91,14 @@ class DDT(models.Model):
 
     def __str__(self) -> str:
         return f"DDT {self.numero}/{self.anno}"
+
+    @property
+    def emesso_da_dumetodo(self) -> bool:
+        return self.origine == OrigineDDT.DUMETODO
+
+    @property
+    def annullato(self) -> bool:
+        return self.annullato_il is not None
 
 
 class RigaConsegnata(models.Model):

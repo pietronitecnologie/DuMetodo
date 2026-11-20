@@ -36,5 +36,6 @@ urlpatterns = [
     path("chat/", include("dumetodo.chat.urls")),
     path("tracciabilita/", include("dumetodo.tracciabilita.urls")),
     path("client/", include("dumetodo.client.urls")),
+    path("gestionale/", include("dumetodo.gestionale.urls")),
     path("admin/", admin.site.urls),
 ]

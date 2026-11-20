@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>DDT {{ d.numero }}/{{ d.anno }}</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  body { font: 11px/1.35 Arial, Helvetica, sans-serif; color: #000; margin: 0 auto; max-width: 190mm; }
+  .comandi { margin: 8px 0; } @media print { .comandi { display: none; } }
+  h1 { font-size: 16px; margin: 0; } table { width: 100%; border-collapse: collapse; }
+  .riquadri { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+  .box { border: 1px solid #000; padding: 5px 7px; min-height: 18mm; } .box b.t { display: block; font-size: 9px; text-transform: uppercase; color: #333; }
+  .righe th, .righe td { border: 1px solid #000; padding: 3px 5px; vertical-align: top; } .righe th { background: #eee; font-size: 10px; }
+  .num { text-align: right; white-space: nowrap; } .dati td { border: 1px solid #000; padding: 3px 5px; width: 25%; } .dati b { display: block; font-size: 9px; text-transform: uppercase; }
+  .firme { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; } .firme div { border-top: 1px solid #000; padding-top: 2px; height: 18mm; font-size: 9px; }
+  .annullato { color: #b00; font-size: 20px; font-weight: bold; border: 3px solid #b00; padding: 4px 10px; display: inline-block; transform: rotate(-4deg); }
+</style></head>
+<body>
+<div class="comandi"><button onclick="window.print()">Stampa</button></div>
+{% with m=doc.mittente t=doc.destinatario %}
+<table><tr><td>
+  <h1>{{ m.denominazione }}</h1>{{ m.indirizzo }} – {{ m.cap }} {{ m.comune }}{% if m.provincia %} ({{ m.provincia }}){% endif %}<br>
+  P.IVA {{ m.partita_iva }}{% if m.codice_fiscale and m.codice_fiscale != m.partita_iva %} – C.F. {{ m.codice_fiscale }}{% endif %}{% if m.rea_numero %} – REA {{ m.rea_ufficio }} {{ m.rea_numero }}{% endif %}
+  {% if m.telefono or m.email %}<br>{{ m.telefono }} {{ m.email }}{% endif %}
+</td><td style="text-align:right;vertical-align:top">
+  <div style="font-size:13px"><b>DOCUMENTO DI TRASPORTO</b><br>(D.P.R. 472 del 14/08/1996)</div>
+  <div style="font-size:15px;margin-top:4px">N. <b>{{ d.numero }}/{{ d.anno }}</b> del <b>{{ d.data|date:"d/m/Y" }}</b></div>
+  {% if d.annullato %}<div class="annullato">ANNULLATO</div>{% endif %}
+</td></tr></table>
+<div class="riquadri">
+  <div class="box"><b class="t">Destinatario</b><b>{{ t.denominazione }}</b><br>{{ t.indirizzo }}<br>{{ t.cap }} {{ t.comune }}{% if t.provincia %} ({{ t.provincia }}){% endif %}
+    {% if t.partita_iva %}<br>P.IVA {{ t.partita_iva }}{% endif %}</div>
+  <div class="box"><b class="t">Luogo di destinazione</b>{% if doc.destinazione %}{{ doc.destinazione|linebreaksbr }}{% else %}Sede del destinatario{% endif %}</div>
+</div>
+{% endwith %}
+<table class="dati"><tr>
+  <td><b>Causale del trasporto</b>{{ d.causale }}</td><td><b>Trasporto a cura del</b>{{ d.trasporto_a_cura }}</td>
+  <td><b>Porto</b>{{ d.porto }}</td><td><b>Inizio trasporto</b>{{ d.inizio_trasporto|date:"d/m/Y H:i" }}</td></tr></table>
+<table class="righe" style="margin-top:8px"><thead><tr><th style="width:24mm">Codice</th><th>Descrizione</th><th style="width:30mm">Rif. ordine</th><th style="width:12mm">U.M.</th><th style="width:20mm" class="num">Quantità</th></tr></thead><tbody>
+{% for r in doc.righe %}<tr><td>{{ r.codice }}</td><td>{{ r.descrizione }}</td><td>{{ r.ordine }} r.{{ r.riga }}</td><td>{{ r.um }}</td><td class="num">{{ r.qta }}</td></tr>{% endfor %}
+</tbody></table>
+<table class="dati" style="margin-top:8px"><tr>
+  <td><b>Aspetto esteriore dei beni</b>{{ d.aspetto_beni|default:"&nbsp;" }}</td><td><b>N. colli</b>{{ d.colli|default:"&nbsp;" }}</td>
+  <td><b>Peso (kg)</b>{{ d.peso_kg|default:"&nbsp;" }}</td><td><b>Vettore</b>{{ d.vettore|default:"&nbsp;" }}{% if d.vettore_indirizzo %}<br>{{ d.vettore_indirizzo }}{% endif %}</td></tr></table>
+{% if d.note %}<div class="box" style="margin-top:8px;min-height:0"><b class="t">Annotazioni</b>{{ d.note|linebreaksbr }}</div>{% endif %}
+<div class="firme"><div>Firma del conducente</div><div>Firma del vettore</div><div>Firma del destinatario</div></div>
+</body></html>

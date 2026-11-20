@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titolo %}Da fatturare{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-1">DDT da fatturare</h1>
+<p class="small text-muted">Una <b>fattura differita</b> (TD24) raccoglie i DDT di vendita di uno stesso mese e va emessa entro il <b>15 del mese successivo</b>.
+Le righe scorporate non si fatturano; le righe senza prezzo vanno corrette nell'ordine prima di fatturare.</p>
+{% for m in mesi %}
+<form method="post" class="card mb-3">{% csrf_token %}
+  <div class="card-header d-flex flex-wrap align-items-center gap-2">
+    <span class="me-auto fw-semibold text-capitalize">{{ m.mese|date:"F Y" }}</span>
+    <span class="small {% if m.in_ritardo %}text-danger fw-semibold{% else %}text-muted{% endif %}">emettere entro il {{ m.termine|date:"d/m/Y" }}</span>
+  </div>
+  <div class="table-responsive"><table class="table table-sm mb-0 align-middle"><thead><tr>
+    <th><input type="checkbox" class="form-check-input" checked onclick="this.closest('form').querySelectorAll('input[name=ddt]').forEach(c => c.checked = this.checked)" title="Tutti"></th>
+    <th>DDT</th><th>Data</th><th>Origine</th><th class="text-end">Righe</th></tr></thead><tbody>
+  {% for d in m.ddt %}<tr><td><input type="checkbox" class="form-check-input" name="ddt" value="{{ d.pk }}" checked></td>
+    <td><a href="{% url 'gestionale:ddt' d.pk %}">{{ d.numero }}/{{ d.anno }}</a></td><td>{{ d.data|date:"d/m/Y" }}</td>
+    <td class="small">{{ d.get_origine_display }}</td><td class="text-end">{{ d.n_righe }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <div class="card-footer d-flex flex-wrap align-items-end gap-2">
+    <div><label class="form-label" for="data-{{ m.chiave }}">Data della fattura</label>
+      <input class="form-control form-control-sm" type="date" id="data-{{ m.chiave }}" name="data" value="{{ m.data_proposta }}" required></div>
+    <button class="btn btn-sm btn-primary">Crea bozza di fattura</button>
+    <span class="form-text">La bozza si controlla prima di emetterla: numero e XML si generano solo all'emissione.</span>
+  </div>
+</form>
+{% empty %}<div class="alert alert-light border">Nessun DDT da fatturare.</div>{% endfor %}
+{% endblock %}

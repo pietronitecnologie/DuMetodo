@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titolo %}Gestionale{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-1">Gestionale</h1>
+<p class="small text-muted mb-3">Documenti di trasporto con numerazione di legge e fatture elettroniche (FatturaPA) dalle righe consegnate.
+Sezione riservata al profilo <b>Amministrazione</b>.</p>
+{% include "gestionale/_avvisi_dati.html" %}
+<div class="row g-2">
+  <div class="col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">1. Righe consegnate senza DDT</div><div class="fs-3 fw-semibold">{{ righe_da_emettere }}</div>
+    {% if puo_ddt %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:ddt_emetti' %}">Emetti DDT</a>{% endif %}
+  </div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">2. DDT da fatturare</div><div class="fs-3 fw-semibold">{{ ddt_da_fatturare }}</div>
+    {% if puo_fatture %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:da_fatturare' %}">Crea fattura differita</a>{% endif %}
+  </div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">3. Fatture in bozza</div><div class="fs-3 fw-semibold">{{ bozze }}</div>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'gestionale:fatture' %}?stato=BOZ">Controlla ed emetti</a>
+  </div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">4. Emesse da inviare allo SdI</div><div class="fs-3 fw-semibold">{{ da_inviare }}{% if scartate %} <span class="badge text-bg-danger fs-6 align-middle">{{ scartate }} scartate</span>{% endif %}</div>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'gestionale:fatture' %}?sdi=DAI">Scarica gli XML</a>
+  </div></div></div>
+</div>
+<p class="small text-muted mt-3">Nel {{ anno }}: {{ ddt_anno }} DDT emessi, {{ fatture_anno }} fatture emesse.
+<a href="{% url 'gestionale:ddt_lista' %}">Tutti i DDT</a> · <a href="{% url 'gestionale:fatture' %}">Tutte le fatture</a></p>
+{% endblock %}

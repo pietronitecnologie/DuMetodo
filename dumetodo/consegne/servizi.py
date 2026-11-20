@@ -161,10 +161,20 @@ def _accoda_file_tecnico(ddt: DDT) -> Any:
 
 @transaction.atomic
 def registra_ddt(numero: str, data: dt.date, righe_ids: Sequence[int], utente: Any) -> DDT:
+    """DDT con il numero assegnato dal gestionale esterno (Spedizioni → DDT)."""
     _richiedi(utente, F.DDT)
     numero = (numero or "").strip()
     if not _RE_NUMERO_DDT.match(numero):
         raise OperazioneNonConsentita("Numero DDT non valido (lettere, cifre, / - _, massimo 20 caratteri).")
+    return crea_ddt(numero, data, righe_ids, utente)
+
+
+def crea_ddt(numero: str, data: dt.date, righe_ids: Sequence[int], utente: Any, **campi: Any) -> DDT:
+    """Crea il DDT sulle righe consegnate, genera il file tecnico e lo accoda per l'invio.
+
+    Usato sia per i DDT del gestionale esterno sia per quelli emessi da DuMetodo (Gestionale), che passano in
+    ``campi`` origine, progressivo e dati di legge. Va chiamato dentro una transazione; i permessi li controlla
+    il chiamante."""
     ids = set(righe_ids)
     if not ids:
         raise OperazioneNonConsentita("Seleziona almeno una riga.")
@@ -173,7 +183,7 @@ def registra_ddt(numero: str, data: dt.date, righe_ids: Sequence[int], utente: A
     righe = list(RigaConsegnata.objects.select_for_update().filter(pk__in=ids, ddt__isnull=True))
     if len(righe) != len(ids):
         raise OperazioneNonConsentita("Alcune righe sono già state assegnate a un altro DDT: ricarica la pagina.")
-    ddt = DDT.objects.create(numero=numero, anno=data.year, data=data, creato_da=utente)
+    ddt = DDT.objects.create(numero=numero, anno=data.year, data=data, creato_da=utente, **campi)
     RigaConsegnata.objects.filter(pk__in=ids).update(ddt=ddt)
     righe = list(
         RigaConsegnata.objects.filter(ddt=ddt)
