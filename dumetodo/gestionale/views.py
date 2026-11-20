@@ -186,17 +186,34 @@ def ddt_stampa(request: HttpRequest, pk: int) -> HttpResponse:
 def da_fatturare(request: HttpRequest) -> HttpResponse:
     oggi = timezone.localdate()
     if request.method == "POST":
+        p = request.POST
         try:
-            data = _data(request.POST.get("data", ""))
-            ids = [int(i) for i in request.POST.getlist("ddt") if i.isdigit()]
-            f = servizi.crea_fattura_differita(request.user, ids, data)
+            tipo_data = p.get("tipo_data", "scelta")
+            data = _data(p.get("data", "")) if tipo_data == "scelta" else None
+            max_righe = int(p["max_righe"]) if p.get("max_righe", "").strip() else None
+            ids = [int(i) for i in p.getlist("ddt") if i.isdigit()]
+            bozze = servizi.crea_fatture_differite(
+                request.user,
+                ids,
+                raggruppa=p.get("raggruppa", "mese"),
+                max_righe=max_righe,
+                tipo_data=tipo_data,
+                data=data,
+            )
         except ValueError:
-            messages.error(request, "Data della fattura non valida.")
+            messages.error(request, "Controlla la data e il numero di righe.")
         except OperazioneNonConsentita as exc:
             messages.error(request, str(exc))
         else:
-            messages.success(request, "Bozza creata: controlla righe e totali, poi emetti la fattura.")
-            return redirect(f)
+            if len(bozze) == 1:
+                messages.success(request, "Bozza creata: controlla righe e totali, poi emetti la fattura.")
+                return redirect(bozze[0])
+            messages.success(
+                request,
+                f"Create {len(bozze)} bozze, dal {bozze[0].data:%d/%m/%Y} al {bozze[-1].data:%d/%m/%Y}: "
+                "controllale ed emettile (anche tutte insieme, in ordine di data).",
+            )
+            return redirect(f"{reverse('gestionale:fatture')}?stato=BOZ")
     ddts = list(servizi.ddt_da_fatturare().annotate(n_righe=Count("righe")))
     mesi = []
     for (anno, mese), gruppo in groupby(ddts, key=lambda d: (d.data.year, d.data.month)):
@@ -214,12 +231,29 @@ def da_fatturare(request: HttpRequest) -> HttpResponse:
                 "in_ritardo": oggi > termine,
             }
         )
-    return render(request, "gestionale/da_fatturare.html", {"mesi": mesi})
+    return render(
+        request,
+        "gestionale/da_fatturare.html",
+        {"mesi": mesi, "raggruppamenti": servizi.RAGGRUPPAMENTI, "date_fattura": servizi.DATE_FATTURA},
+    )
 
 
-@require_GET
 @richiede_permesso(F.GESTIONALE_VEDERE)
 def fatture(request: HttpRequest) -> HttpResponse:
+    if request.method == "POST":
+        ids = [int(i) for i in request.POST.getlist("bozza") if i.isdigit()]
+        try:
+            emesse, problema = servizi.emetti_bozze(request.user, ids)
+        except OperazioneNonConsentita as exc:
+            messages.error(request, str(exc))
+        else:
+            if emesse:
+                messages.success(
+                    request, f"Emesse {len(emesse)} fatture: dalla n. {emesse[0].numero} alla n. {emesse[-1].numero}."
+                )
+            if problema:
+                messages.error(request, f"Emissione interrotta. {problema}")
+        return redirect(request.get_full_path())
     qs = Fattura.objects.select_related("fattura_collegata").order_by("-anno", "-progressivo", "-id")
     anno, stato, sdi = request.GET.get("anno", ""), request.GET.get("stato", ""), request.GET.get("sdi", "")
     if anno.isdigit():
@@ -239,6 +273,7 @@ def fatture(request: HttpRequest) -> HttpResponse:
             "sdi": sdi,
             "stati": StatoFattura.choices,
             "stati_sdi": StatoSdI.choices,
+            "puo_fatture": ha_permesso(request.user, F.GESTIONALE_FATTURE),
         },
     )
 

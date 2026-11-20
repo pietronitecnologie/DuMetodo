@@ -427,10 +427,25 @@ ritirato, quindi avvisa chi lo ha ricevuto.
 
 **Gestionale → Da fatturare** raggruppa per mese i DDT di vendita non ancora fatturati.
 
-1. Spunta i DDT del mese e scegli la data della fattura.
+1. Spunta i DDT del mese e scegli **come dividerli** e **che data dare** alle fatture.
+
+   | Come dividere | Risultato |
+   |---|---|
+   | Una fattura per tutti i DDT selezionati | Una sola fattura (la classica fattura di fine mese) |
+   | Una fattura per ogni giorno | Una fattura con i DDT di ciascun giorno |
+   | Una fattura per ogni DDT | Una fattura per bolla |
+   | Al massimo N righe per fattura | Le righe, nell'ordine dei DDT, divise in fatture di N righe; un DDT può finire su più fatture, e ognuna lo cita |
+
+   | Data delle fatture | Risultato |
+   |---|---|
+   | La data indicata | Tutte le fatture con la data scelta |
+   | La data dell'ultimo DDT della fattura | Comoda con «una per giorno» o «una per DDT» |
+   | L'ultimo giorno del mese dei DDT | La data tipica della fattura differita |
+
+   La data non può essere precedente ai DDT della fattura né futura.
    - La **fattura differita** (tipo TD24) raccoglie le consegne di un mese e va emessa **entro il 15 del mese
      successivo**. La pagina indica il termine e lo segnala in rosso se è passato.
-2. **Crea bozza di fattura**: una riga per ogni riga consegnata, con il prezzo e lo sconto dell'ordine e l'aliquota
+2. **Crea le bozze**: una riga per ogni riga consegnata, con il prezzo e lo sconto dell'ordine e l'aliquota
    IVA delle impostazioni.
    - Le righe **scorporate** non si fatturano.
    - Le righe **senza prezzo** bloccano la bozza: correggi prima l'ordine.
@@ -442,6 +457,8 @@ ritirato, quindi avvisa chi lo ha ricevuto.
    - Il formato del numero si sceglie nelle impostazioni, es. `1`, `1/2026`, `FT1`.
    - Il nome del file segue le regole dello SdI, es. `IT01234567897_0IPd3.xml`.
    - Le fatture si numerano in ordine di data: non si emette una fattura con data precedente all'ultima emessa.
+   - Con più bozze, in **Fatture e note di credito** spunta le bozze ed **Emetti le bozze selezionate**: DuMetodo le
+     emette in ordine di data, così i numeri seguono le date. Si ferma alla prima che ha un problema e dice quale.
 
 Dopo l'emissione:
 

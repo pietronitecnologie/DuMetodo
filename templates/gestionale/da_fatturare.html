@@ -1,5 +1,13 @@
 {% extends "base.html" %}
-{% block titolo %}Da fatturare{% endblock %}
+{% block titolo %}Da fatturare<script>
+  // Mostra il numero di righe o la data solo quando servono.
+  document.querySelectorAll("select[data-dm-mostra]").forEach((sel) => {
+    const aggiorna = () => document.getElementById(sel.dataset.dmMostra).classList.toggle("d-none", sel.value !== sel.dataset.dmQuando);
+    sel.addEventListener("change", aggiorna);
+    aggiorna();
+  });
+</script>
+{% endblock %}
 {% block contenuto %}
 <h1 class="h4 mb-1">DDT da fatturare</h1>
 <p class="small text-muted">Una <b>fattura differita</b> (TD24) raccoglie i DDT di vendita di uno stesso mese e va emessa entro il <b>15 del mese successivo</b>.
@@ -17,12 +25,31 @@ Le righe scorporate non si fatturano; le righe senza prezzo vanno corrette nell'
     <td><a href="{% url 'gestionale:ddt' d.pk %}">{{ d.numero }}/{{ d.anno }}</a></td><td>{{ d.data|date:"d/m/Y" }}</td>
     <td class="small">{{ d.get_origine_display }}</td><td class="text-end">{{ d.n_righe }}</td></tr>{% endfor %}
   </tbody></table></div>
-  <div class="card-footer d-flex flex-wrap align-items-end gap-2">
-    <div><label class="form-label" for="data-{{ m.chiave }}">Data della fattura</label>
-      <input class="form-control form-control-sm" type="date" id="data-{{ m.chiave }}" name="data" value="{{ m.data_proposta }}" required></div>
-    <button class="btn btn-sm btn-primary">Crea bozza di fattura</button>
-    <span class="form-text">La bozza si controlla prima di emetterla: numero e XML si generano solo all'emissione.</span>
+  <div class="card-footer">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4"><label class="form-label" for="ragg-{{ m.chiave }}">Come dividere</label>
+        <select class="form-select form-select-sm" id="ragg-{{ m.chiave }}" name="raggruppa" data-dm-mostra="righe-{{ m.chiave }}" data-dm-quando="righe">
+          {% for v, e in raggruppamenti %}<option value="{{ v }}">{{ e }}</option>{% endfor %}</select></div>
+      <div class="col-md-2 d-none" id="righe-{{ m.chiave }}"><label class="form-label" for="max-{{ m.chiave }}">Righe per fattura</label>
+        <input class="form-control form-control-sm" type="number" min="1" id="max-{{ m.chiave }}" name="max_righe" value="20"></div>
+      <div class="col-md-3"><label class="form-label" for="tipo-{{ m.chiave }}">Data delle fatture</label>
+        <select class="form-select form-select-sm" id="tipo-{{ m.chiave }}" name="tipo_data" data-dm-mostra="data-{{ m.chiave }}" data-dm-quando="scelta">
+          {% for v, e in date_fattura %}<option value="{{ v }}">{{ e }}</option>{% endfor %}</select></div>
+      <div class="col-md-2" id="data-{{ m.chiave }}"><label class="form-label" for="data-in-{{ m.chiave }}">Data</label>
+        <input class="form-control form-control-sm" type="date" id="data-in-{{ m.chiave }}" name="data" value="{{ m.data_proposta }}"></div>
+      <div class="col-md-auto"><button class="btn btn-sm btn-primary">Crea le bozze</button></div>
+    </div>
+    <div class="form-text">Le bozze si controllano prima di emetterle: numero e XML si generano solo all'emissione, in ordine di data.
+      Con «una per giorno» o «una per DDT» conviene la data dell'ultimo DDT.</div>
   </div>
 </form>
 {% empty %}<div class="alert alert-light border">Nessun DDT da fatturare.</div>{% endfor %}
+<script>
+  // Mostra il numero di righe o la data solo quando servono.
+  document.querySelectorAll("select[data-dm-mostra]").forEach((sel) => {
+    const aggiorna = () => document.getElementById(sel.dataset.dmMostra).classList.toggle("d-none", sel.value !== sel.dataset.dmQuando);
+    sel.addEventListener("change", aggiorna);
+    aggiorna();
+  });
+</script>
 {% endblock %}

@@ -296,10 +296,49 @@ def _numero_formattato(progressivo: int, anno: int) -> str:
         return str(progressivo)
 
 
+RAGGRUPPAMENTI: tuple[tuple[str, str], ...] = (
+    ("mese", "Una fattura per tutti i DDT selezionati"),
+    ("giorno", "Una fattura per ogni giorno"),
+    ("ddt", "Una fattura per ogni DDT"),
+    ("righe", "Al massimo N righe per fattura"),
+)
+DATE_FATTURA: tuple[tuple[str, str], ...] = (
+    ("scelta", "La data indicata"),
+    ("ultimo_ddt", "La data dell'ultimo DDT della fattura"),
+    ("fine_mese", "L'ultimo giorno del mese dei DDT"),
+)
+
+
 @transaction.atomic
 def crea_fattura_differita(utente: Any, ddt_ids: Sequence[int], data: dt.date) -> Fattura:
-    """Bozza di fattura differita (TD24) dai DDT di uno stesso mese: una linea per riga consegnata."""
+    """Una sola bozza di fattura differita (TD24) per i DDT indicati, con la data indicata."""
+    return crea_fatture_differite(utente, ddt_ids, raggruppa="mese", tipo_data="scelta", data=data)[0]
+
+
+@transaction.atomic
+def crea_fatture_differite(
+    utente: Any,
+    ddt_ids: Sequence[int],
+    *,
+    raggruppa: str = "mese",
+    max_righe: int | None = None,
+    tipo_data: str = "scelta",
+    data: dt.date | None = None,
+) -> list[Fattura]:
+    """Bozze di fattura differita (TD24) dai DDT di uno stesso mese, divise come scelto dall'utente.
+
+    ``raggruppa``: ``mese`` (una fattura), ``giorno`` (una per data dei DDT), ``ddt`` (una per DDT), ``righe``
+    (al massimo ``max_righe`` righe per fattura; un DDT può finire su più fatture, ognuna lo cita in DatiDDT).
+    ``tipo_data``: ``scelta`` (``data``), ``ultimo_ddt`` (data dell'ultimo DDT della fattura), ``fine_mese``.
+    Le bozze sono restituite in ordine di data: emetterle in quest'ordine rispetta la numerazione.
+    """
     _richiedi(utente, F.GESTIONALE_FATTURE)
+    if raggruppa not in dict(RAGGRUPPAMENTI) or tipo_data not in dict(DATE_FATTURA):
+        raise OperazioneNonConsentita("Scelta non valida.")
+    if raggruppa == "righe" and not (max_righe and max_righe >= 1):
+        raise OperazioneNonConsentita("Indica il numero massimo di righe per fattura (almeno 1).")
+    if tipo_data == "scelta" and data is None:
+        raise OperazioneNonConsentita("Indica la data delle fatture.")
     ids = sorted(set(ddt_ids))
     if not ids:
         raise OperazioneNonConsentita("Seleziona almeno un DDT.")
@@ -309,47 +348,99 @@ def crea_fattura_differita(utente: Any, ddt_ids: Sequence[int], data: dt.date) -
     mesi = {(d.data.year, d.data.month) for d in ddts}
     if len(mesi) > 1:
         raise OperazioneNonConsentita("La fattura differita raccoglie i DDT di un solo mese: selezionali per mese.")
-    if data < ddts[-1].data:
-        raise OperazioneNonConsentita("La data della fattura non può precedere quella dei DDT.")
-    aliquota, natura = _iva()
-    fattura = Fattura.objects.create(tipo="TD24", data=data, anno=data.year, creata_da=utente)
-    n = 0
+
+    # Tutte le righe da fatturare, nell'ordine dei DDT.
+    voci: list[tuple[DDT, RigaConsegnata]] = []
     senza_prezzo = []
     for ddt in ddts:
-        righe = list(righe_da_fatturare(ddt).select_for_update(of=("self",)))
-        articoli = _descrizione_articoli({rc.riga.articolo for rc in righe})
-        for rc in righe:
-            r = rc.riga
+        for rc in righe_da_fatturare(ddt).select_for_update(of=("self",)):
             if rc.prezzo_unitario is None:
-                senza_prezzo.append(f"{r.ordine.codice} riga {r.n_riga}")
-                continue
-            n += 1
-            sconto = r.sconto or Decimal("0")
-            a = articoli.get(r.articolo)
-            descr = a.descrizione if a and a.descrizione else r.articolo
-            RigaFattura.objects.create(
-                fattura=fattura,
-                n_linea=n,
-                ddt=ddt,
-                riga_consegnata=rc,
-                codice=r.articolo + (f" {r.variante}" if r.variante else ""),
-                descrizione=f"{descr} – ordine {r.ordine.codice} riga {r.n_riga}"[:1000],
-                qta=rc.qta,
-                um=a.get_um_display()[:10] if a else "",
-                prezzo_unitario=rc.prezzo_unitario,
-                sconto_unitario=sconto,
-                totale=fatturapa.arrotonda(rc.qta * (rc.prezzo_unitario - sconto)),
-                aliquota=aliquota,
-                natura=natura,
-            )
+                senza_prezzo.append(f"{rc.riga.ordine.codice} riga {rc.riga.n_riga}")
+            else:
+                voci.append((ddt, rc))
     if senza_prezzo:
         raise OperazioneNonConsentita(
             "Righe senza prezzo (correggi l'ordine prima di fatturare): " + ", ".join(senza_prezzo[:10])
         )
-    if n == 0:
+    if not voci:
         raise OperazioneNonConsentita("Nessuna riga da fatturare nei DDT selezionati.")
+
+    gruppi: list[list[tuple[DDT, RigaConsegnata]]] = []
+    if raggruppa == "mese":
+        gruppi = [voci]
+    elif raggruppa == "righe":
+        gruppi = [voci[i : i + max_righe] for i in range(0, len(voci), max_righe)]  # type: ignore[arg-type]
+    else:
+        chiave = (lambda v: v[0].data) if raggruppa == "giorno" else (lambda v: v[0].pk)
+        per_chiave: dict[Any, list[tuple[DDT, RigaConsegnata]]] = {}
+        for v in voci:
+            per_chiave.setdefault(chiave(v), []).append(v)
+        gruppi = list(per_chiave.values())
+
+    oggi = timezone.localdate()
+    piano = []
+    for gruppo in gruppi:
+        ultimo = max(d.data for d, _ in gruppo)
+        if tipo_data == "ultimo_ddt":
+            giorno = ultimo
+        elif tipo_data == "fine_mese":
+            giorno = ultimo.replace(day=calendar.monthrange(ultimo.year, ultimo.month)[1])
+        else:
+            giorno = data  # type: ignore[assignment]
+        if giorno < ultimo:
+            raise OperazioneNonConsentita(
+                f"La data {giorno:%d/%m/%Y} precede il DDT del {ultimo:%d/%m/%Y}: scegli una data successiva."
+            )
+        if giorno > oggi:
+            raise OperazioneNonConsentita(
+                f"La data {giorno:%d/%m/%Y} è nel futuro: le fatture si emettono a partire da quel giorno."
+            )
+        piano.append((giorno, gruppo))
+    piano.sort(key=lambda x: x[0])
+    return [_crea_bozza(utente, giorno, gruppo) for giorno, gruppo in piano]
+
+
+def _crea_bozza(utente: Any, data: dt.date, voci: list[tuple[DDT, RigaConsegnata]]) -> Fattura:
+    aliquota, natura = _iva()
+    fattura = Fattura.objects.create(tipo="TD24", data=data, anno=data.year, creata_da=utente)
+    articoli = _descrizione_articoli({rc.riga.articolo for _, rc in voci})
+    for n, (ddt, rc) in enumerate(voci, start=1):
+        r = rc.riga
+        sconto = r.sconto or Decimal("0")
+        a = articoli.get(r.articolo)
+        descr = a.descrizione if a and a.descrizione else r.articolo
+        RigaFattura.objects.create(
+            fattura=fattura,
+            n_linea=n,
+            ddt=ddt,
+            riga_consegnata=rc,
+            codice=r.articolo + (f" {r.variante}" if r.variante else ""),
+            descrizione=f"{descr} – ordine {r.ordine.codice} riga {r.n_riga}"[:1000],
+            qta=rc.qta,
+            um=a.get_um_display()[:10] if a else "",
+            prezzo_unitario=rc.prezzo_unitario,
+            sconto_unitario=sconto,
+            totale=fatturapa.arrotonda(rc.qta * (rc.prezzo_unitario - sconto)),
+            aliquota=aliquota,
+            natura=natura,
+        )
     _ricalcola(fattura)
     return fattura
+
+
+def emetti_bozze(utente: Any, fatture_ids: Sequence[int]) -> tuple[list[Fattura], str]:
+    """Emette le bozze indicate in ordine di data (così la numerazione segue le date).
+
+    Si ferma alla prima che non si può emettere: restituisce le emesse e il motivo dell'interruzione."""
+    _richiedi(utente, F.GESTIONALE_FATTURE)
+    bozze = Fattura.objects.filter(pk__in=fatture_ids, stato=StatoFattura.BOZZA).order_by("data", "pk")
+    emesse: list[Fattura] = []
+    for b in bozze:
+        try:
+            emesse.append(emetti_fattura(utente, b.pk))
+        except OperazioneNonConsentita as exc:
+            return emesse, f"Bozza del {b.data:%d/%m/%Y}: {exc}"
+    return emesse, ""
 
 
 def _ricalcola(fattura: Fattura) -> None:

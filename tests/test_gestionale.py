@@ -441,3 +441,81 @@ def test_pagine_del_gestionale(client, db, ufficio, dati_fiscali):
     client.force_login(_utente("op", "Operatore"))
     assert "Gestionale → DDT da emettere" not in client.get("/consegne/ddt/").content.decode()
     assert client.get(f"/gestionale/fatture/{f.pk}/xml/").status_code == 403
+
+
+# ------------------------------------------------------------------- come dividere e datare le fatture
+@pytest.fixture
+def due_giorni(db, ufficio, dati_fiscali):
+    """Tre righe su due DDT di due giorni diversi dello stesso mese (ieri e oggi; il 1° del mese: oggi e oggi)."""
+    ieri = OGGI - dt.timedelta(days=1) if OGGI.day > 1 else OGGI
+    a = _consegna(ufficio, **{"ART-A": (1, Decimal("10")), "ART-B": (2, Decimal("5"))})
+    b = _consegna(ufficio, numero="0004301", **{"ART-C": (3, Decimal("1"))})
+    d1 = servizi.emetti_ddt(ufficio, a, ieri, _campi_ddt())
+    d2 = servizi.emetti_ddt(ufficio, b, OGGI, _campi_ddt())
+    return d1, d2
+
+
+def test_una_fattura_per_ddt_con_la_data_del_ddt(ufficio, due_giorni):
+    d1, d2 = due_giorni
+    bozze = servizi.crea_fatture_differite(ufficio, [d1.pk, d2.pk], raggruppa="ddt", tipo_data="ultimo_ddt")
+    assert [(f.data, f.righe.count()) for f in bozze] == [(d1.data, 2), (d2.data, 1)]
+    assert {r.ddt_id for r in bozze[0].righe.all()} == {d1.pk}
+    assert not servizi.ddt_da_fatturare().exists()
+
+
+def test_una_fattura_per_giorno(ufficio, due_giorni):
+    d1, d2 = due_giorni
+    bozze = servizi.crea_fatture_differite(ufficio, [d1.pk, d2.pk], raggruppa="giorno", tipo_data="scelta", data=OGGI)
+    assert len(bozze) == (2 if d1.data != d2.data else 1) and all(f.data == OGGI for f in bozze)
+
+
+def test_massimo_righe_per_fattura(ufficio, due_giorni):
+    d1, d2 = due_giorni
+    bozze = servizi.crea_fatture_differite(
+        ufficio, [d1.pk, d2.pk], raggruppa="righe", max_righe=2, tipo_data="ultimo_ddt"
+    )
+    assert [f.righe.count() for f in bozze] == [2, 1]
+    assert [r.n_linea for r in bozze[1].righe.all()] == [1]  # ogni fattura riparte da 1
+    # una riga di d1 e una di d2 nella stessa fattura: due blocchi DatiDDT
+    servizi.elimina_bozza(ufficio, bozze[0].pk)
+    servizi.elimina_bozza(ufficio, bozze[1].pk)
+    bozze = servizi.crea_fatture_differite(
+        ufficio, [d1.pk, d2.pk], raggruppa="righe", max_righe=1, tipo_data="ultimo_ddt"
+    )
+    assert len(bozze) == 3
+    with pytest.raises(OperazioneNonConsentita, match="numero massimo"):
+        servizi.crea_fatture_differite(ufficio, [d1.pk], raggruppa="righe", max_righe=0, tipo_data="ultimo_ddt")
+
+
+def test_date_non_valide(ufficio, due_giorni):
+    d1, d2 = due_giorni
+    with pytest.raises(OperazioneNonConsentita, match="precede"):
+        servizi.crea_fatture_differite(ufficio, [d1.pk, d2.pk], tipo_data="scelta", data=d1.data - dt.timedelta(days=1))
+    fine_mese = servizi.scadenza(OGGI.replace(day=1), 0, True)
+    if fine_mese > OGGI:
+        with pytest.raises(OperazioneNonConsentita, match="futuro"):
+            servizi.crea_fatture_differite(ufficio, [d1.pk], tipo_data="fine_mese")
+    assert not Fattura.objects.exists()  # tutto o niente
+
+
+def test_emissione_di_piu_bozze_in_ordine_di_data(client, ufficio, due_giorni):
+    d1, d2 = due_giorni
+    bozze = servizi.crea_fatture_differite(ufficio, [d1.pk, d2.pk], raggruppa="ddt", tipo_data="ultimo_ddt")
+    client.force_login(ufficio)
+    r = client.post("/gestionale/fatture/?stato=BOZ", {"bozza": [b.pk for b in reversed(bozze)]}, follow=True)
+    assert "Emesse 2 fatture" in r.content.decode()
+    emesse = list(Fattura.objects.order_by("progressivo"))
+    assert [f.pk for f in emesse] == [b.pk for b in bozze] and [f.numero for f in emesse] == ["1", "2"]
+    assert emesse[0].data <= emesse[1].data
+
+
+def test_pagina_da_fatturare_con_le_scelte(client, ufficio, due_giorni):
+    d1, d2 = due_giorni
+    client.force_login(ufficio)
+    html = client.get("/gestionale/da-fatturare/").content.decode()
+    assert "Una fattura per ogni giorno" in html and "Al massimo N righe per fattura" in html
+    r = client.post(
+        "/gestionale/da-fatturare/",
+        {"ddt": [d1.pk, d2.pk], "raggruppa": "righe", "max_righe": "1", "tipo_data": "ultimo_ddt"},
+    )
+    assert r["Location"] == "/gestionale/fatture/?stato=BOZ" and Fattura.objects.count() == 3
