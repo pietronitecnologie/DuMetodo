@@ -207,3 +207,25 @@ def prezzi(request: HttpRequest) -> HttpResponse:
             "totale": servizi.totale_differenze(qs),
         },
     )
+
+
+@require_GET
+@richiede_permesso(F.REPORT_MATERIALE)
+def settimane(request: HttpRequest) -> HttpResponse:
+    """Dalla settimana corrente alle precedenti (8 di default): ore in scadenza e consegnate per reparto."""
+    fino_a = _data(request.GET.get("fino_a")) or timezone.localdate()
+    n = _numero_settimane(request, default=9)
+    dati = servizi.evaso_consegnato_per_settimana(servizi.settimane_indietro(n, fino_a))
+    if request.GET.get("formato") == "xlsx":
+        intestazione = ["Settimana dal", "Al"]
+        for rep in dati["reparti"]:
+            intestazione += [f"{rep} – in scadenza (h)", f"{rep} – consegnate (h)"]
+        intestazione += ["Totale in scadenza (h)", "Totale consegnate (h)"]
+        out = []
+        for r in dati["righe"]:
+            riga = [r["lunedi"], r["domenica"]]
+            for c in r["celle"]:
+                riga += [c["scadenza"], c["consegnato"]]
+            out.append([*riga, r["tot_scadenza"], r["tot_consegnato"]])
+        return _xlsx("EvasoConsegnatoPerSettimana.xlsx", intestazione, out)
+    return render(request, "report/settimane.html", {**dati, "fino_a": fino_a, "n": n})

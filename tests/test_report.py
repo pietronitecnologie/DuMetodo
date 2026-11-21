@@ -94,6 +94,29 @@ def test_materiale(dati):
     assert pls["celle"][0]["consegnato"] == Decimal("4.50")
 
 
+def test_evaso_consegnato_per_settimana(dati, client, analista, operatore):
+    settimane = servizi.settimane_indietro(9)
+    assert len(settimane) == 9 and settimane[-1] == LUN
+    r = servizi.evaso_consegnato_per_settimana(settimane)
+    assert r["reparti"] == ["Pulsanti"]
+    corrente = r["righe"][0]  # dalla settimana corrente
+    assert corrente["lunedi"] == LUN and len(r["righe"]) == 9
+    assert corrente["celle"][0] == {"scadenza": Decimal("5.15"), "consegnato": Decimal("4.50")}
+    assert (corrente["tot_scadenza"], corrente["tot_consegnato"]) == (Decimal("5.15"), Decimal("4.50"))
+    assert r["righe"][1]["celle"][0]["scadenza"] in (None, Decimal("0.00"))
+    assert r["totale_scadenza"] == Decimal("5.15")
+    client.force_login(operatore)
+    assert client.get("/report/settimane/").status_code == 403
+    client.force_login(analista)
+    html = client.get("/report/settimane/").content.decode()
+    assert "Pulsanti" in html and "corrente" in html and 'value="9"' in html
+    x = client.get("/report/settimane/?formato=xlsx")
+    from openpyxl import load_workbook
+
+    ws = load_workbook(io.BytesIO(x.content)).active
+    assert ws["C1"].value == "Pulsanti – in scadenza (h)" and ws["C2"].value == 5.15 and ws.max_row == 10
+
+
 def test_controllo_prezzi(dati):
     bolle = list(servizi.controllo_prezzi(servizi.FiltriPrezzi(dal=OGGI, al=OGGI)))
     assert [(r.articolo, r.differenza, r.ddt_numero) for r in bolle] == [("P1", Decimal("0.5"), "9")]

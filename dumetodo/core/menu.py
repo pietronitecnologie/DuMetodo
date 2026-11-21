@@ -85,6 +85,7 @@ MENU: tuple[Sezione, ...] = (
             Voce("Dashboard", "report:dashboard", (F.REPORT_DASHBOARD,)),
             Voce("Produttività", "report:produttivita", (F.REPORT_PRODUTTIVITA,)),
             Voce("Materiale per reparto", "report:materiale", (F.REPORT_MATERIALE,)),
+            Voce("In scadenza e consegnato per settimana", "report:settimane", (F.REPORT_MATERIALE,)),
             Voce("Controllo prezzi", "report:prezzi", (F.REPORT_PREZZI,)),
         ),
     ),

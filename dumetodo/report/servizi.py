@@ -220,6 +220,40 @@ def materiale_per_reparto(settimane: list[dt.date]) -> tuple[list[dict[str, Any]
     return righe_out, settimane
 
 
+def evaso_consegnato_per_settimana(settimane: list[dt.date]) -> dict[str, Any]:
+    """Una riga per settimana (dalla più recente) e una colonna per reparto: ore in scadenza e ore consegnate.
+
+    Stessi dati di ``materiale_per_reparto``, girati: ore = valore / resa oraria."""
+    per_reparto, _ = materiale_per_reparto(settimane)
+    reparti = [r["reparto"] for r in per_reparto]
+    righe = []
+    for i, lunedi in reversed(list(enumerate(settimane))):
+        celle = [r["celle"][i] for r in per_reparto]
+        righe.append(
+            {
+                "lunedi": lunedi,
+                "domenica": lunedi + dt.timedelta(days=6),
+                "celle": celle,
+                "tot_scadenza": _somma(c["scadenza"] for c in celle),
+                "tot_consegnato": _somma(c["consegnato"] for c in celle),
+            }
+        )
+    totali = [{"scadenza": r["tot_scadenza"], "consegnato": r["tot_consegnato"]} for r in per_reparto]
+    return {
+        "reparti": reparti,
+        "righe": righe,
+        "totali": totali,
+        "totale_scadenza": _somma(t["scadenza"] for t in totali),
+        "totale_consegnato": _somma(t["consegnato"] for t in totali),
+        "resa_configurata": bool(config.leggi("produzione.prezzo_resa_oraria")),
+    }
+
+
+def _somma(valori: Any) -> Decimal | None:
+    lista = [v for v in valori if v is not None]
+    return sum(lista, ZERO) if lista else None
+
+
 # ----------------------------------------------------------------------------------------- controllo prezzi
 @dataclass
 class FiltriPrezzi:

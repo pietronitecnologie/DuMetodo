@@ -362,6 +362,11 @@ Una traccia registra la storia di un elemento (scheda, lotto, componente) con un
 - **Produttività**: pezzi consegnati per settimana con valore e ore teoriche. Inserisci le **ore lavorate** per
   avere pezzi/ora ed efficienza; il dettaglio mostra i singoli giorni.
 - **Materiale per reparto**: ore a scadenza e ore consegnate per reparto e settimana.
+- **In scadenza e consegnato per settimana**: gli stessi dati in un'altra forma.
+  - Righe: le settimane, dalla corrente alle 8 precedenti (il numero si cambia).
+  - Colonne: i reparti; per ognuno, le ore in scadenza (da evadere) e le ore consegnate nella settimana.
+  - Totali per settimana e per reparto.
+  - In rosso dove si è consegnato meno di quanto scadeva.
 - **Controllo prezzi**: confronta il prezzo delle righe con il prezzo di riferimento dell'articolo, sulle righe
   in lavorazione (da correggere prima di consegnare) o su quelle già consegnate.
 
