@@ -721,13 +721,6 @@ PARAMETRI_GESTIONALE: tuple[Parametro, ...] = (
     _p("pagamento_iban", _DOC, "IBAN (per i bonifici)"),
     _p("pagamento_banca", _DOC, "Banca"),
     _p(
-        "formato_numero_fattura",
-        _DOC,
-        "Formato del numero di fattura",
-        "{numero} = progressivo dell'anno, {anno} = anno. Es. «{numero}» oppure «{numero}/{anno}» o «FT{numero}».",
-        default="{numero}",
-    ),
-    _p(
         "ddt_causale",
         _DOC,
         "DDT: causale del trasporto predefinita",

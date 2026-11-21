@@ -64,6 +64,9 @@ class DDT(models.Model):
     origine = models.CharField(max_length=3, choices=OrigineDDT.choices, default=OrigineDDT.ESTERNO)
     # --- dati di legge (solo DDT emessi da DuMetodo)
     progressivo = models.PositiveIntegerField("progressivo dell'anno", null=True, blank=True)
+    numerazione = models.ForeignKey(
+        "gestionale.Numerazione", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
     # Fotografia all'emissione: mittente, destinatario, destinazione e righe stampate (il documento di legge
     # non cambia se poi cambiano anagrafiche o configurazione).
     documento = models.JSONField("dati del documento all'emissione", default=dict, blank=True)

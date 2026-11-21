@@ -15,4 +15,5 @@ urlpatterns = [
     path("fatture/<int:pk>/xml/", views.fattura_xml, name="fattura_xml"),
     path("fatture/<int:pk>/stampa/", views.fattura_stampa, name="fattura_stampa"),
     path("impostazioni/", views.impostazioni, name="impostazioni"),
+    path("numerazioni/", views.numerazioni, name="numerazioni"),
 ]

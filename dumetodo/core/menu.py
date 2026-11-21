@@ -115,6 +115,7 @@ MENU: tuple[Sezione, ...] = (
             Voce("Da fatturare", "gestionale:da_fatturare", (F.GESTIONALE_FATTURE,)),
             Voce("Fatture e note di credito", "gestionale:fatture", (F.GESTIONALE_VEDERE,)),
             Voce("Dati fiscali e impostazioni", "gestionale:impostazioni", (F.GESTIONALE_IMPOSTAZIONI,)),
+            Voce("Numerazioni", "gestionale:numerazioni", (F.GESTIONALE_IMPOSTAZIONI,)),
         ),
     ),
     Sezione(

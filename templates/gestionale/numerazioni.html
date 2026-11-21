@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titolo %}Numerazioni{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-1">Numerazioni di DDT e fatture</h1>
+<p class="small text-muted mb-3">Ogni numerazione (sezionale) ha il suo progressivo, che riparte ogni anno. Qui scegli <b>da che numero partire</b>
+(es. 10, se fino al 9 hai emesso con un altro programma) e crei altre numerazioni; quando emetti un DDT o una fattura scegli quale usare.
+Non si può tornare su un numero già assegnato da DuMetodo.</p>
+{% for tipo, etichetta in tipi %}
+<h2 class="h6 text-uppercase text-muted mt-3">{{ etichetta }}</h2>
+<div class="row g-2">
+{% for r in righe %}{% if r.n.tipo == tipo %}
+  <div class="col-xl-4 col-lg-6"><div class="card h-100{% if not r.n.attiva %} opacity-75{% endif %}">
+    <div class="card-header d-flex align-items-center gap-2"><span class="me-auto fw-semibold">{{ r.n.nome }}</span>
+      {% if r.n.predefinita %}<span class="badge text-bg-primary">predefinita</span>{% endif %}{% if not r.n.attiva %}<span class="badge text-bg-secondary">non attiva</span>{% endif %}</div>
+    <div class="card-body small">
+      <div class="mb-2">Formato <code>{{ r.n.formato }}</code> → es. <b>{{ r.esempio }}</b></div>
+      <table class="table table-sm mb-2"><thead><tr><th>Anno</th><th>Ultimo emesso</th><th>Prossimo</th><th>Parti da</th></tr></thead><tbody>
+      {% for a in r.anni %}<tr><td>{{ a.anno }}</td><td>{% if a.usato %}{{ a.usato }}{% else %}—{% endif %}</td><td class="fw-semibold">{{ a.prossimo }}</td>
+        <td><form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="azione" value="prossimo">
+          <input type="hidden" name="numerazione" value="{{ r.n.pk }}"><input type="hidden" name="anno" value="{{ a.anno }}">
+          <input class="form-control form-control-sm" style="width:5.5rem" type="number" name="prossimo" min="{{ a.usato|add:1 }}" value="{{ a.prossimo }}" required>
+          <button class="btn btn-sm btn-outline-primary" onclick="return confirm('Il prossimo numero {{ a.anno }} di «{{ r.n.nome|escapejs }}» sarà quello indicato. Confermi?')">Imposta</button></form></td></tr>{% endfor %}
+      </tbody></table>
+      <details><summary class="text-muted">Modifica</summary>
+        <form method="post" class="row g-2 mt-1">{% csrf_token %}<input type="hidden" name="numerazione" value="{{ r.n.pk }}">
+          <div class="col-6"><label class="form-label">Nome</label><input class="form-control form-control-sm" name="nome" value="{{ r.n.nome }}" required maxlength="60"></div>
+          <div class="col-6"><label class="form-label">Formato</label><input class="form-control form-control-sm" name="formato" value="{{ r.n.formato }}" required maxlength="30"></div>
+          <div class="col-12 d-flex gap-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="predefinita" id="pred-{{ r.n.pk }}"{% if r.n.predefinita %} checked{% endif %}><label class="form-check-label" for="pred-{{ r.n.pk }}">Predefinita</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="attiva" id="att-{{ r.n.pk }}"{% if r.n.attiva %} checked{% endif %}><label class="form-check-label" for="att-{{ r.n.pk }}">Attiva</label></div></div>
+          <div class="col-12"><button class="btn btn-sm btn-outline-primary">Salva</button></div>
+        </form></details>
+    </div></div></div>
+{% endif %}{% endfor %}
+</div>
+{% endfor %}
+<form method="post" class="card mt-3" style="max-width:40rem">{% csrf_token %}
+  <div class="card-header">Nuova numerazione</div>
+  <div class="card-body row g-2">
+    <div class="col-sm-4"><label class="form-label" for="tipo">Per</label><select class="form-select form-select-sm" id="tipo" name="tipo">{% for v, e in tipi %}<option value="{{ v }}">{{ e }}</option>{% endfor %}</select></div>
+    <div class="col-sm-4"><label class="form-label" for="nome">Nome</label><input class="form-control form-control-sm" id="nome" name="nome" required maxlength="60" placeholder="es. Fatture estero"></div>
+    <div class="col-sm-4"><label class="form-label" for="formato">Formato</label><input class="form-control form-control-sm" id="formato" name="formato" required maxlength="30" value="{numero}/{anno}"></div>
+    <div class="col-12 form-text mt-0">{numero} = progressivo dell'anno, {anno} = anno. Due numerazioni dello stesso tipo devono avere formati diversi (es. «{numero}/A» e «{numero}/B»).</div>
+    <div class="col-12 d-flex align-items-center gap-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="predefinita" id="nuova-pred"><label class="form-check-label" for="nuova-pred">Predefinita</label></div>
+      <button class="btn btn-sm btn-primary">Crea</button></div>
+  </div>
+</form>
+{% endblock %}

@@ -112,7 +112,6 @@ def test_dati_fiscali_fuori_da_configurazione(client, db, ufficio, dati_fiscali)
             "gestionale_documenti-gestionale.ddt_causale": "Vendita",
             "gestionale_documenti-gestionale.ddt_trasporto_a_cura": "Vettore",
             "gestionale_documenti-gestionale.ddt_porto": "Assegnato",
-            "gestionale_documenti-gestionale.formato_numero_fattura": "{numero}/{anno}",
         },
     )
     assert r.status_code == 302
@@ -396,8 +395,8 @@ def test_fattura_righe_senza_prezzo_e_mesi_diversi(db, ufficio, dati_fiscali):
 
 
 def test_numerazione_fatture_segue_le_date(db, ufficio, dati_fiscali):
-    config.scrivi("gestionale.formato_numero_fattura", "FT{numero}/{anno}")
-    config.invalida_cache()
+    ft = servizi.scegli_numerazione("FAT", None)
+    servizi.salva_numerazione(ufficio, ft.pk, tipo="FAT", nome=ft.nome, formato="FT{numero}/{anno}", predefinita=True)
     a = _consegna(ufficio, **{"ART-A": (1, Decimal("1")), "ART-B": (1, Decimal("1"))})
     d1 = servizi.emetti_ddt(ufficio, a[:1], OGGI, _campi_ddt())
     d2 = servizi.emetti_ddt(ufficio, a[1:], OGGI, _campi_ddt())
@@ -519,3 +518,102 @@ def test_pagina_da_fatturare_con_le_scelte(client, ufficio, due_giorni):
         {"ddt": [d1.pk, d2.pk], "raggruppa": "righe", "max_righe": "1", "tipo_data": "ultimo_ddt"},
     )
     assert r["Location"] == "/gestionale/fatture/?stato=BOZ" and Fattura.objects.count() == 3
+
+
+# ------------------------------------------------------------------------------------------- numerazioni
+def test_numerazioni_predefinite_create_dalla_migrazione(db):
+    from dumetodo.gestionale.models import Numerazione
+
+    assert {(n.tipo, n.nome, n.predefinita) for n in Numerazione.objects.all()} == {
+        ("DDT", "DDT", True),
+        ("FAT", "Fatture", True),
+    }
+
+
+def test_partire_da_un_numero_e_non_tornare_indietro(db, ufficio, dati_fiscali):
+    ft = servizi.scegli_numerazione("FAT", None)
+    servizi.imposta_prossimo(ufficio, ft.pk, OGGI.year, 10)
+    assert servizi.prossimo_previsto(ft, OGGI.year) == 10
+    a = _consegna(ufficio, **{"ART-A": (1, Decimal("1"))})
+    d = servizi.emetti_ddt(ufficio, a, OGGI, _campi_ddt())
+    f = servizi.emetti_fattura(ufficio, servizi.crea_fattura_differita(ufficio, [d.pk], OGGI).pk)
+    assert (f.numero, f.progressivo, f.numerazione) == ("10", 10, ft)
+    with pytest.raises(OperazioneNonConsentita, match="almeno 11"):
+        servizi.imposta_prossimo(ufficio, ft.pk, OGGI.year, 5)
+    servizi.imposta_prossimo(ufficio, ft.pk, OGGI.year, 20)  # in avanti si può
+    assert servizi.prossimo_previsto(ft, OGGI.year) == 20
+    assert servizi.prossimo_previsto(ft, OGGI.year + 1) == 1  # ogni anno riparte
+    servizi.imposta_prossimo(ufficio, ft.pk, OGGI.year + 1, 3)
+    assert servizi.prossimo_previsto(ft, OGGI.year + 1) == 3
+    # anche i DDT
+    dd = servizi.scegli_numerazione("DDT", None)
+    servizi.imposta_prossimo(ufficio, dd.pk, OGGI.year, 50)
+    b = _consegna(ufficio, numero="0004301", **{"ART-B": (1, Decimal("1"))})
+    assert servizi.emetti_ddt(ufficio, b, OGGI, _campi_ddt()).numero == "50"
+    with pytest.raises(OperazioneNonConsentita, match="permessi"):
+        servizi.imposta_prossimo(_utente("op", "Operatore"), ft.pk, OGGI.year, 30)
+
+
+def test_scegliere_la_numerazione_per_ogni_fattura(db, ufficio, dati_fiscali):
+    estero = servizi.salva_numerazione(
+        ufficio, None, tipo="FAT", nome="Estero", formato="{numero}/E", predefinita=False
+    )
+    a = _consegna(ufficio, **{"ART-A": (1, Decimal("1")), "ART-B": (1, Decimal("2")), "ART-C": (1, Decimal("3"))})
+    d = [servizi.emetti_ddt(ufficio, [x], OGGI, _campi_ddt()) for x in a]
+    b = [servizi.crea_fattura_differita(ufficio, [x.pk], OGGI) for x in d]
+    f1 = servizi.emetti_fattura(ufficio, b[0].pk)  # predefinita
+    f2 = servizi.emetti_fattura(ufficio, b[1].pk, estero.pk)
+    emesse, problema = servizi.emetti_bozze(ufficio, [b[2].pk], estero.pk)
+    assert (f1.numero, f2.numero, emesse[0].numero, problema) == ("1", "1/E", "2/E", "")
+    assert f2.numerazione == estero and "<Numero>1/E</Numero>" in f2.xml
+
+
+def test_regole_dei_formati(db, ufficio):
+    def nuova(formato, tipo="FAT", nome="Prova"):
+        return servizi.salva_numerazione(ufficio, None, tipo=tipo, nome=nome, formato=formato, predefinita=False)
+
+    for formato, errore in [
+        ("A", "contenere {numero}"),
+        ("{numero}-{mese}", "solo {numero} e {anno}"),
+        ("{numero}", "stesso formato"),
+        ("{numero}/{anno}/VENDITEITALIA", "20 caratteri"),
+    ]:
+        with pytest.raises(OperazioneNonConsentita, match=errore):
+            nuova(formato)
+    with pytest.raises(OperazioneNonConsentita, match="niente spazi"):
+        nuova("B {numero}", tipo="DDT")
+    n = nuova("{numero}/B")
+    with pytest.raises(OperazioneNonConsentita, match="già una numerazione"):
+        nuova("{numero}/C", nome="prova")
+    # la nuova predefinita prende il posto della vecchia
+    servizi.salva_numerazione(ufficio, n.pk, tipo="FAT", nome="Prova", formato="{numero}/B", predefinita=True)
+    assert servizi.scegli_numerazione("FAT", None) == n
+    vecchia = servizi.numerazioni("FAT").exclude(pk=n.pk).get()
+    assert not vecchia.predefinita
+    with pytest.raises(OperazioneNonConsentita, match="un'altra numerazione"):
+        servizi.salva_numerazione(ufficio, n.pk, tipo="FAT", nome="Prova", formato="{numero}/B", predefinita=False)
+
+
+def test_formato_bloccato_dopo_il_primo_documento(db, ufficio, dati_fiscali):
+    dd = servizi.scegli_numerazione("DDT", None)
+    a = _consegna(ufficio, **{"ART-A": (1, Decimal("1"))})
+    servizi.emetti_ddt(ufficio, a, OGGI, _campi_ddt())
+    with pytest.raises(OperazioneNonConsentita, match="già usata"):
+        servizi.salva_numerazione(ufficio, dd.pk, tipo="DDT", nome="DDT", formato="D{numero}", predefinita=True)
+    servizi.salva_numerazione(ufficio, dd.pk, tipo="DDT", nome="Bolle", formato="{numero}", predefinita=True)
+
+
+def test_pagina_numerazioni(client, db, ufficio):
+    client.force_login(ufficio)
+    ft = servizi.scegli_numerazione("FAT", None)
+    assert "Fatture" in client.get("/gestionale/numerazioni/").content.decode()
+    r = client.post(
+        "/gestionale/numerazioni/",
+        {"azione": "prossimo", "numerazione": ft.pk, "anno": OGGI.year, "prossimo": "10"},
+        follow=True,
+    )
+    assert "il prossimo numero sarà 10" in r.content.decode()
+    r = client.post("/gestionale/numerazioni/", {"tipo": "FAT", "nome": "Estero", "formato": "{numero}/E"}, follow=True)
+    assert "Numerazione «Estero» salvata" in r.content.decode()
+    client.force_login(_utente("it", "Amministratore"))
+    assert client.get("/gestionale/numerazioni/").status_code == 403

@@ -14,12 +14,13 @@ from __future__ import annotations
 
 import calendar
 import datetime as dt
+import re
 from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q, QuerySet
+from django.db.models import Exists, Max, OuterRef, Q, QuerySet
 from django.utils import timezone
 
 from dumetodo.anagrafica.models import Articolo
@@ -30,7 +31,7 @@ from dumetodo.core.permessi import F, ha_permesso
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
 from . import fatturapa
-from .models import Fattura, Numeratore, RigaFattura, StatoFattura, StatoSdI
+from .models import Fattura, Numeratore, Numerazione, RigaFattura, StatoFattura, StatoSdI, TipoNumerazione
 
 CAMPI_FORNITORE = (
     "denominazione",
@@ -133,13 +134,124 @@ def scadenza(data: dt.date, giorni: int, fine_mese: bool) -> dt.date:
 
 
 # ------------------------------------------------------------------------------------- numerazione
-def prossimo_numero(tipo: str, anno: int) -> int:
-    """Incrementa e restituisce il numeratore (riga bloccata fino alla fine della transazione)."""
-    Numeratore.objects.get_or_create(tipo=tipo, anno=anno)
-    n = Numeratore.objects.select_for_update().get(tipo=tipo, anno=anno)
+_RE_FORMATO_DDT = re.compile(r"^[A-Za-z0-9/_-]{1,20}$")
+
+
+def numerazioni(tipo: str) -> QuerySet[Numerazione]:
+    return Numerazione.objects.filter(tipo=tipo, attiva=True).order_by("-predefinita", "nome")
+
+
+def scegli_numerazione(tipo: str, numerazione_id: int | None) -> Numerazione:
+    qs = numerazioni(tipo)
+    n = qs.filter(pk=numerazione_id).first() if numerazione_id else qs.filter(predefinita=True).first() or qs.first()
+    if n is None:
+        raise OperazioneNonConsentita("Numerazione non trovata o non attiva (Gestionale → Numerazioni).")
+    return n
+
+
+def prossimo_numero(numerazione: Numerazione, anno: int) -> int:
+    """Incrementa e restituisce il contatore (riga bloccata fino alla fine della transazione)."""
+    Numeratore.objects.get_or_create(numerazione=numerazione, anno=anno)
+    n = Numeratore.objects.select_for_update().get(numerazione=numerazione, anno=anno)
     n.ultimo += 1
     n.save(update_fields=["ultimo"])
     return n.ultimo
+
+
+def ultimo_usato(numerazione: Numerazione, anno: int) -> int:
+    """Progressivo più alto già assegnato a un documento (0 = nessuno)."""
+    if numerazione.tipo == TipoNumerazione.DDT:
+        qs = DDT.objects.filter(numerazione=numerazione, anno=anno)
+    else:
+        qs = Fattura.objects.filter(numerazione=numerazione, anno=anno, progressivo__isnull=False)
+    return qs.aggregate(m=Max("progressivo"))["m"] or 0
+
+
+def prossimo_previsto(numerazione: Numerazione, anno: int) -> int:
+    contatore = Numeratore.objects.filter(numerazione=numerazione, anno=anno).first()
+    return max(contatore.ultimo if contatore else 0, ultimo_usato(numerazione, anno)) + 1
+
+
+@transaction.atomic
+def imposta_prossimo(utente: Any, numerazione_id: int, anno: int, prossimo: int) -> Numeratore:
+    """Fa partire la numerazione di quell'anno da ``prossimo`` (es. 10 se fino al 9 si è usato un altro programma).
+
+    Non si può tornare su numeri già assegnati da DuMetodo: due documenti avrebbero lo stesso numero."""
+    _richiedi(utente, F.GESTIONALE_IMPOSTAZIONI)
+    numerazione = Numerazione.objects.get(pk=numerazione_id)
+    if not 2000 <= anno <= 2100:
+        raise OperazioneNonConsentita("Anno non valido.")
+    if prossimo < 1:
+        raise OperazioneNonConsentita("Il numero di partenza deve essere almeno 1.")
+    usato = ultimo_usato(numerazione, anno)
+    if prossimo <= usato:
+        raise OperazioneNonConsentita(
+            f"«{numerazione}» {anno}: il numero {usato} è già stato assegnato, "
+            f"il prossimo deve essere almeno {usato + 1}."
+        )
+    Numeratore.objects.get_or_create(numerazione=numerazione, anno=anno)
+    contatore = Numeratore.objects.select_for_update().get(numerazione=numerazione, anno=anno)
+    contatore.ultimo = prossimo - 1
+    contatore.save(update_fields=["ultimo"])
+    return contatore
+
+
+def _controlla_formato(tipo: str, formato: str) -> None:
+    if "{numero}" not in formato:
+        raise OperazioneNonConsentita("Il formato deve contenere {numero}.")
+    try:
+        esempio = formato.format(numero=12345, anno=2026)
+    except (KeyError, IndexError, ValueError) as exc:
+        raise OperazioneNonConsentita("Nel formato si possono usare solo {numero} e {anno}.") from exc
+    if len(esempio) > 20:
+        raise OperazioneNonConsentita("Il numero risultante supera i 20 caratteri ammessi.")
+    if tipo == TipoNumerazione.DDT and not _RE_FORMATO_DDT.match(esempio):
+        raise OperazioneNonConsentita("Il numero di un DDT può contenere solo lettere, cifre, / - _ (niente spazi).")
+
+
+@transaction.atomic
+def salva_numerazione(
+    utente: Any,
+    numerazione_id: int | None,
+    *,
+    tipo: str,
+    nome: str,
+    formato: str,
+    predefinita: bool,
+    attiva: bool = True,
+) -> Numerazione:
+    _richiedi(utente, F.GESTIONALE_IMPOSTAZIONI)
+    nome, formato = (nome or "").strip()[:60], (formato or "").strip()[:30]
+    if not nome:
+        raise OperazioneNonConsentita("Indica il nome della numerazione.")
+    n = Numerazione.objects.select_for_update().get(pk=numerazione_id) if numerazione_id else None
+    if n is None:
+        if tipo not in TipoNumerazione.values:
+            raise OperazioneNonConsentita("Tipo non valido.")
+        n = Numerazione(tipo=tipo)
+    _controlla_formato(n.tipo, formato)
+    if n.pk and formato != n.formato and _usata(n):
+        raise OperazioneNonConsentita(
+            "Il formato di una numerazione già usata non si cambia (i documenti emessi hanno quel formato): "
+            "crea una nuova numerazione."
+        )
+    if Numerazione.objects.filter(tipo=n.tipo, nome__iexact=nome).exclude(pk=n.pk).exists():
+        raise OperazioneNonConsentita(f"Esiste già una numerazione «{nome}».")
+    if Numerazione.objects.filter(tipo=n.tipo, formato=formato).exclude(pk=n.pk).exists():
+        raise OperazioneNonConsentita("Un'altra numerazione ha lo stesso formato: i numeri si confonderebbero.")
+    if n.pk and n.predefinita and not (predefinita and attiva):
+        raise OperazioneNonConsentita("Per cambiare la predefinita, segna come predefinita un'altra numerazione.")
+    if predefinita:
+        Numerazione.objects.filter(tipo=n.tipo, predefinita=True).exclude(pk=n.pk).update(predefinita=False)
+    n.nome, n.formato, n.predefinita, n.attiva = nome, formato, predefinita, attiva or predefinita
+    n.save()
+    return n
+
+
+def _usata(n: Numerazione) -> bool:
+    if n.tipo == TipoNumerazione.DDT:
+        return DDT.objects.filter(numerazione=n).exists()
+    return Fattura.objects.filter(numerazione=n).exists()
 
 
 # --------------------------------------------------------------------------------------------- DDT
@@ -182,7 +294,9 @@ def quantita_testo(q: Decimal) -> str:
 
 
 @transaction.atomic
-def emetti_ddt(utente: Any, righe_ids: Sequence[int], data: dt.date, campi: dict[str, Any]) -> DDT:
+def emetti_ddt(
+    utente: Any, righe_ids: Sequence[int], data: dt.date, campi: dict[str, Any], numerazione_id: int | None = None
+) -> DDT:
     """DDT con numerazione progressiva dell'anno e dati di legge; genera e accoda il file tecnico."""
     _richiedi(utente, F.GESTIONALE_DDT)
     problemi = problemi_dati_ddt()
@@ -192,23 +306,25 @@ def emetti_ddt(utente: Any, righe_ids: Sequence[int], data: dt.date, campi: dict
         raise OperazioneNonConsentita("La data del DDT non può essere nel futuro.")
     if campi.get("trasporto_a_cura") == "Vettore" and not (campi.get("vettore") or "").strip():
         raise OperazioneNonConsentita("Con il trasporto a cura del vettore indica il vettore.")
-    ultimo = DDT.objects.filter(origine=OrigineDDT.DUMETODO, anno=data.year).order_by("-progressivo").first()
+    numerazione = scegli_numerazione(TipoNumerazione.DDT, numerazione_id)
+    ultimo = DDT.objects.filter(numerazione=numerazione, anno=data.year).order_by("-progressivo").first()
     if ultimo and ultimo.data > data:
         raise OperazioneNonConsentita(
             f"Il DDT n. {ultimo.numero} ha data {ultimo.data:%d/%m/%Y}: la numerazione deve seguire le date."
         )
-    progressivo = prossimo_numero("DDT", data.year)
+    progressivo = prossimo_numero(numerazione, data.year)
     # Numero già usato da un DDT registrato a mano con lo stesso anno: si passa al successivo.
-    while DDT.objects.filter(numero=str(progressivo), anno=data.year).exists():
-        progressivo = prossimo_numero("DDT", data.year)
+    while DDT.objects.filter(numero=numerazione.numero(progressivo, data.year), anno=data.year).exists():
+        progressivo = prossimo_numero(numerazione, data.year)
     inizio = campi.get("inizio_trasporto") or timezone.now()
     ddt = consegne.crea_ddt(
-        str(progressivo),
+        numerazione.numero(progressivo, data.year),
         data,
         righe_ids,
         utente,
         origine=OrigineDDT.DUMETODO,
         progressivo=progressivo,
+        numerazione=numerazione,
         causale=campi.get("causale") or "Vendita",
         aspetto_beni=(campi.get("aspetto_beni") or "")[:100],
         colli=campi.get("colli"),
@@ -286,14 +402,6 @@ def ddt_da_fatturare() -> QuerySet[DDT]:
         .filter(Exists(da_fatturare))
         .order_by("data", "anno", "progressivo", "numero")
     )
-
-
-def _numero_formattato(progressivo: int, anno: int) -> str:
-    formato = config.leggi("gestionale.formato_numero_fattura") or "{numero}"
-    try:
-        return formato.format(numero=progressivo, anno=anno)[:20]
-    except (KeyError, IndexError, ValueError):
-        return str(progressivo)
 
 
 RAGGRUPPAMENTI: tuple[tuple[str, str], ...] = (
@@ -428,7 +536,9 @@ def _crea_bozza(utente: Any, data: dt.date, voci: list[tuple[DDT, RigaConsegnata
     return fattura
 
 
-def emetti_bozze(utente: Any, fatture_ids: Sequence[int]) -> tuple[list[Fattura], str]:
+def emetti_bozze(
+    utente: Any, fatture_ids: Sequence[int], numerazione_id: int | None = None
+) -> tuple[list[Fattura], str]:
     """Emette le bozze indicate in ordine di data (così la numerazione segue le date).
 
     Si ferma alla prima che non si può emettere: restituisce le emesse e il motivo dell'interruzione."""
@@ -437,7 +547,7 @@ def emetti_bozze(utente: Any, fatture_ids: Sequence[int]) -> tuple[list[Fattura]
     emesse: list[Fattura] = []
     for b in bozze:
         try:
-            emesse.append(emetti_fattura(utente, b.pk))
+            emesse.append(emetti_fattura(utente, b.pk, numerazione_id))
         except OperazioneNonConsentita as exc:
             return emesse, f"Bozza del {b.data:%d/%m/%Y}: {exc}"
     return emesse, ""
@@ -504,7 +614,7 @@ def anteprima_errori(fattura: Fattura) -> list[str]:
 
 
 @transaction.atomic
-def emetti_fattura(utente: Any, fattura_id: int) -> Fattura:
+def emetti_fattura(utente: Any, fattura_id: int, numerazione_id: int | None = None) -> Fattura:
     """Assegna il numero, fotografa dati fiscali e pagamento, scrive l'XML. Da qui il documento è definitivo."""
     _richiedi(utente, F.GESTIONALE_FATTURE)
     f = Fattura.objects.select_for_update().get(pk=fattura_id)
@@ -512,10 +622,15 @@ def emetti_fattura(utente: Any, fattura_id: int) -> Fattura:
         raise OperazioneNonConsentita("La fattura è già emessa.")
     if f.data > timezone.localdate():
         raise OperazioneNonConsentita("La data della fattura non può essere nel futuro.")
-    ultima = Fattura.objects.filter(anno=f.anno, stato=StatoFattura.EMESSA).order_by("-progressivo").first()
+    numerazione = scegli_numerazione(TipoNumerazione.FATTURA, numerazione_id)
+    ultima = (
+        Fattura.objects.filter(numerazione=numerazione, anno=f.anno, stato=StatoFattura.EMESSA)
+        .order_by("-progressivo")
+        .first()
+    )
     if ultima and ultima.data > f.data:
         raise OperazioneNonConsentita(
-            f"L'ultima fattura emessa (n. {ultima.numero}) ha data {ultima.data:%d/%m/%Y}: "
+            f"L'ultima fattura «{numerazione}» emessa (n. {ultima.numero}) ha data {ultima.data:%d/%m/%Y}: "
             "la numerazione deve seguire le date. Cambia la data della bozza."
         )
     f.cedente, f.cessionario = dati_fornitore(), dati_cliente()
@@ -531,8 +646,13 @@ def emetti_fattura(utente: Any, fattura_id: int) -> Fattura:
     errori = fatturapa.controlla(documento(f, numero="1", progressivo_invio="00001"))
     if errori:
         raise OperazioneNonConsentita("Fattura non emessa: " + " ".join(errori))
-    f.progressivo = prossimo_numero("FATTURA", f.anno)
-    f.numero = _numero_formattato(f.progressivo, f.anno)
+    f.numerazione = numerazione
+    f.progressivo = prossimo_numero(numerazione, f.anno)
+    f.numero = numerazione.numero(f.progressivo, f.anno)
+    if Fattura.objects.filter(anno=f.anno, numero=f.numero).exclude(pk=f.pk).exists():
+        raise OperazioneNonConsentita(
+            f"Il numero {f.numero} esiste già nel {f.anno} (un'altra numerazione): usa formati diversi."
+        )
     f.progressivo_invio = fatturapa.progressivo_invio(f.pk)
     doc = documento(f, numero=f.numero, progressivo_invio=f.progressivo_invio)
     try:

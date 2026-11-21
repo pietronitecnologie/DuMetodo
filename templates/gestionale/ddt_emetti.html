@@ -22,6 +22,8 @@ Il numero è assegnato in automatico (progressivo dell'anno); il <b>file tecnico
 <div class="col-xl-4"><div class="card"><div class="card-header">Dati del trasporto</div><div class="card-body row g-2">
   <div class="col-12 small"><span class="text-muted">Destinatario:</span> {{ destinatario.denominazione|default:"—" }}<br>
     <span class="text-muted">Destinazione:</span> {{ destinazione|default:"sede del destinatario" }}</div>
+  {% if numerazioni|length > 1 %}<div class="col-12"><label class="form-label" for="numerazione">Numerazione</label>
+    <select class="form-select form-select-sm" id="numerazione" name="numerazione">{% for n in numerazioni %}<option value="{{ n.pk }}">{{ n.nome }} ({{ n.formato }})</option>{% endfor %}</select></div>{% endif %}
   <div class="col-6"><label class="form-label" for="data">Data del DDT</label>
     <input class="form-control form-control-sm" type="date" id="data" name="data" value="{{ oggi }}" max="{{ oggi }}" required></div>
   <div class="col-6"><label class="form-label" for="causale">Causale</label>

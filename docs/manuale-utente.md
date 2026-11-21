@@ -454,7 +454,8 @@ ritirato, quindi avvisa chi lo ha ricevuto.
    - Se mancano dati obbligatori (partita IVA, CAP, codice destinatario…) la pagina li elenca e l'emissione
      resta bloccata.
 4. **Emetti**: la fattura riceve il **numero definitivo** e DuMetodo scrive il file **XML FatturaPA**.
-   - Il formato del numero si sceglie nelle impostazioni, es. `1`, `1/2026`, `FT1`.
+   - Scegli la **numerazione** accanto al pulsante Emetti: il numero è il prossimo di quella serie, nel suo formato
+     (es. `1`, `1/2026`, `FT1`). Vedi [Numerazioni](#numerazioni).
    - Il nome del file segue le regole dello SdI, es. `IT01234567897_0IPd3.xml`.
    - Le fatture si numerano in ordine di data: non si emette una fattura con data precedente all'ultima emessa.
    - Con più bozze, in **Fatture e note di credito** spunta le bozze ed **Emetti le bozze selezionate**: DuMetodo le
@@ -481,6 +482,28 @@ L'XML segue le specifiche FatturaPA 1.2.2 (formato FPR12, tra privati). Contiene
 
 Prima di usarlo in produzione, controlla la prima fattura con il servizio di verifica dell'Agenzia delle Entrate.
 
+### Numerazioni
+
+**Gestionale → Numerazioni** gestisce le serie di numerazione (sezionali) di DDT e fatture. Ogni serie ha un
+progressivo che riparte da 1 ogni anno.
+
+- All'inizio ci sono due numerazioni predefinite: **DDT** e **Fatture**, con formato `{numero}`.
+  - `{numero}` è il progressivo, `{anno}` l'anno.
+  - Esempi di formato: `{numero}/{anno}` → 10/2026, `FT{numero}` → FT10.
+- **Partire da un numero**: nella riga dell'anno scrivi il prossimo numero e premi **Imposta**. Esempio: 10, se
+  fino al 9 hai emesso con un altro programma.
+  - Si imposta anche per l'anno successivo, in anticipo.
+  - Non si può tornare su un numero che DuMetodo ha già assegnato.
+- **Nuova numerazione**: es. «Fatture estero» con formato `{numero}/E`.
+  - Due numerazioni dello stesso tipo devono avere formati diversi, così due documenti non hanno mai lo stesso
+    numero.
+  - Una sola è **predefinita**.
+  - Una numerazione non più usata si può disattivare.
+  - Il formato di una numerazione già usata non si cambia: creane una nuova.
+
+Quando emetti un DDT o una fattura, o più bozze insieme, **scegli la numerazione**. È proposta la predefinita.
+Le date devono seguire i numeri all'interno di ciascuna numerazione.
+
 ### Dati fiscali e impostazioni
 
 **Gestionale → Dati fiscali e impostazioni** raccoglie i dati che finiscono su DDT e fatture.
@@ -489,7 +512,7 @@ Prima di usarlo in produzione, controlla la prima fattura con il servizio di ver
 |---|---|
 | Fornitore (cedente) | Ragione sociale, partita IVA, codice fiscale, sede, regime fiscale, iscrizione REA e capitale sociale, contatti |
 | Cliente (cessionario e destinatario) | Ragione sociale, partita IVA o codice fiscale, sede, **codice destinatario SdI** (7 caratteri) o PEC con codice `0000000`, luogo di destinazione delle merci se diverso dalla sede |
-| IVA, pagamento e DDT | Aliquota IVA, oppure natura e riferimento normativo con aliquota 0. Esigibilità (anche split payment). Modalità e giorni di pagamento, fine mese, IBAN e banca. Formato del numero di fattura. Valori predefiniti dei DDT |
+| IVA, pagamento e DDT | Aliquota IVA, oppure natura e riferimento normativo con aliquota 0. Esigibilità (anche split payment). Modalità e giorni di pagamento, fine mese, IBAN e banca. Valori predefiniti dei DDT |
 
 Ogni modifica è registrata nello storico in fondo alla pagina. Questi dati non compaiono in Configurazione.
 

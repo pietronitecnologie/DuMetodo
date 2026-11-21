@@ -21,7 +21,7 @@ from dumetodo.ordini.servizi import OperazioneNonConsentita
 
 from . import servizi
 from .costanti import CAUSALI_TRASPORTO, MODALITA_PAGAMENTO, PORTI, TRASPORTO_A_CURA
-from .models import Fattura, StatoFattura, StatoSdI
+from .models import Fattura, Numerazione, StatoFattura, StatoSdI, TipoNumerazione
 
 
 def _data(valore: str, predefinita: dt.date | None = None) -> dt.date:
@@ -31,6 +31,11 @@ def _data(valore: str, predefinita: dt.date | None = None) -> dt.date:
         if predefinita is None:
             raise
         return predefinita
+
+
+def _numerazione(request: HttpRequest) -> int | None:
+    v = request.POST.get("numerazione", "")
+    return int(v) if v.isdigit() else None
 
 
 def _permessi(request: HttpRequest) -> dict[str, bool]:
@@ -91,7 +96,9 @@ def ddt_emetti(request: HttpRequest) -> HttpResponse:
             colli = int(p["colli"]) if p.get("colli", "").strip() else None
             peso = Decimal(p["peso_kg"].replace(",", ".")) if p.get("peso_kg", "").strip() else None
             ids = [int(i) for i in p.getlist("riga") if i.isdigit()]
-            d = servizi.emetti_ddt(request.user, ids, data, {**valori, "colli": colli, "peso_kg": peso})
+            d = servizi.emetti_ddt(
+                request.user, ids, data, {**valori, "colli": colli, "peso_kg": peso}, _numerazione(request)
+            )
         except (ValueError, InvalidOperation):
             messages.error(request, "Controlla data, colli e peso.")
         except OperazioneNonConsentita as exc:
@@ -116,6 +123,7 @@ def ddt_emetti(request: HttpRequest) -> HttpResponse:
             "trasporti": TRASPORTO_A_CURA,
             "porti": PORTI,
             "problemi": servizi.problemi_dati_ddt(),
+            "numerazioni": servizi.numerazioni(TipoNumerazione.DDT),
             "destinatario": servizi.dati_cliente(),
             "destinazione": config.leggi("gestionale.cliente_destinazione") or "",
         },
@@ -243,7 +251,7 @@ def fatture(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         ids = [int(i) for i in request.POST.getlist("bozza") if i.isdigit()]
         try:
-            emesse, problema = servizi.emetti_bozze(request.user, ids)
+            emesse, problema = servizi.emetti_bozze(request.user, ids, _numerazione(request))
         except OperazioneNonConsentita as exc:
             messages.error(request, str(exc))
         else:
@@ -274,6 +282,7 @@ def fatture(request: HttpRequest) -> HttpResponse:
             "stati": StatoFattura.choices,
             "stati_sdi": StatoSdI.choices,
             "puo_fatture": ha_permesso(request.user, F.GESTIONALE_FATTURE),
+            "numerazioni": servizi.numerazioni(TipoNumerazione.FATTURA),
         },
     )
 
@@ -285,7 +294,7 @@ def fattura(request: HttpRequest, pk: int) -> HttpResponse:
         azione = request.POST.get("azione", "")
         try:
             if azione == "emetti":
-                f = servizi.emetti_fattura(request.user, f.pk)
+                f = servizi.emetti_fattura(request.user, f.pk, _numerazione(request))
                 messages.success(request, f"{f} emessa: scarica l'XML e invialo allo SdI.")
             elif azione == "modifica":
                 servizi.modifica_bozza(
@@ -329,6 +338,7 @@ def fattura(request: HttpRequest, pk: int) -> HttpResponse:
             "errori": servizi.anteprima_errori(f) if f.is_bozza else [],
             "note_di_credito": f.note_di_credito.all(),
             "stati_sdi": StatoSdI.choices,
+            "numerazioni": servizi.numerazioni(TipoNumerazione.FATTURA),
         },
     )
 
@@ -397,4 +407,55 @@ def impostazioni(request: HttpRequest) -> HttpResponse:
             "problemi_ddt": servizi.problemi_dati_ddt(),
             "problemi_fatture": servizi.problemi_dati_fattura(),
         },
+    )
+
+
+@richiede_permesso(F.GESTIONALE_IMPOSTAZIONI)
+def numerazioni(request: HttpRequest) -> HttpResponse:
+    anno = timezone.localdate().year
+    if request.method == "POST":
+        p = request.POST
+        try:
+            if p.get("azione") == "prossimo":
+                n = servizi.imposta_prossimo(
+                    request.user, int(p["numerazione"]), int(p["anno"]), int(p.get("prossimo", "0"))
+                )
+                messages.success(
+                    request,
+                    f"«{n.numerazione}» {n.anno}: il prossimo numero sarà "
+                    f"{n.numerazione.numero(n.ultimo + 1, n.anno)}.",
+                )
+            else:
+                pk = int(p["numerazione"]) if p.get("numerazione", "").isdigit() else None
+                n = servizi.salva_numerazione(
+                    request.user,
+                    pk,
+                    tipo=p.get("tipo", ""),
+                    nome=p.get("nome", ""),
+                    formato=p.get("formato", ""),
+                    predefinita=bool(p.get("predefinita")),
+                    attiva=bool(p.get("attiva")) if pk else True,
+                )
+                messages.success(request, f"Numerazione «{n}» salvata.")
+        except (KeyError, ValueError):
+            messages.error(request, "Valori non validi.")
+        except (OperazioneNonConsentita, Numerazione.DoesNotExist) as exc:
+            messages.error(request, str(exc))
+        return redirect("gestionale:numerazioni")
+    righe = []
+    for n in Numerazione.objects.all():
+        righe.append(
+            {
+                "n": n,
+                "anni": [
+                    {"anno": a, "usato": servizi.ultimo_usato(n, a), "prossimo": servizi.prossimo_previsto(n, a)}
+                    for a in (anno, anno + 1)
+                ],
+                "esempio": n.numero(1, anno),
+            }
+        )
+    return render(
+        request,
+        "gestionale/numerazioni.html",
+        {"righe": righe, "tipi": TipoNumerazione.choices, "anno": anno},
     )

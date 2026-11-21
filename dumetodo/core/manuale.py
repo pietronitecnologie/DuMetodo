@@ -49,6 +49,7 @@ CAPITOLI: tuple[tuple[str, str], ...] = (
     ("gestionale:da_fatturare", "fatture-elettroniche"),
     ("gestionale:fattur", "fatture-elettroniche"),
     ("gestionale:impostazioni", "dati-fiscali-e-impostazioni"),
+    ("gestionale:numerazioni", "numerazioni"),
     ("gestionale:", "gestionale"),
 )
 

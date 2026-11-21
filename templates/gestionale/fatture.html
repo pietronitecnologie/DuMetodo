@@ -24,6 +24,7 @@
 {% empty %}<tr><td colspan="10" class="text-center text-muted py-4">Nessuna fattura.</td></tr>{% endfor %}
 </tbody></table></div>
 {% if puo_fatture %}<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <select class="form-select form-select-sm w-auto" name="numerazione" form="form-bozze" title="Numerazione">{% for n in numerazioni %}<option value="{{ n.pk }}">{{ n.nome }} ({{ n.formato }})</option>{% endfor %}</select>
   <button class="btn btn-sm btn-primary" form="form-bozze" onclick="return confirm('Emettere le bozze selezionate? Riceveranno i numeri definitivi in ordine di data.')">Emetti le bozze selezionate</button>
   <span class="form-text m-0">In ordine di data; ci si ferma alla prima con dati mancanti.</span></div>{% endif %}
 {% include "_paginazione.html" %}
