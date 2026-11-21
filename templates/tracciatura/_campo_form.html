@@ -1,0 +1,18 @@
+{# Modulo di un campo: c = campo esistente (o niente per uno nuovo) #}
+<form method="post" class="row g-2">{% csrf_token %}<input type="hidden" name="azione" value="campo">{% if c %}<input type="hidden" name="campo" value="{{ c.pk }}">{% endif %}
+  <div class="col-md-5"><label class="form-label">Etichetta</label><input class="form-control form-control-sm" name="etichetta" value="{{ c.etichetta|default:'' }}" required maxlength="80" placeholder="es. Coppia di serraggio"></div>
+  <div class="col-md-4"><label class="form-label">Tipo</label><select class="form-select form-select-sm" name="tipo" data-dm-tipo{% if c and c.pk in usati %} disabled title="Il campo ha già dei valori: il tipo non si cambia"{% endif %}>
+    {% for v, e in tipi %}<option value="{{ v }}"{% if c.tipo == v %} selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+    {% if c and c.pk in usati %}<input type="hidden" name="tipo" value="{{ c.tipo }}">{% endif %}</div>
+  <div class="col-md-3 d-flex align-items-end gap-3"><div class="form-check"><input class="form-check-input" type="checkbox" name="obbligatorio" id="ob-{{ c.pk|default:'n' }}"{% if c.obbligatorio %} checked{% endif %}><label class="form-check-label" for="ob-{{ c.pk|default:'n' }}">Obbligatorio</label></div>
+    {% if c %}<div class="form-check"><input class="form-check-input" type="checkbox" name="attivo" id="at-{{ c.pk }}"{% if c.attivo %} checked{% endif %}><label class="form-check-label" for="at-{{ c.pk }}">Attivo</label></div>{% endif %}</div>
+  <div class="col-12"><label class="form-label">Istruzioni per l'operatore</label><input class="form-control form-control-sm" name="aiuto" value="{{ c.aiuto|default:'' }}" maxlength="200"></div>
+  <div class="col-md-3" data-per="INT DEC"><label class="form-label">Unità di misura</label><input class="form-control form-control-sm" name="unita" value="{{ c.unita|default:'' }}" maxlength="15" placeholder="es. Nm, mm, °C"></div>
+  <div class="col-md-3" data-per="INT DEC"><label class="form-label">Minimo accettabile</label><input class="form-control form-control-sm" name="minimo" inputmode="decimal" value="{{ c.minimo.normalize|default_if_none:'' }}"></div>
+  <div class="col-md-3" data-per="INT DEC"><label class="form-label">Massimo accettabile</label><input class="form-control form-control-sm" name="massimo" inputmode="decimal" value="{{ c.massimo.normalize|default_if_none:'' }}"></div>
+  <div class="col-md-6" data-per="SCE"><label class="form-label">Scelte (una per riga)</label><textarea class="form-control form-control-sm" name="scelte" rows="3">{{ c.scelte|default:'' }}</textarea></div>
+  <div class="col-md-6" data-per="SCE"><label class="form-label">Scelte non conformi (una per riga)</label><textarea class="form-control form-control-sm" name="scelte_non_conformi" rows="3">{{ c.scelte_non_conformi|default:'' }}</textarea></div>
+  <div class="col-md-4" data-per="BOO"><label class="form-label">Risposta attesa</label><select class="form-select form-select-sm" name="atteso">
+    <option value="">Nessuna (nessun controllo)</option><option value="si"{% if c.atteso_si is True %} selected{% endif %}>Sì</option><option value="no"{% if c.atteso_si is False %} selected{% endif %}>No</option></select></div>
+  <div class="col-12"><button class="btn btn-sm btn-primary">{% if c %}Salva il campo{% else %}Aggiungi il campo{% endif %}</button></div>
+</form>

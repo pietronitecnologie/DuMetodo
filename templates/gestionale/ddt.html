@@ -23,6 +23,7 @@
     <div class="mt-2"><span class="text-muted">Fatturazione:</span>
       {% for f in fatture %}<a href="{{ f.get_absolute_url }}">{{ f }}</a>{% if not forloop.last %}, {% endif %}{% empty %}non ancora fatturato{% endfor %}</div>
   </div></div>
+  {% if perms.core.tracciatura_vedere %}<div class="mt-2" hx-get="{% url 'tracciatura:pannello' %}?ddt={{ d.pk }}" hx-trigger="load" hx-swap="outerHTML"></div>{% endif %}
   {% if puo_ddt and d.emesso_da_dumetodo and not d.annullato and not fatture %}
   <form method="post" class="card mt-2" onsubmit="return confirm('Annullare il DDT? Il numero resta consumato e le righe tornano da emettere.')">{% csrf_token %}
     <div class="card-body"><label class="form-label" for="motivo">Annulla il DDT</label>

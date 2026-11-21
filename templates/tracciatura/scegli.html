@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titolo %}Nuova tracciatura{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-1">Nuova tracciatura</h1>
+<p class="small text-muted mb-2">{% if ordine %}Per l'ordine <b>{{ ordine.codice_breve }}</b>. {% endif %}Scegli che cosa registrare.
+  {% if specifici %}In evidenza i modelli previsti per i codici {% if ordine %}dell'ordine{% else %}indicati{% endif %}.{% endif %}</p>
+<input class="form-control form-control-sm mb-2" style="max-width:24rem" placeholder="Cerca un modello…" oninput="const q=this.value.toLowerCase();document.querySelectorAll('[data-nome]').forEach(e=>e.hidden=!e.dataset.nome.includes(q))">
+<div class="row g-2">
+{% for m in proposti %}<div class="col-md-6 col-xl-4" data-nome="{{ m.nome|lower }} {{ m.get_categoria_display|lower }}">
+  <a class="card h-100 text-decoration-none{% if m.pk in specifici %} border-primary{% endif %}" href="?modello={{ m.pk }}{% for k, v in coll.items %}{% if v %}&{{ k }}={{ v|urlencode }}{% endif %}{% endfor %}">
+    <div class="card-body"><div class="d-flex align-items-center gap-2"><span class="fw-semibold me-auto text-body">{{ m.nome }}</span>
+      {% if m.pk in specifici %}<span class="badge text-bg-primary">previsto</span>{% endif %}<span class="badge text-bg-light border">{{ m.get_categoria_display }}</span></div>
+      {% if m.descrizione %}<div class="small text-muted mt-1">{{ m.descrizione|truncatechars:140 }}</div>{% endif %}</div></a></div>
+{% empty %}<div class="col-12"><div class="alert alert-light border">Nessun modello di tracciatura: chi configura li crea in Tracciatura → Modelli.</div></div>{% endfor %}
+</div>
+{% endblock %}

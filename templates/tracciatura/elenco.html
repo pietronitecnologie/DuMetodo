@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titolo %}Tracciature{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><h1 class="h4 me-auto mb-0">Tracciature</h1>
+  {% if puo_configurare %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciatura:modelli' %}">Modelli</a>{% endif %}
+  {% if puo_registrare %}<a class="btn btn-sm btn-primary" href="{% url 'tracciatura:nuova' %}">Nuova tracciatura</a>{% endif %}</div>
+<form method="get" class="row g-2 align-items-end mb-2">
+  <div class="col-md-3"><label class="form-label small mb-0">Modello</label><select name="modello" class="form-select form-select-sm"><option value="">Tutti</option>
+    {% for m in modelli %}<option value="{{ m.pk }}"{% if f.modello == m.pk|stringformat:"d" %} selected{% endif %}>{{ m.nome }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><label class="form-label small mb-0">Categoria</label><select name="categoria" class="form-select form-select-sm"><option value="">Tutte</option>
+    {% for v, e in categorie %}<option value="{{ v }}"{% if f.categoria == v %} selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><label class="form-label small mb-0">Codice (articolo o finito)</label><input name="codice" class="form-control form-control-sm" value="{{ f.codice|default:'' }}"></div>
+  <div class="col-md-1"><label class="form-label small mb-0">Lotto</label><input name="lotto" class="form-control form-control-sm" value="{{ f.lotto|default:'' }}"></div>
+  <div class="col-md-2"><label class="form-label small mb-0">Riferimento</label><input name="riferimento" class="form-control form-control-sm" value="{{ f.riferimento|default:'' }}"></div>
+  <div class="col-md-2"><label class="form-label small mb-0">Esito</label><select name="esito" class="form-select form-select-sm"><option value="">Tutti</option>
+    <option value="OK"{% if f.esito == "OK" %} selected{% endif %}>Conforme</option><option value="KO"{% if f.esito == "KO" %} selected{% endif %}>Non conforme</option><option value="NA"{% if f.esito == "NA" %} selected{% endif %}>Senza esito</option></select></div>
+  <div class="col-md-2"><label class="form-label small mb-0">Dal</label><input type="date" name="dal" class="form-control form-control-sm" value="{{ f.dal|default:'' }}"></div>
+  <div class="col-md-2"><label class="form-label small mb-0">Al</label><input type="date" name="al" class="form-control form-control-sm" value="{{ f.al|default:'' }}"></div>
+  {% if f.ordine %}<input type="hidden" name="ordine" value="{{ f.ordine }}">{% endif %}{% if f.ddt %}<input type="hidden" name="ddt" value="{{ f.ddt }}">{% endif %}
+  <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="annullate" value="1" id="annullate"{% if f.annullate == "1" %} checked{% endif %}><label class="form-check-label small" for="annullate">Anche annullate</label></div></div>
+  <div class="col-md-auto d-flex gap-2"><button class="btn btn-sm btn-primary">Filtra</button><a class="btn btn-sm btn-outline-secondary" href="?">Azzera</a>
+    <a class="btn btn-sm btn-outline-primary" href="?{{ query }}&formato=xlsx" title="Scegli un modello per avere una colonna per ogni campo">Excel</a></div>
+</form>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle small">
+  <thead><tr><th>Quando</th><th>Modello</th><th>Esito</th><th>Collegata a</th><th>Operatore</th></tr></thead>
+  <tbody>{% for t in pagina %}<tr class="{% if t.annullata %}text-muted{% endif %}">
+    <td class="text-nowrap"><a href="{{ t.get_absolute_url }}">{{ t.momento|date:"d/m/Y H:i" }}</a></td><td>{{ t.modello }}</td><td>{% include "tracciatura/_esito.html" %}</td>
+    <td>{% if t.ordine %}Ordine {{ t.ordine.codice_breve }} {% endif %}{% if t.ddt %}DDT {{ t.ddt.numero }}/{{ t.ddt.anno }} {% endif %}{% if t.componente %}Art. {{ t.componente }} {% endif %}{% if t.articolo %}Finito {{ t.articolo }} {% endif %}{% if t.lotto %}Lotto {{ t.lotto }} {% endif %}{% if t.riferimento %}Rif. {{ t.riferimento }}{% endif %}</td>
+    <td>{{ t.operatore }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Nessuna tracciatura.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% include "_paginazione.html" %}
+{% endblock %}

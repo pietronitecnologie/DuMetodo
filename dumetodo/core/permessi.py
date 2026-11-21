@@ -42,6 +42,7 @@ class Sezione(StrEnum):
     UTENTI = "Utenti e permessi"
     GESTIONALE = "Gestionale (riservato)"
     TIMBRATURE = "Timbrature"
+    TRACCIATURA = "Tracciatura"
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,9 @@ class F:
     REPARTI = "reparti"
     CHAT = "chat"
     QUALITA_TEST = "qualita_test"
+    TRACCIATURA_VEDERE = "tracciatura_vedere"
+    TRACCIATURA_REGISTRA = "tracciatura_registra"
+    TRACCIATURA_CONFIGURA = "tracciatura_configura"
     TIMBRATURE_VEDERE = "timbrature_vedere"
     TIMBRATURE_GESTIRE = "timbrature_gestire"
     TIMBRATURE_COSTI = "timbrature_costi"
@@ -180,6 +184,24 @@ FUNZIONI: list[Funzione] = [
     Funzione(F.CHAT, Sezione.UTILITA, "Usare la chat", "Chat 1 a 1 con gli altri utenti nel client desktop."),
     Funzione(F.UTILITA_CAMBIA_ORDINE, Sezione.UTILITA, "Cambia ordine (numero, serie, appendice, scadenza)"),
     Funzione(F.CONFIGURAZIONE, Sezione.AMMINISTRAZIONE, "Configurazione"),
+    Funzione(
+        F.TRACCIATURA_VEDERE,
+        Sezione.TRACCIATURA,
+        "Vedere le tracciature",
+        "Elenco, dettaglio, foto e documenti; riquadro nelle pagine di ordini e DDT.",
+    ),
+    Funzione(
+        F.TRACCIATURA_REGISTRA,
+        Sezione.TRACCIATURA,
+        "Registrare tracciature",
+        "Compilare i modelli: controlli, lotti, operazioni, documenti e foto; annullare le proprie.",
+    ),
+    Funzione(
+        F.TRACCIATURA_CONFIGURA,
+        Sezione.TRACCIATURA,
+        "Configurare i modelli di tracciatura",
+        "Campi, limiti, collegamenti e codici a cui si applicano; annullare le tracciature di tutti.",
+    ),
     Funzione(
         F.TIMBRATURE_VEDERE,
         Sezione.TIMBRATURE,
@@ -275,6 +297,8 @@ _OPERATORE = {
     F.TRACCIABILITA_CONSULTA,
     F.TRACCIABILITA_REGISTRA,
     F.CHAT,
+    F.TRACCIATURA_VEDERE,
+    F.TRACCIATURA_REGISTRA,
 }
 _CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.UTENTI_VEDERE, F.TIMBRATURE_VEDERE}
 PROFILI: dict[str, set[str]] = {

@@ -1,0 +1,1 @@
+{% if t.annullata %}<span class="badge text-bg-secondary">annullata</span>{% elif t.esito == "OK" %}<span class="badge text-bg-success">conforme</span>{% elif t.esito == "KO" %}<span class="badge text-bg-danger">non conforme</span>{% else %}<span class="badge text-bg-light border">registrata</span>{% endif %}

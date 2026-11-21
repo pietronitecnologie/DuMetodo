@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static dumetodo %}
+{% block titolo %}{{ m.nome }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciatura:nuova' %}{% if coll.ordine %}?ordine={{ coll.ordine }}{% endif %}">← Modelli</a>
+  <h1 class="h4 mb-0 me-auto">{{ m.nome }}</h1><span class="badge text-bg-light border">{{ m.get_categoria_display }}</span></div>
+{% if m.descrizione %}<div class="alert alert-info py-2 small">{{ m.descrizione|linebreaksbr }}</div>{% endif %}
+<form method="post" enctype="multipart/form-data" data-tracciatura class="row g-3" style="max-width:60rem">{% csrf_token %}
+  <input type="hidden" name="modello" value="{{ m.pk }}">
+  {% if m.collegamenti %}<div class="col-12"><div class="card"><div class="card-header">Collegata a</div><div class="card-body row g-2">
+    {% for chiave, etichetta, uso in m.collegamenti %}<div class="col-md-6"><label class="form-label">{{ etichetta }}{% if uso == "O" %} *{% endif %}</label>
+      {% if chiave == "ordine" %}{{ form_ordine.ordine }}
+      {% elif chiave == "ddt" %}<input class="form-control form-control-sm" name="ddt" value="{{ coll.ddt }}" placeholder="numero/anno, es. 12/2026"{% if uso == "O" %} required{% endif %}>
+      {% else %}<input class="form-control form-control-sm" name="{{ chiave }}" value="{{ coll|get_item:chiave }}" maxlength="120" autocomplete="off"{% if uso == "O" %} required{% endif %}>{% endif %}
+    </div>{% endfor %}</div></div></div>{% endif %}
+  <div class="col-12"><div class="card"><div class="card-header">Dati</div><div class="card-body row g-3">
+  {% for c in campi %}
+    <div class="{% if c.tipo == 'TXL' or c.tipo == 'FOT' or c.tipo == 'DOC' %}col-12{% else %}col-md-6{% endif %}">
+      <label class="form-label" for="c{{ c.pk }}">{{ c.etichetta }}{% if c.unita %} ({{ c.unita }}){% endif %}{% if c.obbligatorio %} *{% endif %}</label>
+      {% if c.tipo == "TXT" %}<input class="form-control" id="c{{ c.pk }}" name="campo_{{ c.pk }}" maxlength="200"{% if c.obbligatorio %} required{% endif %}>
+      {% elif c.tipo == "TXL" %}<textarea class="form-control" id="c{{ c.pk }}" name="campo_{{ c.pk }}" rows="3"{% if c.obbligatorio %} required{% endif %}></textarea>
+      {% elif c.tipo == "INT" %}<input class="form-control" id="c{{ c.pk }}" name="campo_{{ c.pk }}" type="number" step="1" inputmode="numeric"{% if c.obbligatorio %} required{% endif %}>
+      {% elif c.tipo == "DEC" %}<input class="form-control" id="c{{ c.pk }}" name="campo_{{ c.pk }}" inputmode="decimal" pattern="-?[0-9]+([.,][0-9]+)?"{% if c.obbligatorio %} required{% endif %}>
+      {% elif c.tipo == "BOO" %}<div class="btn-group w-100" role="group">
+        <input type="radio" class="btn-check" name="campo_{{ c.pk }}" id="c{{ c.pk }}s" value="1"{% if c.obbligatorio %} required{% endif %}><label class="btn btn-outline-primary" for="c{{ c.pk }}s">Sì</label>
+        <input type="radio" class="btn-check" name="campo_{{ c.pk }}" id="c{{ c.pk }}n" value="0"><label class="btn btn-outline-primary" for="c{{ c.pk }}n">No</label></div>
+      {% elif c.tipo == "ESI" %}<div class="btn-group w-100" role="group">
+        <input type="radio" class="btn-check" name="campo_{{ c.pk }}" id="c{{ c.pk }}s" value="1"{% if c.obbligatorio %} required{% endif %}><label class="btn btn-outline-success" for="c{{ c.pk }}s">OK</label>
+        <input type="radio" class="btn-check" name="campo_{{ c.pk }}" id="c{{ c.pk }}n" value="0"><label class="btn btn-outline-danger" for="c{{ c.pk }}n">KO</label></div>
+      {% elif c.tipo == "SCE" %}<select class="form-select" id="c{{ c.pk }}" name="campo_{{ c.pk }}"{% if c.obbligatorio %} required{% endif %}><option value="">—</option>{% for s in c.elenco_scelte %}<option>{{ s }}</option>{% endfor %}</select>
+      {% elif c.tipo == "DAT" %}<input class="form-control" id="c{{ c.pk }}" name="campo_{{ c.pk }}" type="date"{% if c.obbligatorio %} required{% endif %}>
+      {% elif c.tipo == "DTO" %}<input class="form-control" id="c{{ c.pk }}" name="campo_{{ c.pk }}" type="datetime-local"{% if c.obbligatorio %} required{% endif %}>
+      {% elif c.tipo == "FOT" %}<input class="form-control" id="c{{ c.pk }}" name="campo_{{ c.pk }}" type="file" accept="image/*" capture="environment" data-foto{% if c.obbligatorio %} required{% endif %}>
+      {% elif c.tipo == "DOC" %}<input class="form-control" id="c{{ c.pk }}" name="campo_{{ c.pk }}" type="file" accept="application/pdf,image/*"{% if c.obbligatorio %} required{% endif %}>{% endif %}
+      <div class="form-text">{{ c.aiuto }}{% if c.minimo is not None or c.massimo is not None %} Accettabile{% if c.minimo is not None %} da {{ c.minimo.normalize }}{% endif %}{% if c.massimo is not None %} a {{ c.massimo.normalize }}{% endif %}{% if c.unita %} {{ c.unita }}{% endif %}.{% endif %}</div>
+    </div>
+  {% empty %}<div class="col-12 text-muted small">Il modello non ha campi: si registrano solo collegamenti e note.</div>{% endfor %}
+    <div class="col-12"><label class="form-label" for="note">Note</label><textarea class="form-control" id="note" name="note" rows="2"></textarea></div>
+  </div></div></div>
+  <div class="col-12 d-flex flex-wrap gap-2"><button class="btn btn-primary">Registra</button>
+    <button class="btn btn-outline-primary" name="ancora" value="1">Registra e inseriscine un'altra</button></div>
+</form>
+<script src="{% static 'tracciatura/modulo.js' %}" defer></script>
+{% endblock %}

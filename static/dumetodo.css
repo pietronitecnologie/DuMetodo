@@ -99,6 +99,13 @@ html.dm-modo-reparto .dm-pulsante-icona[data-dm-reparto] { background: var(--dm-
   .dm-menu-voce span { display: none; }
   .dm-menu-voce { padding: 0 8px; }
 }
+/* Adattamento automatico (dumetodo.js → adattaMenu): voci che non ci stanno nella larghezza disponibile. */
+@media (min-width: 768px) {
+  html.dm-menu-senza-icone .dm-menu-voce .dm-icona { display: none; }
+  html.dm-menu-senza-icone .dm-menu-voce { padding: 0 7px; }
+  html.dm-menu-solo-icone .dm-menu-voce span { display: none; }
+  html.dm-menu-solo-icone .dm-menu-voce { padding: 0 8px; }
+}
 @media (max-width: 767.98px) {
   .dm-solo-piccolo { display: grid; }
   .dm-marchio-testo { display: none; }

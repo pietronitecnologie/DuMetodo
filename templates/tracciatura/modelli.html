@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titolo %}Modelli di tracciatura{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-1">Modelli di tracciatura</h1>
+<p class="small text-muted">Ogni modello è un tipo di tracciatura: i suoi campi, a cosa si collega (ordine, DDT, codici, lotto…) e a quali codici si applica.</p>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Modello</th><th>Categoria</th><th class="text-end">Campi</th><th>Si applica a</th><th class="text-end">Tracciature</th><th>Stato</th></tr></thead>
+  <tbody>{% for m in modelli %}<tr class="{% if not m.attivo %}text-muted{% endif %}"><td><a href="{{ m.get_absolute_url }}">{{ m.nome }}</a></td><td>{{ m.get_categoria_display }}</td>
+    <td class="text-end">{{ m.n_campi }}</td><td class="small">{% if m.codici %}{{ m.codici|linebreaksbr|truncatechars_html:80 }}{% else %}<span class="text-muted">tutti i codici</span>{% endif %}</td>
+    <td class="text-end">{{ m.n_tracciature }}</td><td>{% if m.attivo %}attivo{% else %}non attivo{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Nessun modello: creane uno qui sotto.</td></tr>{% endfor %}</tbody>
+</table></div>
+<form method="post" class="card" style="max-width:36rem">{% csrf_token %}
+  <div class="card-header">Nuovo modello</div><div class="card-body row g-2">
+    <div class="col-sm-7"><label class="form-label">Nome</label><input class="form-control form-control-sm" name="nome" required maxlength="80" placeholder="es. Collaudo pulsantiera"></div>
+    <div class="col-sm-5"><label class="form-label">Categoria</label><select class="form-select form-select-sm" name="categoria">{% for v, e in categorie %}<option value="{{ v }}">{{ e }}</option>{% endfor %}</select></div>
+    <input type="hidden" name="uso_ordine" value="F"><input type="hidden" name="uso_articolo" value="F">
+    <div class="col-12"><button class="btn btn-sm btn-primary">Crea e aggiungi i campi</button></div>
+  </div></form>
+{% endblock %}

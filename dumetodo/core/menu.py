@@ -107,6 +107,15 @@ MENU: tuple[Sezione, ...] = (
         ),
     ),
     Sezione(
+        "Tracciatura",
+        "tracciatura",
+        (
+            Voce("Nuova tracciatura", "tracciatura:nuova", (F.TRACCIATURA_REGISTRA,)),
+            Voce("Tracciature", "tracciatura:elenco", (F.TRACCIATURA_VEDERE,)),
+            Voce("Modelli di tracciatura", "tracciatura:modelli", (F.TRACCIATURA_CONFIGURA,)),
+        ),
+    ),
+    Sezione(
         "Timbrature",
         "timbrature",
         (

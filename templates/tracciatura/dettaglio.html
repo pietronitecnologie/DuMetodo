@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titolo %}{{ t.modello }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciatura:elenco' %}">← Tracciature</a>
+  <h1 class="h4 mb-0 me-auto">{{ t.modello }} {% include "tracciatura/_esito.html" %}</h1>
+  {% if puo_registrare %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tracciatura:nuova' %}?modello={{ t.modello_id }}{% if t.ordine_id %}&ordine={{ t.ordine_id }}{% endif %}">Nuova uguale</a>{% endif %}</div>
+{% if t.annullata %}<div class="alert alert-secondary py-2 small">Annullata il {{ t.annullata_il|date:"d/m/Y H:i" }} da {{ t.annullata_da }}: {{ t.motivo_annullamento }}</div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-4"><div class="card"><div class="card-body small">
+    <div><span class="text-muted">Registrata il</span> {{ t.momento|date:"d/m/Y H:i" }} <span class="text-muted">da</span> {{ t.operatore }}</div>
+    <div><span class="text-muted">Categoria:</span> {{ t.modello.get_categoria_display }}</div>
+    {% if t.ordine %}<div><span class="text-muted">Ordine:</span> <a href="{% url 'ordini:dettaglio' t.ordine_id %}">{{ t.ordine.codice_breve }}</a></div>{% endif %}
+    {% if t.ddt %}<div><span class="text-muted">DDT:</span> {{ t.ddt.numero }}/{{ t.ddt.anno }} del {{ t.ddt.data|date:"d/m/Y" }}</div>{% endif %}
+    {% if t.componente %}<div><span class="text-muted">Codice articolo:</span> {{ t.componente }}</div>{% endif %}
+    {% if t.articolo %}<div><span class="text-muted">Codice finito:</span> {{ t.articolo }}</div>{% endif %}
+    {% if t.lotto %}<div><span class="text-muted">Lotto:</span> {{ t.lotto }}</div>{% endif %}
+    {% if t.riferimento %}<div><span class="text-muted">Riferimento:</span> {{ t.riferimento }}</div>{% endif %}
+    {% if t.note %}<div class="mt-2">{{ t.note|linebreaksbr }}</div>{% endif %}
+  </div></div>
+  {% if puo_annullare %}<form method="post" class="card mt-2" onsubmit="return confirm('Annullare la tracciatura?')">{% csrf_token %}<div class="card-body">
+    <label class="form-label" for="motivo">Annulla</label><input class="form-control form-control-sm mb-2" id="motivo" name="motivo" required maxlength="200" placeholder="Motivo">
+    <button class="btn btn-sm btn-outline-danger">Annulla la tracciatura</button></div></form>{% endif %}
+  </div>
+  <div class="col-lg-8"><div class="table-responsive"><table class="table bg-white align-middle">
+    <tbody>{% for c, v in righe %}<tr><th class="small text-muted fw-normal" style="width:35%">{{ c.etichetta }}{% if not c.attivo %} <span class="badge text-bg-light border">campo dismesso</span>{% endif %}</th>
+      <td>{% include "tracciatura/_valore.html" %}</td></tr>{% empty %}<tr><td class="text-muted">Nessun campo.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

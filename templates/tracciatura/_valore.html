@@ -1,0 +1,4 @@
+{% if not v %}<span class="text-muted">—</span>{% elif v.campo.tipo == "FOT" %}<a href="{% url 'tracciatura:file' v.pk %}" target="_blank"><img src="{% url 'tracciatura:file' v.pk %}" alt="{{ v.nome_file }}" style="max-height:140px;max-width:100%;border-radius:6px"></a>
+{% elif v.campo.tipo == "DOC" %}<a href="{% url 'tracciatura:file' v.pk %}" target="_blank">{{ v.nome_file }}</a> · <a href="{% url 'tracciatura:file' v.pk %}?scarica=1">scarica</a>
+{% else %}{{ v.testo_leggibile|linebreaksbr }}{% if v.campo.unita %} {{ v.campo.unita }}{% endif %}{% endif %}
+{% if v.conforme is False %} <span class="badge text-bg-danger">non conforme</span>{% elif v.conforme %} <span class="badge text-bg-success">ok</span>{% endif %}

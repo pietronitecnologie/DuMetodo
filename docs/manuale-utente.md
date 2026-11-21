@@ -387,6 +387,83 @@ scarica i dati.
 - **Cambia ordine**: corregge serie, numero, appendice, anno e scadenza di un ordine (con il motivo, che finisce
   nello storico scadenze). Righe, note, tracce e file seguono l'ordine automaticamente.
 
+## Tracciatura
+
+Il modulo **Tracciatura** registra qualsiasi tipo di controllo o evento: un controllo qualità, il controllo di un
+lotto, un'operazione su un ordine, un documento, una fotografia. Che cosa si registra lo decidi tu con i
+**modelli**; gli operatori compilano il modulo che ne risulta.
+
+### Registrare una tracciatura
+
+**Tracciatura → Nuova tracciatura** (permesso *Registrare tracciature*), oppure **Nuova** nel riquadro
+«Tracciature» della pagina di un ordine o di un DDT.
+
+1. **Scegli il modello**. Se parti da un ordine, in evidenza («previsto») ci sono i modelli che valgono per i
+   codici dell'ordine.
+2. **Compila i collegamenti** richiesti dal modello, con `*` per quelli obbligatori:
+   - l'ordine si sceglie con il selettore;
+   - il DDT si scrive come numero/anno, es. `12/2026`;
+   - codici articolo e codici finiti devono esistere in anagrafica;
+   - lotto e riferimento (es. numero di serie) sono testo libero.
+3. **Compila i campi**:
+   - i numeri accettano la virgola;
+   - foto e documenti si caricano anche dal telefono, che apre direttamente la fotocamera;
+   - le foto vengono ridotte prima dell'invio.
+4. **Registra**, oppure **Registra e inseriscine un'altra** per controllare un pezzo dopo l'altro sullo stesso
+   ordine.
+
+L'**esito** si calcola da solo e la tracciatura è **non conforme** se:
+
+- un numero è fuori dai limiti;
+- un campo OK/KO è KO;
+- una scelta è tra quelle non conformi;
+- un sì/no è diverso dalla risposta attesa.
+
+Se il modello non ha controlli, la tracciatura è solo «registrata».
+
+Le tracciature non si cancellano: si **annullano** con il motivo. Le proprie le annulla chi le ha registrate, tutte
+le annulla chi configura i modelli.
+
+**Tracciatura → Tracciature** le elenca, con filtri per modello, categoria, codice, lotto, riferimento, esito e
+periodo. **Excel** scarica i dati; scegliendo un modello si ha una colonna per ogni campo, utile per statistiche e
+carte di controllo.
+
+### Modelli di tracciatura
+
+**Tracciatura → Modelli di tracciatura** (permesso *Configurare i modelli di tracciatura*).
+
+Ogni modello ha:
+
+- **nome**, **categoria** (controllo qualità, controllo di lotto, operazione, documento, altro) e le istruzioni
+  mostrate all'operatore;
+- **a cosa si collega**: ordine, DDT, codice articolo (componente), codice finito, lotto, riferimento libero.
+  Ognuno può essere *non previsto*, *facoltativo* od *obbligatorio*;
+- **a quali codici si applica**: codici articolo o finiti, uno per riga, anche con `*` (es. `18090*` = tutti i
+  codici che iniziano così). È così che si stabilisce **quale test va fatto su quale codice**:
+  - DuMetodo propone il modello sugli ordini di quei codici;
+  - non permette di usarlo per codici diversi.
+
+  Vuoto = vale per tutti;
+- i **campi**, nell'ordine in cui compaiono (si spostano con ↑ ↓):
+
+| Tipo | Uso |
+|---|---|
+| Testo breve, testo lungo | Descrizioni, osservazioni |
+| Numero intero | Conteggi (es. pezzi controllati) |
+| Numero decimale | Misure; con **unità di misura** e **minimo/massimo accettabile** |
+| Sì / No | Domande; con la **risposta attesa** diventa un controllo |
+| Scelta da un elenco | Valori fissi; le **scelte non conformi** rendono la tracciatura non conforme |
+| Data, data e ora | Date di produzione, scadenze |
+| Esito OK / KO | Controlli a vista |
+| Fotografia | Scattata dal telefono o caricata |
+| Documento | PDF o immagine (certificati, schede) |
+
+Ogni campo può essere obbligatorio e avere le sue istruzioni. **Prova il modulo** mostra il modulo come lo vedrà
+l'operatore.
+
+Un campo già usato non cambia tipo e non si elimina: si disattiva, e i valori registrati restano visibili nelle
+tracciature vecchie. Un modello non più usato si disattiva.
+
 ## Timbrature
 
 Il modulo **Timbrature** registra le entrate e le uscite dei lavoratori e **il tempo passato in ogni reparto**,

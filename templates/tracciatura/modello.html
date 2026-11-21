@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titolo %}{{ m.nome }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciatura:modelli' %}">← Modelli</a>
+  <h1 class="h4 mb-0 me-auto">{{ m.nome }}</h1>
+  <a class="btn btn-sm btn-outline-primary" href="{% url 'tracciatura:nuova' %}?modello={{ m.pk }}">Prova il modulo</a></div>
+<div class="row g-3">
+  <div class="col-xl-5"><form method="post" class="card">{% csrf_token %}<input type="hidden" name="azione" value="modello">
+    <div class="card-header">Modello</div><div class="card-body row g-2">
+      <div class="col-sm-7"><label class="form-label">Nome</label><input class="form-control form-control-sm" name="nome" value="{{ m.nome }}" required maxlength="80"></div>
+      <div class="col-sm-5"><label class="form-label">Categoria</label><select class="form-select form-select-sm" name="categoria">{% for v, e in categorie %}<option value="{{ v }}"{% if m.categoria == v %} selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>
+      <div class="col-12"><label class="form-label">Istruzioni per l'operatore</label><textarea class="form-control form-control-sm" name="descrizione" rows="2">{{ m.descrizione }}</textarea></div>
+      <div class="col-12"><label class="form-label mb-1">Collegata a</label>
+        <table class="table table-sm mb-0 small"><tbody>{% for chiave, etichetta, uso in collegamenti %}<tr><td>{{ etichetta }}</td><td style="width:11rem">
+          <select class="form-select form-select-sm" name="uso_{{ chiave }}">{% for v, e in usi %}<option value="{{ v }}"{% if uso == v %} selected{% endif %}>{% if v %}{{ e }}{% else %}Non previsto{% endif %}</option>{% endfor %}</select></td></tr>{% endfor %}</tbody></table></div>
+      <div class="col-12"><label class="form-label">Si applica ai codici</label><textarea class="form-control form-control-sm font-monospace" name="codici" rows="3" placeholder="18090*&#10;40020025">{{ m.codici }}</textarea>
+        <div class="form-text">Codici articolo o finiti, uno per riga, anche con * (es. 18090*). Vuoto = tutti. I modelli con codici vengono proposti in evidenza sugli ordini di quei codici.</div></div>
+      <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="attivo" id="attivo"{% if m.attivo %} checked{% endif %}><label class="form-check-label" for="attivo">Attivo (si può usare)</label></div></div>
+    </div><div class="card-footer text-end"><button class="btn btn-sm btn-primary">Salva</button></div></form></div>
+  <div class="col-xl-7">
+    <div class="card mb-3"><div class="card-header">Campi</div>
+      <ul class="list-group list-group-flush">{% for c in campi %}<li class="list-group-item{% if not c.attivo %} text-muted{% endif %}">
+        <div class="d-flex align-items-center gap-2"><span class="fw-semibold me-auto">{{ c.etichetta }}{% if c.obbligatorio %} *{% endif %}</span>
+          <span class="badge text-bg-light border">{{ c.get_tipo_display }}</span>
+          {% if c.minimo is not None or c.massimo is not None %}<span class="small">{{ c.minimo.normalize|default_if_none:"…" }} – {{ c.massimo.normalize|default_if_none:"…" }} {{ c.unita }}</span>{% endif %}
+          {% if not c.attivo %}<span class="badge text-bg-secondary">non attivo</span>{% endif %}
+          <form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="campo" value="{{ c.pk }}">
+            <button class="btn btn-sm btn-light border py-0" name="azione" value="su" title="Su">↑</button><button class="btn btn-sm btn-light border py-0" name="azione" value="giu" title="Giù">↓</button>
+            <button class="btn btn-sm btn-outline-danger py-0" name="azione" value="elimina" onclick="return confirm('{% if c.pk in usati %}Il campo ha dei valori: verrà disattivato (i valori restano).{% else %}Eliminare il campo?{% endif %}')">{% if c.pk in usati %}Disattiva{% else %}Elimina{% endif %}</button></form></div>
+        <details class="mt-1"><summary class="small text-muted">Modifica</summary><div class="mt-2">{% include "tracciatura/_campo_form.html" %}</div></details>
+      </li>{% empty %}<li class="list-group-item text-muted small">Nessun campo: aggiungine qui sotto.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header">Nuovo campo</div><div class="card-body">{% include "tracciatura/_campo_form.html" with c=None %}</div></div>
+  </div>
+</div>
+<script>
+  // Mostra solo le opzioni che servono al tipo scelto.
+  document.querySelectorAll("select[data-dm-tipo]").forEach((sel) => {
+    const form = sel.closest("form");
+    const aggiorna = () => form.querySelectorAll("[data-per]").forEach((el) => (el.hidden = !el.dataset.per.split(" ").includes(sel.value)));
+    sel.addEventListener("change", aggiorna); aggiorna();
+  });
+</script>
+{% endblock %}

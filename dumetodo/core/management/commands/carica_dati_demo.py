@@ -133,6 +133,7 @@ class Command(BaseCommand):
         self._utilita_e_report()
         self._gestionale()
         self._timbrature()
+        self._tracciatura()
 
         self.stdout.write(self.style.SUCCESS("Dati di prova caricati."))
         self.stdout.write(f"  ordini: {Ordine.objects.count()}  ({self._riepilogo_stati()})")
@@ -487,6 +488,110 @@ class Command(BaseCommand):
                     if momento <= adesso:
                         Timbratura.objects.create(lavoratore=lav, tipo=tipo, momento=momento, reparto=rep)
         self.stdout.write("  timbrature di prova: codici 1001…1006 (Timbrature → Postazioni per i link)")
+
+    def _tracciatura(self) -> None:
+        """Tre modelli (collaudo pulsantiere, controllo lotto in ingresso, saldatura) e alcune tracciature."""
+        from dumetodo.tracciatura import servizi as tr
+        from dumetodo.tracciatura.models import Modello
+
+        if Modello.objects.exists():
+            return
+        admin = User.objects.filter(is_superuser=True).first()
+        if admin is None:
+            return
+        collaudo = tr.salva_modello(
+            admin,
+            None,
+            {
+                "nome": "Collaudo pulsantiera",
+                "categoria": "QUA",
+                "uso_ordine": "O",
+                "uso_articolo": "F",
+                "codici": "18090*",
+                "descrizione": "A fine linea, su un pezzo ogni 10.",
+            },
+        )
+        c = {
+            "visivo": tr.salva_campo(
+                admin, collaudo.pk, None, {"etichetta": "Controllo visivo", "tipo": "ESI", "obbligatorio": True}
+            ),
+            "forza": tr.salva_campo(
+                admin,
+                collaudo.pk,
+                None,
+                {
+                    "etichetta": "Forza di attuazione",
+                    "tipo": "DEC",
+                    "unita": "N",
+                    "minimo": "2,5",
+                    "massimo": "4",
+                    "obbligatorio": True,
+                },
+            ),
+            "pezzi": tr.salva_campo(admin, collaudo.pk, None, {"etichetta": "Pezzi controllati", "tipo": "INT"}),
+            "colore": tr.salva_campo(
+                admin,
+                collaudo.pk,
+                None,
+                {
+                    "etichetta": "Colore",
+                    "tipo": "SCE",
+                    "scelte": "Conforme al campione\nDifforme",
+                    "scelte_non_conformi": "Difforme",
+                },
+            ),
+            "foto": tr.salva_campo(admin, collaudo.pk, None, {"etichetta": "Foto del pezzo", "tipo": "FOT"}),
+        }
+        lotto = tr.salva_modello(
+            admin,
+            None,
+            {
+                "nome": "Controllo lotto in ingresso",
+                "categoria": "LOT",
+                "uso_ordine": "",
+                "uso_articolo": "",
+                "uso_ddt": "F",
+                "uso_componente": "O",
+                "uso_lotto": "O",
+            },
+        )
+        tr.salva_campo(admin, lotto.pk, None, {"etichetta": "Quantità ricevuta", "tipo": "INT", "obbligatorio": True})
+        tr.salva_campo(admin, lotto.pk, None, {"etichetta": "Certificato del fornitore", "tipo": "DOC"})
+        tr.salva_campo(admin, lotto.pk, None, {"etichetta": "Imballo integro", "tipo": "BOO", "atteso": "si"})
+        saldatura = tr.salva_modello(
+            admin,
+            None,
+            {
+                "nome": "Saldatura scheda",
+                "categoria": "OPE",
+                "uso_ordine": "O",
+                "uso_riferimento": "F",
+                "codici": "2201*",
+            },
+        )
+        tr.salva_campo(
+            admin,
+            saldatura.pk,
+            None,
+            {"etichetta": "Temperatura stagnatore", "tipo": "INT", "unita": "°C", "minimo": "320", "massimo": "380"},
+        )
+        tr.salva_campo(admin, saldatura.pk, None, {"etichetta": "Osservazioni", "tipo": "TXL"})
+        ordini_pls = list(Ordine.objects.filter(righe__articolo__startswith="18090").distinct()[:6])
+        for i, o in enumerate(ordini_pls):
+            forza = f"{Decimal('2.8') + Decimal(self.rnd.randint(0, 14)) / 10}"  # qualche valore fuori limite
+            self._prova(
+                tr.registra,
+                self.operatore,
+                collaudo.pk,
+                collegamenti={"ordine": o},
+                valori={
+                    f"campo_{c['visivo'].pk}": "0" if i == 4 else "1",
+                    f"campo_{c['forza'].pk}": forza,
+                    f"campo_{c['pezzi'].pk}": str(self.rnd.randint(5, 30)),
+                    f"campo_{c['colore'].pk}": "Conforme al campione",
+                },
+            )
+        self.stdout.write(f"  tracciatura: 3 modelli e {len(ordini_pls)} collaudi di prova")
 
     def _prova(self, funzione: Any, *args: Any, **kwargs: Any) -> Any:
         """Esegue un servizio; un rifiuto (regola di business) non ferma il caricamento."""

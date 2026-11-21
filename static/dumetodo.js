@@ -156,6 +156,21 @@
     });
   }
 
+  // Menu in alto: se le voci (che dipendono dai permessi) non ci stanno, prima si tolgono le icone, poi si tengono
+  // solo le icone (il nome resta nel suggerimento). Sui telefoni il menu è a tendina e non serve.
+  function adattaMenu() {
+    var nav = document.querySelector(".dm-menu");
+    if (!nav || window.innerWidth < 768) return;
+    var corpo = document.documentElement;
+    corpo.classList.remove("dm-menu-senza-icone", "dm-menu-solo-icone");
+    var troppo = function () { return nav.scrollWidth > nav.clientWidth + 1; };
+    if (troppo()) corpo.classList.add("dm-menu-senza-icone");
+    if (troppo()) { corpo.classList.remove("dm-menu-senza-icone"); corpo.classList.add("dm-menu-solo-icone"); }
+  }
+  var attesaMenu = null;
+  window.addEventListener("resize", function () { clearTimeout(attesaMenu); attesaMenu = setTimeout(adattaMenu, 80); });
+  document.addEventListener("DOMContentLoaded", adattaMenu);
+  window.addEventListener("load", adattaMenu);  // dopo i font: le larghezze cambiano
   document.addEventListener("DOMContentLoaded", function () { adattaTabelle(document); preparaTabelle(document); });
   document.addEventListener("htmx:afterSettle", function (e) { adattaTabelle(e.target); preparaTabelle(e.target); });
 

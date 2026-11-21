@@ -45,6 +45,8 @@ CAPITOLI: tuple[tuple[str, str], ...] = (
     ("utilita:", "utilita"),
     ("configurazione:", "configurazione"),
     ("client:versioni", "aggiornamenti-del-client-desktop"),
+    ("tracciatura:modell", "modelli-di-tracciatura"),
+    ("tracciatura:", "tracciatura"),
     ("timbrature:postazion", "postazioni-di-timbratura"),
     ("timbrature:lavorator", "lavoratori-e-codici"),
     ("timbrature:costi", "costi-per-reparto"),
