@@ -8,6 +8,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from dumetodo.configurazione import servizi as config
 from dumetodo.core.permessi import F, richiede_permesso
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 from dumetodo.pianificazione import calendario
@@ -212,9 +213,9 @@ def prezzi(request: HttpRequest) -> HttpResponse:
 @require_GET
 @richiede_permesso(F.REPORT_MATERIALE)
 def settimane(request: HttpRequest) -> HttpResponse:
-    """Dalla settimana corrente alle precedenti (8 di default): ore in scadenza e consegnate per reparto."""
+    """Dalla settimana corrente alle precedenti (quante: Configurazione → Produzione): ore in scadenza e consegnate."""
     fino_a = _data(request.GET.get("fino_a")) or timezone.localdate()
-    n = _numero_settimane(request, default=9)
+    n = _numero_settimane(request, default=min(int(config.leggi("produzione.report_settimane") or 9), 52))
     dati = servizi.evaso_consegnato_per_settimana(servizi.settimane_indietro(n, fino_a))
     if request.GET.get("formato") == "xlsx":
         intestazione = ["Settimana dal", "Al"]

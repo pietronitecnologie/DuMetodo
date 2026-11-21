@@ -363,7 +363,9 @@ Una traccia registra la storia di un elemento (scheda, lotto, componente) con un
   avere pezzi/ora ed efficienza; il dettaglio mostra i singoli giorni.
 - **Materiale per reparto**: ore a scadenza e ore consegnate per reparto e settimana.
 - **In scadenza e consegnato per settimana**: gli stessi dati in un'altra forma.
-  - Righe: le settimane, dalla corrente alle 8 precedenti (il numero si cambia).
+  - Righe: le settimane, dalla corrente alle 8 precedenti.
+  - Il numero di settimane predefinito si imposta in **Configurazione → Produzione**; nella pagina si può cambiare
+    di volta in volta.
   - Colonne: i reparti; per ognuno, le ore in scadenza (da evadere) e le ore consegnate nella settimana.
   - Totali per settimana e per reparto.
   - In rosso dove si è consegnato meno di quanto scadeva.

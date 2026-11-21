@@ -252,6 +252,16 @@ PARAMETRI: tuple[Parametro, ...] = (
         minimo=Decimal("0.01"),
         legacy=("PREZZO_RESA_ORARIA",),
     ),
+    Parametro(
+        "produzione.report_settimane",
+        Tipo.INTERO,
+        Gruppo.PRODUZIONE,
+        "Settimane nel report «In scadenza e consegnato»",
+        "Quante settimane mostra il report, contando la corrente (9 = la corrente e le 8 precedenti). "
+        "Nella pagina si può comunque cambiare di volta in volta.",
+        default=9,
+        minimo=1,
+    ),
     # --- Ordini -----------------------------------------------------------------------
     Parametro(
         "ordini.serie_fast",

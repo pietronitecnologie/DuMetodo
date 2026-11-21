@@ -102,7 +102,7 @@ def test_pagina_configurazione_solo_admin(client, operatore, amministratore):
     assert r.status_code == 302
     config.invalida_cache()
     assert config.leggi("produzione.prezzo_resa_oraria") == Decimal("48.2")
-    assert ValoreParametro.objects.get().aggiornato_da == amministratore
+    assert ValoreParametro.objects.get(chiave="produzione.prezzo_resa_oraria").aggiornato_da == amministratore
 
 
 def test_mappatura_gruppi_metodo_coerente_con_la_migrazione():

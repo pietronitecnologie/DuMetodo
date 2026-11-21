@@ -110,6 +110,15 @@ def test_evaso_consegnato_per_settimana(dati, client, analista, operatore):
     client.force_login(analista)
     html = client.get("/report/settimane/").content.decode()
     assert "Pulsanti" in html and "corrente" in html and 'value="9"' in html
+    config.scrivi("produzione.report_settimane", 4)
+    config.invalida_cache()
+    html = client.get("/report/settimane/").content.decode()
+    assert 'value="4"' in html and html.count("–") >= 4
+    assert (
+        'value="12"' in client.get("/report/settimane/?settimane=12").content.decode()
+    )  # nella pagina vince la scelta
+    config.scrivi("produzione.report_settimane", 9)
+    config.invalida_cache()
     x = client.get("/report/settimane/?formato=xlsx")
     from openpyxl import load_workbook
 
