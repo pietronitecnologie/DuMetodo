@@ -405,6 +405,14 @@ modalità chiosco, all'ingresso dello stabilimento e nei reparti.
   Non serve accedere con un utente: il link identifica la postazione.
 - Se il link finisce nelle mani sbagliate o il PC viene sostituito, **Nuovo link** disattiva il vecchio.
 - Lo stato **collegata / non collegata** indica se la postazione ha contattato il server negli ultimi 15 minuti.
+- **Come ci si identifica**: per ogni postazione si attivano uno o più modi.
+  - **Tastierino sullo schermo**: il codice personale, con il dito o il mouse.
+  - **Tastiera e lettori USB**: lettori di **codici a barre**, di **QR** e di **tessere NFC/RFID**. Quasi tutti
+    funzionano come una tastiera: scrivono il codice letto e premono Invio. Non serve installare niente:
+    si collegano al PC della postazione e funzionano subito. La postazione riconosce la lettura veloce del lettore
+    e la invia da sola, anche se il lettore non manda Invio.
+  - **Fotocamera**: per tablet o PC con webcam, si inquadra il QR del badge. Il browser o il client chiede il
+    permesso di usare la fotocamera la prima volta. Su un PC fisso è più affidabile un lettore USB.
 
 ### Lavoratori e codici
 
@@ -419,9 +427,22 @@ Ogni lavoratore ha un **codice personale** da digitare alla postazione.
   uno nuovo e il vecchio smette di funzionare.
 - Un lavoratore non attivo non può timbrare.
 
+Oltre al codice, ogni lavoratore può avere **badge e tessere** (scheda del lavoratore → *Badge e tessere*).
+
+- **Crea un badge da stampare**: DuMetodo genera un codice (es. `DMHAURVXYC`).
+  - **Stampa** produce una tessera 85,6 × 54 mm con nome, matricola, **codice a barre** e **QR** dello stesso
+    codice. Va bene per una stampante per badge o per un cartoncino da plastificare.
+- **Associa una tessera NFC/RFID** o un badge che il lavoratore ha già (es. il badge della mensa):
+  1. collega un lettore al PC da cui lavori;
+  2. clicca nel campo *Codice* e passa la tessera: il codice si scrive da solo.
+- Un badge perso si **disattiva**: non identifica più nessuno, e si può riattivare. Per ogni badge si vede l'ultimo
+  uso.
+- Codici personali e badge non possono coincidere, e ogni badge o tessera appartiene a un solo lavoratore.
+
 ### Timbrare
 
-Alla postazione il lavoratore digita il codice e preme **OK**. Compaiono il suo nome, dove si trova e **solo le
+Alla postazione il lavoratore digita il codice e preme **OK**, oppure passa il badge o la tessera sul lettore,
+oppure inquadra il QR del badge. Compaiono il suo nome, dove si trova e **solo le
 timbrature possibili in quel momento**: la prima, evidenziata, è la più probabile.
 
 | Postazione | Timbrature |
@@ -434,6 +455,8 @@ timbrature possibili in quel momento**: la prima, evidenziata, è la più probab
 - **Mensa e pausa** sospendono il reparto: alla fine il tempo torna al reparto di prima, senza timbrare di nuovo.
 - Un doppio tocco non registra due volte la stessa timbratura. Dopo 5 codici sbagliati la postazione si blocca
   per un minuto.
+- Se un collega passa il badge mentre la postazione mostra ancora le scelte di un altro, la postazione passa
+  subito al nuovo lavoratore. I tasti premuti per sbaglio invece non contano.
 
 ### Presenze e correzioni
 

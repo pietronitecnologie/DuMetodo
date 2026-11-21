@@ -22,7 +22,15 @@ from dumetodo.core.permessi import F, ha_permesso
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
 from . import calcolo
-from .models import Lavoratore, OrigineTimbratura, Postazione, Timbratura, TipoTimbratura
+from .models import (
+    Identificativo,
+    Lavoratore,
+    OrigineTimbratura,
+    Postazione,
+    Timbratura,
+    TipoIdentificativo,
+    TipoTimbratura,
+)
 
 T = TipoTimbratura
 TENTATIVI_MASSIMI = 5  # codici sbagliati di fila prima del blocco della postazione
@@ -68,14 +76,81 @@ def imposta_codice(utente: Any, lavoratore_id: int, codice: str) -> None:
     codice = (codice or "").strip()
     if not (codice.isdigit() and 4 <= len(codice) <= 10):
         raise OperazioneNonConsentita("Il codice deve avere da 4 a 10 cifre.")
+    if Identificativo.objects.filter(valore=normalizza(codice)).exists():
+        raise OperazioneNonConsentita("Questo numero è già un badge o una tessera: scegline un altro.")
     _salva_codice(Lavoratore.objects.get(pk=lavoratore_id), codice)
 
 
+def normalizza(valore: str) -> str:
+    """Valore letto da un lettore: senza spazi e separatori «:», in maiuscolo (gli UID NFC arrivano in modi diversi)."""
+    return "".join(c for c in (valore or "") if not c.isspace() and c != ":").upper()[:64]
+
+
 def lavoratore_da_codice(codice: str) -> Lavoratore | None:
+    """Dal codice personale digitato o dal valore di un badge / tessera letto da un lettore o dalla fotocamera."""
     codice = (codice or "").strip()
-    if not codice.isdigit():
+    if not codice:
         return None
-    return Lavoratore.objects.filter(codice_impronta=impronta(codice), attivo=True).select_related("reparto").first()
+    if codice.isdigit():
+        lav = Lavoratore.objects.filter(codice_impronta=impronta(codice), attivo=True).select_related("reparto").first()
+        if lav is not None:
+            return lav
+    ident = (
+        Identificativo.objects.filter(valore=normalizza(codice), attivo=True, lavoratore__attivo=True)
+        .select_related("lavoratore__reparto")
+        .first()
+    )
+    if ident is None:
+        return None
+    Identificativo.objects.filter(pk=ident.pk).update(ultimo_uso=timezone.now())
+    return ident.lavoratore
+
+
+_ALFABETO_BADGE = "ACDEFGHJKLMNPQRTUVWXY3479"  # senza caratteri che si confondono (0/O, 1/I, 5/S, 8/B…)
+
+
+def aggiungi_identificativo(
+    utente: Any, lavoratore_id: int, tipo: str, valore: str, descrizione: str = ""
+) -> Identificativo:
+    """Associa un badge o una tessera già esistenti (es. passando la tessera NFC sul lettore)."""
+    _richiedi(utente, F.TIMBRATURE_GESTIRE)
+    if tipo not in TipoIdentificativo.values:
+        raise OperazioneNonConsentita("Tipo non valido.")
+    v = normalizza(valore)
+    if not 4 <= len(v) <= 64:
+        raise OperazioneNonConsentita("Il codice letto deve avere da 4 a 64 caratteri: riprova la lettura.")
+    altro = Identificativo.objects.filter(valore=v).select_related("lavoratore").first()
+    if altro is not None:
+        raise OperazioneNonConsentita(f"Questo {altro.get_tipo_display().lower()} è già di {altro.lavoratore}.")
+    if v.isdigit() and Lavoratore.objects.filter(codice_impronta=impronta(v)).exists():
+        raise OperazioneNonConsentita("Questo valore coincide con il codice personale di un lavoratore.")
+    return Identificativo.objects.create(
+        lavoratore=Lavoratore.objects.get(pk=lavoratore_id), tipo=tipo, valore=v, descrizione=(descrizione or "")[:60]
+    )
+
+
+def genera_badge(utente: Any, lavoratore_id: int) -> Identificativo:
+    """Nuovo badge da stampare (codice a barre e QR con lo stesso valore, es. DM7KQ3XWA)."""
+    _richiedi(utente, F.TIMBRATURE_GESTIRE)
+    for _ in range(50):
+        v = "DM" + "".join(secrets.choice(_ALFABETO_BADGE) for _ in range(8))
+        if not Identificativo.objects.filter(valore=v).exists():
+            return Identificativo.objects.create(
+                lavoratore=Lavoratore.objects.get(pk=lavoratore_id),
+                tipo=TipoIdentificativo.BADGE,
+                valore=v,
+                descrizione="badge stampato",
+            )
+    raise OperazioneNonConsentita("Impossibile generare un badge: riprova.")  # pragma: no cover
+
+
+def disattiva_identificativo(utente: Any, identificativo_id: int, attivo: bool = False) -> Identificativo:
+    """Badge perso o tessera restituita: non identifica più nessuno (riattivabile)."""
+    _richiedi(utente, F.TIMBRATURE_GESTIRE)
+    i = Identificativo.objects.get(pk=identificativo_id)
+    i.attivo = attivo
+    i.save(update_fields=["attivo"])
+    return i
 
 
 # ----------------------------------------------------------------------------------------------- anagrafiche
@@ -103,7 +178,14 @@ def salva_lavoratore(utente: Any, lavoratore_id: int | None, dati: dict[str, Any
     return lav
 
 
-def salva_postazione(utente: Any, postazione_id: int | None, nome: str, reparto_id: Any, attiva: bool) -> Postazione:
+def salva_postazione(
+    utente: Any,
+    postazione_id: int | None,
+    nome: str,
+    reparto_id: Any,
+    attiva: bool,
+    metodi: dict[str, bool] | None = None,
+) -> Postazione:
     _richiedi(utente, F.TIMBRATURE_GESTIRE)
     p = Postazione.objects.get(pk=postazione_id) if postazione_id else Postazione(token=secrets.token_urlsafe(24))
     nome = (nome or "").strip()[:60]
@@ -113,6 +195,12 @@ def salva_postazione(utente: Any, postazione_id: int | None, nome: str, reparto_
         raise OperazioneNonConsentita(f"Esiste già una postazione «{nome}».")
     p.nome, p.attiva = nome, attiva
     p.reparto = Reparto.objects.filter(pk=reparto_id or None).first()
+    if metodi is not None:
+        p.usa_tastierino = metodi.get("tastierino", False)
+        p.usa_lettori = metodi.get("lettori", False)
+        p.usa_fotocamera = metodi.get("fotocamera", False)
+        if not (p.usa_tastierino or p.usa_lettori or p.usa_fotocamera):
+            raise OperazioneNonConsentita("Attiva almeno un modo per identificarsi alla postazione.")
     p.save()
     return p
 

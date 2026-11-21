@@ -261,3 +261,74 @@ def test_pagine_di_gestione_e_permessi(client, impianto, capo, caporeparto, oper
     assert Lavoratore.objects.get(matricola="M9").codice_impronta
     for url in ("/timbrature/?formato=xlsx", "/timbrature/costi/?formato=xlsx"):
         assert client.get(url)["Content-Type"].startswith("application/vnd.openxml"), url
+
+
+# ------------------------------------------------------------------------------- badge, tessere e lettori
+def test_badge_e_tessere(impianto, capo):
+    from dumetodo.timbrature.models import Identificativo
+
+    mario = impianto["mario"]
+    nfc = servizi.aggiungi_identificativo(capo, mario.pk, "NFC", " 04:a2:b3 c1d2 ", "tessera blu")
+    assert nfc.valore == "04A2B3C1D2"
+    assert servizi.lavoratore_da_codice("04a2b3c1d2") == mario  # come lo scrive un altro lettore
+    nfc.refresh_from_db()
+    assert nfc.ultimo_uso is not None
+    badge = servizi.genera_badge(capo, mario.pk)
+    assert badge.valore.startswith("DM") and len(badge.valore) == 10 and badge.tipo == "BDG"
+    assert servizi.lavoratore_da_codice(badge.valore.lower()) == mario
+    luigi = servizi.salva_lavoratore(capo, None, {"nome": "Luigi", "cognome": "Verdi", "matricola": "M2"})
+    with pytest.raises(OperazioneNonConsentita, match="già di Rossi Mario"):
+        servizi.aggiungi_identificativo(capo, luigi.pk, "NFC", "04A2B3C1D2")
+    with pytest.raises(OperazioneNonConsentita, match="codice personale"):
+        servizi.aggiungi_identificativo(capo, luigi.pk, "BDG", "1234")  # è il codice di Mario
+    servizi.aggiungi_identificativo(capo, luigi.pk, "BDG", "55556666")
+    with pytest.raises(OperazioneNonConsentita, match="già un badge"):
+        servizi.imposta_codice(capo, mario.pk, "55556666")
+    with pytest.raises(OperazioneNonConsentita, match="da 4 a 64"):
+        servizi.aggiungi_identificativo(capo, luigi.pk, "NFC", "ab")
+    servizi.disattiva_identificativo(capo, nfc.pk)
+    assert servizi.lavoratore_da_codice("04A2B3C1D2") is None
+    assert Identificativo.objects.filter(lavoratore=mario).count() == 2
+
+
+def test_timbrare_con_il_badge(impianto, capo):
+    badge = servizi.genera_badge(capo, impianto["mario"].pk)
+    r = servizi.identifica(impianto["ingresso"], badge.valore)
+    assert r["nome"] == "Mario Rossi" and r["azioni"][0]["tipo"] == "ENT"
+    t = servizi.timbra(impianto["ingresso"], badge.valore, "ENT")
+    assert t.lavoratore == impianto["mario"]
+
+
+def test_metodi_della_postazione(client, impianto, capo):
+    p = impianto["ingresso"]
+    with pytest.raises(OperazioneNonConsentita, match="almeno un modo"):
+        servizi.salva_postazione(capo, p.pk, "Ingresso", None, True, {})
+    servizi.salva_postazione(capo, p.pk, "Ingresso", None, True, {"lettori": True, "fotocamera": True})
+    html = client.get(f"/timbrature/p/{p.token}/").content.decode()
+    assert 'class="ok" data-ok' not in html and "Passa il badge o la tessera sul lettore" in html
+    assert "jsQR.js" in html and "Inquadra il QR" in html
+    servizi.salva_postazione(capo, p.pk, "Ingresso", None, True, {"tastierino": True})
+    html = client.get(f"/timbrature/p/{p.token}/").content.decode()
+    assert 'class="ok" data-ok' in html and "jsQR" not in html and "Digita il tuo codice</div>" in html
+    client.force_login(capo)
+    client.post(
+        "/timbrature/postazioni/",
+        {"postazione": p.pk, "nome": "Ingresso", "reparto": "", "attiva": "on", "lettori": "on"},
+    )
+    p.refresh_from_db()
+    assert (p.usa_tastierino, p.usa_lettori, p.usa_fotocamera) == (False, True, False)
+
+
+def test_pagine_badge(client, impianto, capo, caporeparto):
+    mario = impianto["mario"]
+    client.force_login(capo)
+    client.post(f"/timbrature/lavoratori/{mario.pk}/", {"azione": "genera_badge"})
+    client.post(f"/timbrature/lavoratori/{mario.pk}/", {"azione": "associa", "tipo": "NFC", "valore": "AABBCCDD"})
+    badge = mario.identificativi.get(tipo="BDG")
+    html = client.get(f"/timbrature/lavoratori/{mario.pk}/").content.decode()
+    assert badge.valore in html and "AABBCCDD" in html
+    stampa = client.get(f"/timbrature/badge/{badge.pk}/").content.decode()
+    assert badge.valore in stampa and "Matricola M1" in stampa and "qrcode-generator.js" in stampa
+    assert client.get(f"/timbrature/badge/{mario.identificativi.get(tipo='NFC').pk}/").status_code == 404
+    client.force_login(caporeparto)
+    assert client.get(f"/timbrature/badge/{badge.pk}/").status_code == 403

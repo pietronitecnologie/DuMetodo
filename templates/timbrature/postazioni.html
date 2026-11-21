@@ -19,12 +19,17 @@ Una postazione <b>senza reparto</b> è l'ingresso/uscita dallo stabilimento; que
 schermo_intero = true   # modalità chiosco
 ripristina_schede = false</pre>
         <div class="form-text">Nel file <code>client.toml</code> del PC della postazione (vedi il manuale del client).</div></details>
-      <div class="text-muted mb-2">Ultimo contatto: {{ p.ultimo_contatto|date:"d/m/Y H:i"|default:"mai" }}</div>
+      <div class="text-muted mb-2">Identificazione: {% if p.usa_tastierino %}tastierino {% endif %}{% if p.usa_lettori %}· tastiera e lettori {% endif %}{% if p.usa_fotocamera %}· fotocamera QR{% endif %}
+        · ultimo contatto {{ p.ultimo_contatto|date:"d/m/Y H:i"|default:"mai" }}</div>
       <details><summary>Modifica</summary>
         <form method="post" class="row g-2 mt-1">{% csrf_token %}<input type="hidden" name="postazione" value="{{ p.pk }}">
           <div class="col-sm-6"><input class="form-control form-control-sm" name="nome" value="{{ p.nome }}" required maxlength="60"></div>
           <div class="col-sm-6"><select class="form-select form-select-sm" name="reparto"><option value="">Ingresso e uscita (nessun reparto)</option>
             {% for r in reparti %}<option value="{{ r.pk }}"{% if p.reparto_id == r.pk %} selected{% endif %}>{{ r.nome }}</option>{% endfor %}</select></div>
+          <div class="col-12"><div class="form-text mt-0 mb-1">Come ci si identifica:</div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="tastierino" id="tas-{{ p.pk }}"{% if p.usa_tastierino %} checked{% endif %}><label class="form-check-label" for="tas-{{ p.pk }}">Tastierino sullo schermo (codice personale)</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="lettori" id="let-{{ p.pk }}"{% if p.usa_lettori %} checked{% endif %}><label class="form-check-label" for="let-{{ p.pk }}">Tastiera e lettori USB: codici a barre, QR, tessere NFC/RFID</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="fotocamera" id="cam-{{ p.pk }}"{% if p.usa_fotocamera %} checked{% endif %}><label class="form-check-label" for="cam-{{ p.pk }}">Fotocamera per il QR del badge (tablet, webcam)</label></div></div>
           <div class="col-12 d-flex gap-3 align-items-center"><div class="form-check"><input class="form-check-input" type="checkbox" name="attiva" id="att-{{ p.pk }}"{% if p.attiva %} checked{% endif %}><label class="form-check-label" for="att-{{ p.pk }}">Attiva</label></div>
             <button class="btn btn-sm btn-outline-primary">Salva</button></div>
         </form>
@@ -40,6 +45,10 @@ ripristina_schede = false</pre>
     <div class="col-sm-6"><label class="form-label">Nome</label><input class="form-control form-control-sm" name="nome" required maxlength="60" placeholder="es. Ingresso principale"></div>
     <div class="col-sm-6"><label class="form-label">Reparto</label><select class="form-select form-select-sm" name="reparto"><option value="">Ingresso e uscita (nessun reparto)</option>
       {% for r in reparti %}<option value="{{ r.pk }}">{{ r.nome }}</option>{% endfor %}</select></div>
+    <div class="col-12"><div class="form-text mt-0 mb-1">Come ci si identifica:</div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" name="tastierino" id="n-tas" checked><label class="form-check-label" for="n-tas">Tastierino sullo schermo</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" name="lettori" id="n-let" checked><label class="form-check-label" for="n-let">Tastiera e lettori USB (codici a barre, QR, NFC)</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" name="fotocamera" id="n-cam"><label class="form-check-label" for="n-cam">Fotocamera (QR)</label></div></div>
     <div class="col-12"><button class="btn btn-sm btn-primary">Crea</button></div>
   </div>
 </form>

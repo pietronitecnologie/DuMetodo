@@ -12,7 +12,7 @@ from dumetodo.core.permessi import F, ha_permesso, richiede_permesso
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
 from . import servizi
-from .models import Lavoratore, Postazione, Timbratura, TipoTimbratura
+from .models import Identificativo, Lavoratore, Postazione, Timbratura, TipoIdentificativo, TipoTimbratura
 
 
 def _data(v: str | None, predefinita: dt.date) -> dt.date:
@@ -222,6 +222,18 @@ def lavoratore(request: HttpRequest, pk: int | None = None) -> HttpResponse:
             elif azione == "imposta" and lav:
                 servizi.imposta_codice(request.user, lav.pk, p.get("codice", ""))
                 messages.success(request, "Codice impostato.")
+            elif azione == "associa" and lav:
+                i = servizi.aggiungi_identificativo(
+                    request.user, lav.pk, p.get("tipo", ""), p.get("valore", ""), p.get("descrizione", "")
+                )
+                messages.success(request, f"{i.get_tipo_display()} associato a {lav}.")
+            elif azione == "genera_badge" and lav:
+                i = servizi.genera_badge(request.user, lav.pk)
+                messages.success(request, f"Badge {i.valore} creato: stampalo.")
+            elif azione in ("disattiva", "riattiva") and lav:
+                i = get_object_or_404(lav.identificativi, pk=int(p.get("identificativo", "0")))
+                servizi.disattiva_identificativo(request.user, i.pk, attivo=azione == "riattiva")
+                messages.success(request, "Badge o tessera aggiornati.")
         except OperazioneNonConsentita as exc:
             messages.error(request, str(exc))
         if not codice_mostrato and lav:
@@ -234,6 +246,8 @@ def lavoratore(request: HttpRequest, pk: int | None = None) -> HttpResponse:
             "reparti": Reparto.objects.filter(attivo=True).order_by("nome"),
             "codice_mostrato": codice_mostrato,
             "puo_costi": ha_permesso(request.user, F.TIMBRATURE_COSTI),
+            "identificativi": lav.identificativi.all() if lav else [],
+            "tipi_identificativo": TipoIdentificativo.choices,
         },
     )
     r["Cache-Control"] = "no-store"  # il codice appena generato non resta nella cache del browser
@@ -252,7 +266,12 @@ def postazioni(request: HttpRequest) -> HttpResponse:
             else:
                 pk = int(p["postazione"]) if p.get("postazione", "").isdigit() else None
                 pos = servizi.salva_postazione(
-                    request.user, pk, p.get("nome", ""), p.get("reparto"), "attiva" in p or not pk
+                    request.user,
+                    pk,
+                    p.get("nome", ""),
+                    p.get("reparto"),
+                    "attiva" in p or not pk,
+                    {k: k in p for k in ("tastierino", "lettori", "fotocamera")},
                 )
                 messages.success(request, f"Postazione «{pos}» salvata.")
         except (KeyError, ValueError):
@@ -308,3 +327,13 @@ def costi(request: HttpRequest) -> HttpResponse:
             ],
         )
     return render(request, "timbrature/costi.html", {**dati, "dal": dal, "al": al})
+
+
+@require_GET
+@richiede_permesso(F.TIMBRATURE_GESTIRE)
+def badge(request: HttpRequest, pk: int) -> HttpResponse:
+    """Badge stampabile: nome, matricola, codice a barre (Code 128) e QR con lo stesso valore."""
+    i = get_object_or_404(Identificativo.objects.select_related("lavoratore"), pk=pk, tipo=TipoIdentificativo.BADGE)
+    r = render(request, "timbrature/badge.html", {"i": i, "lav": i.lavoratore})
+    r["Cache-Control"] = "no-store"
+    return r

@@ -55,6 +55,35 @@ class Lavoratore(ModelloTemporale):
         return reverse("timbrature:lavoratore", args=[self.pk])
 
 
+class TipoIdentificativo(models.TextChoices):
+    BADGE = "BDG", "Badge (codice a barre / QR)"
+    NFC = "NFC", "Tessera NFC / RFID"
+
+
+class Identificativo(models.Model):
+    """Badge o tessera del lavoratore, letti alla postazione da un lettore (barcode, QR, NFC) o dalla fotocamera.
+
+    Il valore è quello stampato sul badge o scritto nella tessera: non è un segreto (è sul supporto fisico) e
+    si conserva in chiaro, normalizzato, per poter ristampare il badge. Il codice personale da digitare invece
+    resta solo come impronta (``Lavoratore.codice_impronta``)."""
+
+    lavoratore = models.ForeignKey(Lavoratore, on_delete=models.CASCADE, related_name="identificativi")
+    tipo = models.CharField(max_length=3, choices=TipoIdentificativo.choices)
+    valore = models.CharField(max_length=64, unique=True)
+    descrizione = models.CharField(max_length=60, blank=True, default="")
+    attivo = models.BooleanField(default=True)
+    creato_il = models.DateTimeField(auto_now_add=True)
+    ultimo_uso = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "badge o tessera"
+        verbose_name_plural = "badge e tessere"
+        ordering = ["lavoratore", "tipo", "creato_il"]
+
+    def __str__(self) -> str:
+        return f"{self.get_tipo_display()} {self.valore}"
+
+
 class Postazione(ModelloTemporale):
     nome = models.CharField("nome", max_length=60, unique=True)
     reparto = models.ForeignKey(
@@ -67,6 +96,16 @@ class Postazione(ModelloTemporale):
     )
     token = models.CharField(max_length=64, unique=True, editable=False)
     attiva = models.BooleanField("attiva", default=True)
+    # Come ci si identifica alla postazione.
+    usa_tastierino = models.BooleanField("tastierino sullo schermo", default=True)
+    usa_lettori = models.BooleanField(
+        "tastiera e lettori USB (codici a barre, QR, tessere NFC)",
+        default=True,
+        help_text="I lettori USB scrivono il codice letto come una tastiera, seguito da Invio.",
+    )
+    usa_fotocamera = models.BooleanField(
+        "fotocamera per i QR", default=False, help_text="Per tablet o PC con webcam: si inquadra il QR del badge."
+    )
     ultimo_contatto = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:

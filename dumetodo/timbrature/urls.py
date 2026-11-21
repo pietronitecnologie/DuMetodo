@@ -10,6 +10,7 @@ urlpatterns = [
     path("lavoratori/nuovo/", views.lavoratore, name="lavoratore_nuovo"),
     path("lavoratori/<int:pk>/", views.lavoratore, name="lavoratore"),
     path("postazioni/", views.postazioni, name="postazioni"),
+    path("badge/<int:pk>/", views.badge, name="badge"),
     path("costi/", views.costi, name="costi"),
     # Pagina della postazione, senza login: il link segreto identifica la postazione.
     path("p/<str:token>/", views.postazione, name="postazione"),
