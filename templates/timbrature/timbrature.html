@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titolo %}Timbrature{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-2">Timbrature</h1>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-2">
+  <div><label class="form-label small mb-0">Dal</label><input type="date" name="dal" class="form-control form-control-sm" value="{{ dal|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small mb-0">Al</label><input type="date" name="al" class="form-control form-control-sm" value="{{ al|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small mb-0">Lavoratore</label><select name="lavoratore" class="form-select form-select-sm"><option value="">Tutti</option>
+    {% for l in lavoratori %}<option value="{{ l.pk }}"{% if lavoratore == l.pk|stringformat:"d" %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <button class="btn btn-sm btn-primary">Filtra</button>
+</form>
+{% if puo_gestire %}
+<details class="card mb-2 dm-config"><summary class="card-header">Aggiungi una timbratura dimenticata</summary>
+  <form method="post" class="card-body row g-2 align-items-end">{% csrf_token %}
+    <div class="col-md-3"><label class="form-label">Lavoratore</label><select name="lavoratore" class="form-select form-select-sm" required>{% for l in lavoratori %}<option value="{{ l.pk }}">{{ l }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label">Tipo</label><select name="tipo" class="form-select form-select-sm">{% for v, e in tipi %}<option value="{{ v }}">{{ e }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label">Data e ora</label><input type="datetime-local" name="momento" class="form-control form-control-sm" value="{{ adesso }}" max="{{ adesso }}" required></div>
+    <div class="col-md-2"><label class="form-label">Reparto</label><select name="reparto" class="form-select form-select-sm"><option value="">— (solo inizio/fine reparto)</option>{% for r in reparti %}<option value="{{ r.pk }}">{{ r.nome }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><label class="form-label">Motivo</label><input name="nota" class="form-control form-control-sm" required maxlength="200" placeholder="es. uscita dimenticata"></div>
+    <div class="col-12"><button class="btn btn-sm btn-primary">Aggiungi</button></div>
+  </form></details>
+{% endif %}
+<div class="table-responsive"><table class="table table-sm bg-white align-middle small">
+  <thead><tr><th>Quando</th><th>Lavoratore</th><th>Tipo</th><th>Reparto</th><th>Dove</th><th>Note</th>{% if puo_gestire %}<th></th>{% endif %}</tr></thead>
+  <tbody>{% for t in timbrature %}<tr class="{% if t.annullata %}text-muted text-decoration-line-through{% endif %}">
+    <td class="text-nowrap">{{ t.momento|date:"d/m/Y H:i" }}</td><td>{{ t.lavoratore }}</td><td>{{ t.get_tipo_display }}</td><td>{{ t.reparto.nome|default:"" }}</td>
+    <td>{% if t.postazione %}{{ t.postazione }}{% else %}{{ t.get_origine_display }}{% if t.creata_da %} da {{ t.creata_da }}{% endif %}{% endif %}</td>
+    <td>{{ t.nota }}{% if t.annullata %} <span class="text-decoration-none">(annullata: {{ t.motivo_annullamento }})</span>{% endif %}</td>
+    {% if puo_gestire %}<td class="text-end">{% if not t.annullata %}<form method="post" class="d-flex gap-1 justify-content-end" onsubmit="return confirm('Annullare la timbratura?')">{% csrf_token %}
+      <input type="hidden" name="azione" value="annulla"><input type="hidden" name="timbratura" value="{{ t.pk }}">
+      <input name="motivo" class="form-control form-control-sm" style="width:11rem" placeholder="Motivo" required><button class="btn btn-sm btn-outline-danger">Annulla</button></form>{% endif %}</td>{% endif %}</tr>
+  {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Nessuna timbratura nel periodo.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

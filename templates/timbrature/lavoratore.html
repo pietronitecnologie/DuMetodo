@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titolo %}{% if lav %}{{ lav }}{% else %}Nuovo lavoratore{% endif %}{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center gap-2 mb-2"><a href="{% url 'timbrature:lavoratori' %}" class="btn btn-sm btn-outline-secondary">← Lavoratori</a>
+  <h1 class="h4 mb-0">{% if lav %}{{ lav }}{% else %}Nuovo lavoratore{% endif %}</h1></div>
+{% if codice_mostrato %}<div class="alert alert-success"><div class="fw-semibold">Codice personale di {{ lav.nome }}</div>
+  <code class="fs-2 px-2 bg-white border rounded user-select-all">{{ codice_mostrato }}</code>
+  <div class="small mt-1">Comunicalo al lavoratore: viene mostrato <b>solo ora</b>. Lo digiterà alla postazione per timbrare.</div>
+  <a class="btn btn-sm btn-outline-success mt-2" href="{{ lav.get_absolute_url }}">Fatto</a></div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-6"><form method="post" class="card">{% csrf_token %}<input type="hidden" name="azione" value="dati">
+    <div class="card-header">Dati</div><div class="card-body row g-2">
+      <div class="col-sm-6"><label class="form-label">Nome *</label><input class="form-control form-control-sm" name="nome" value="{{ lav.nome|default:'' }}" required maxlength="60"></div>
+      <div class="col-sm-6"><label class="form-label">Cognome *</label><input class="form-control form-control-sm" name="cognome" value="{{ lav.cognome|default:'' }}" required maxlength="60"></div>
+      <div class="col-sm-6"><label class="form-label">Matricola *</label><input class="form-control form-control-sm" name="matricola" value="{{ lav.matricola|default:'' }}" required maxlength="30"></div>
+      <div class="col-sm-6"><label class="form-label">Reparto abituale</label><select class="form-select form-select-sm" name="reparto"><option value="">—</option>
+        {% for r in reparti %}<option value="{{ r.pk }}"{% if lav.reparto_id == r.pk %} selected{% endif %}>{{ r.nome }}</option>{% endfor %}</select></div>
+      {% if puo_costi %}<div class="col-sm-6"><label class="form-label">Costo orario (€)</label><input class="form-control form-control-sm" name="costo_orario" inputmode="decimal" value="{{ lav.costo_orario|default_if_none:'' }}">
+        <div class="form-text">Costo aziendale di un'ora: serve ai costi per reparto.</div></div>{% endif %}
+      <div class="col-sm-6"><label class="form-label">Note</label><input class="form-control form-control-sm" name="note" value="{{ lav.note|default:'' }}" maxlength="200"></div>
+      <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="attivo" id="attivo"{% if not lav or lav.attivo %} checked{% endif %}><label class="form-check-label" for="attivo">Attivo (può timbrare)</label></div></div>
+    </div><div class="card-footer text-end"><button class="btn btn-sm btn-primary">{% if lav %}Salva{% else %}Crea e genera il codice{% endif %}</button></div></form></div>
+  {% if lav %}<div class="col-lg-6"><div class="card"><div class="card-header">Codice personale</div><div class="card-body">
+    <p class="small mb-2">{% if lav.codice_impronta %}Impostato il {{ lav.codice_impostato_il|date:"d/m/Y H:i" }}. Non è leggibile: se il lavoratore lo dimentica, generane uno nuovo.{% else %}<span class="text-danger">Nessun codice: il lavoratore non può timbrare.</span>{% endif %}</p>
+    <form method="post" class="mb-3" onsubmit="return confirm('Generare un nuovo codice? Quello attuale smetterà di funzionare.')">{% csrf_token %}<input type="hidden" name="azione" value="genera">
+      <button class="btn btn-sm btn-outline-primary">Genera un nuovo codice</button></form>
+    <form method="post" class="d-flex gap-2 align-items-end">{% csrf_token %}<input type="hidden" name="azione" value="imposta">
+      <div><label class="form-label">Oppure imposta un codice (es. numero del badge)</label><input class="form-control form-control-sm" name="codice" inputmode="numeric" pattern="[0-9]{4,10}" required autocomplete="off"></div>
+      <button class="btn btn-sm btn-outline-secondary">Imposta</button></form>
+    <div class="form-text">Da 4 a 10 cifre, diverso da quello degli altri lavoratori.</div>
+  </div></div></div>{% endif %}
+</div>
+{% endblock %}

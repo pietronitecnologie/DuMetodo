@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titolo %}Costi per reparto{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-1">Costi per reparto</h1>
+<p class="small text-muted">Ore lavorate in ogni reparto (dalle timbrature) × costo orario di chi le ha lavorate, confrontate con le <b>ore teoriche</b>
+consegnate dal reparto nello stesso periodo (valore delle righe in bolla / resa oraria). Efficienza = ore teoriche / ore lavorate.</p>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-2">
+  <div><label class="form-label small mb-0">Dal</label><input type="date" name="dal" class="form-control form-control-sm" value="{{ dal|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small mb-0">Al</label><input type="date" name="al" class="form-control form-control-sm" value="{{ al|date:'Y-m-d' }}"></div>
+  <button class="btn btn-sm btn-primary">Aggiorna</button>
+  <a class="btn btn-sm btn-outline-primary" href="?dal={{ dal|date:'Y-m-d' }}&al={{ al|date:'Y-m-d' }}&formato=xlsx">Excel</a>
+</form>
+{% if senza_costo %}<div class="alert alert-warning py-2 small">Senza costo orario (le loro ore non hanno costo): {% for l in senza_costo %}<a href="{{ l.get_absolute_url }}">{{ l }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.</div>{% endif %}
+{% if not resa_configurata %}<div class="alert alert-info py-2 small">La resa oraria non è configurata (Configurazione → Produzione): ore teoriche ed efficienza non sono calcolabili.</div>{% endif %}
+<div class="table-responsive"><table class="table table-sm bg-white align-middle text-end">
+  <thead><tr><th class="text-start">Reparto</th><th>Ore lavorate</th><th>Costo</th><th>Ore teoriche consegnate</th><th>Efficienza</th><th>Costo per ora teorica</th></tr></thead>
+  <tbody>{% for r in righe %}<tr><td class="text-start">{{ r.reparto }}</td><td>{{ r.ore }}</td><td>€ {{ r.costo }}</td><td>{{ r.teoriche|default_if_none:"—" }}</td>
+    <td class="{% if r.efficienza is not None and r.efficienza < 80 %}text-danger{% endif %}">{% if r.efficienza is not None %}{{ r.efficienza }}%{% else %}—{% endif %}</td>
+    <td>{% if r.costo_ora_teorica is not None %}€ {{ r.costo_ora_teorica }}{% else %}—{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Nessuna ora nel periodo.</td></tr>{% endfor %}</tbody>
+  {% if righe %}<tfoot><tr class="fw-semibold"><td class="text-start">Totale</td><td>{{ totale_ore }}</td><td>€ {{ totale_costo }}</td><td>{{ totale_teoriche }}</td><td></td><td></td></tr></tfoot>{% endif %}
+</table></div>
+{% endblock %}

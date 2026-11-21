@@ -1,0 +1,101 @@
+{% load static %}<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timbrature · {{ p.nome }}</title>
+<link rel="icon" href="{% static 'img/favicon.ico' %}">
+<style>
+  :root { --sfondo: #eef3fb; --testo: #18212e; --tenue: #5b6676; --accento: #2f74f0; --ok: #1f9d55; --errore: #d64545; }
+  * { box-sizing: border-box; } html, body { height: 100%; margin: 0; }
+  body { font: 18px/1.4 "Segoe UI", system-ui, sans-serif; color: var(--testo); background: var(--sfondo); user-select: none;
+    display: grid; grid-template-rows: auto 1fr auto; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: #fff; border-bottom: 1px solid #dde3ec; }
+  header .dove { font-weight: 700; font-size: 22px; } header .tipo { color: var(--tenue); }
+  header .ora { margin-left: auto; font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  main { display: grid; place-items: center; padding: 16px; }
+  .pannello { width: min(560px, 100%); background: #fff; border-radius: 18px; box-shadow: 0 6px 24px rgba(20,40,80,.08); padding: 24px; }
+  .codice { height: 70px; border: 2px solid #c9d2df; border-radius: 12px; display: grid; place-items: center; font-size: 40px;
+    letter-spacing: 12px; margin-bottom: 18px; color: var(--testo); }
+  .tasti { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tasti button, .azioni button { font: inherit; border: 0; border-radius: 14px; cursor: pointer; touch-action: manipulation; }
+  .tasti button { height: 78px; font-size: 32px; font-weight: 600; background: #eef2f7; color: var(--testo); }
+  .tasti button:active { background: #dbe4f0; } .tasti .ok { background: var(--accento); color: #fff; font-size: 22px; }
+  .tasti .canc { font-size: 22px; color: var(--tenue); }
+  .chi { font-size: 30px; font-weight: 700; } .stato { color: var(--tenue); margin-bottom: 18px; }
+  .azioni { display: grid; gap: 12px; } .azioni button { padding: 22px; font-size: 24px; font-weight: 600; background: #eef2f7; color: var(--testo); text-align: left; }
+  .azioni button.principale { background: var(--accento); color: #fff; } .azioni .annulla { background: none; color: var(--tenue); font-size: 18px; text-align: center; }
+  .esito { text-align: center; padding: 30px 10px; } .esito .segno { font-size: 72px; line-height: 1; } .esito .testo { font-size: 26px; margin-top: 12px; }
+  .esito.ok .segno { color: var(--ok); } .esito.errore .segno { color: var(--errore); }
+  footer { padding: 8px 24px; color: var(--tenue); font-size: 14px; text-align: center; }
+  [hidden] { display: none !important; }
+</style></head>
+<body>
+<header><div><div class="dove">{{ p.nome }}</div><div class="tipo">{% if p.reparto %}Reparto {{ p.reparto.nome }}{% else %}Ingresso e uscita{% endif %}</div></div>
+  <div class="ora" id="ora">--:--</div></header>
+<main>
+  <section class="pannello" id="fase-codice">
+    <div style="text-align:center;color:var(--tenue);margin-bottom:8px">Digita il tuo codice</div>
+    <div class="codice" id="codice"></div>
+    <div class="tasti">{% for n in "123456789" %}<button type="button" data-n="{{ n }}">{{ n }}</button>{% endfor %}
+      <button type="button" class="canc" data-canc>Cancella</button><button type="button" data-n="0">0</button><button type="button" class="ok" data-ok>OK</button></div>
+  </section>
+  <section class="pannello" id="fase-azioni" hidden>
+    <div class="chi" id="chi"></div><div class="stato" id="stato"></div>
+    <div class="azioni" id="azioni"></div>
+  </section>
+  <section class="pannello esito" id="fase-esito" hidden><div class="segno" id="segno"></div><div class="testo" id="esito"></div></section>
+</main>
+<footer>DuMetodo · Timbrature — i dati delle timbrature sono trattati secondo l'informativa aziendale sulla privacy.</footer>
+<form id="csrf">{% csrf_token %}</form>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const csrf = document.querySelector("#csrf input").value;
+  const base = "{% url 'timbrature:postazione' p.token %}";
+  let codice = "", timer = null;
+  const mostra = (fase) => ["fase-codice", "fase-azioni", "fase-esito"].forEach((f) => ($(f).hidden = f !== fase));
+  const azzera = () => { codice = ""; $("codice").textContent = ""; mostra("fase-codice"); clearTimeout(timer); };
+  const piu = (ms) => { clearTimeout(timer); timer = setTimeout(azzera, ms); };
+  const esito = (ok, testo) => { $("fase-esito").className = "pannello esito " + (ok ? "ok" : "errore");
+    $("segno").textContent = ok ? "✓" : "✕"; $("esito").textContent = testo; mostra("fase-esito"); piu(ok ? 3500 : 4500); };
+  const invia = async (url, dati) => {
+    const corpo = new URLSearchParams(dati);
+    const r = await fetch(url, { method: "POST", headers: { "X-CSRFToken": csrf }, body: corpo, credentials: "same-origin" });
+    return r.json().catch(() => ({ ok: false, errore: "Errore di collegamento con il server." }));
+  };
+  const identifica = async () => {
+    if (codice.length < 4) return;
+    const d = await invia(base + "identifica/", { codice });
+    if (!d.ok) return esito(false, d.errore);
+    $("chi").textContent = d.nome; $("stato").textContent = d.stato;
+    const box = $("azioni"); box.replaceChildren();
+    if (d.messaggio) { const m = document.createElement("div"); m.className = "stato"; m.textContent = d.messaggio; box.append(m); }
+    d.azioni.forEach((a, i) => { const b = document.createElement("button"); b.type = "button"; b.textContent = a.etichetta;
+      if (i === 0) b.className = "principale";
+      b.addEventListener("click", async () => { b.disabled = true; const r = await invia(base + "timbra/", { codice, tipo: a.tipo });
+        codice = ""; r.ok ? esito(true, r.messaggio) : esito(false, r.errore); });
+      box.append(b); });
+    const no = document.createElement("button"); no.type = "button"; no.className = "annulla"; no.textContent = "Annulla"; no.addEventListener("click", azzera); box.append(no);
+    mostra("fase-azioni"); piu(20000);
+  };
+  document.querySelector(".tasti").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.n !== undefined && codice.length < 10) codice += b.dataset.n;
+    if (b.hasAttribute("data-canc")) codice = codice.slice(0, -1);
+    $("codice").textContent = "•".repeat(codice.length);
+    if (b.hasAttribute("data-ok")) identifica(); else piu(30000);
+  });
+  document.addEventListener("keydown", (e) => {
+    if ($("fase-codice").hidden) { if (e.key === "Escape") azzera(); return; }
+    if (/^\d$/.test(e.key) && codice.length < 10) codice += e.key;
+    else if (e.key === "Backspace") codice = codice.slice(0, -1);
+    else if (e.key === "Enter") return identifica();
+    $("codice").textContent = "•".repeat(codice.length);
+  });
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
+  // Ora del server, nel fuso del server: coincide con quella registrata anche se il PC è indietro o in un altro fuso.
+  const scarto = {{ adesso_ms }} - Date.now();
+  const orologio = () => { $("ora").textContent = new Date(Date.now() + scarto).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "{{ fuso|escapejs }}" }); };
+  orologio(); setInterval(orologio, 1000);
+  setInterval(() => { if (!$("fase-codice").hidden && !codice) location.reload(); }, 10 * 60 * 1000); // resta collegata
+})();
+</script>
+</body></html>

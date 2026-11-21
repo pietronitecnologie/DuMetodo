@@ -387,6 +387,90 @@ scarica i dati.
 - **Cambia ordine**: corregge serie, numero, appendice, anno e scadenza di un ordine (con il motivo, che finisce
   nello storico scadenze). Righe, note, tracce e file seguono l'ordine automaticamente.
 
+## Timbrature
+
+Il modulo **Timbrature** registra le entrate e le uscite dei lavoratori e **il tempo passato in ogni reparto**,
+per avere ore e costi per reparto. Si timbra alle **postazioni**: PC o tablet con il client DuMetodo, in
+modalità chiosco, all'ingresso dello stabilimento e nei reparti.
+
+### Postazioni di timbratura
+
+**Timbrature → Postazioni** (permesso *Gestire lavoratori, postazioni e correzioni*).
+
+- **Nuova postazione**: nome e reparto.
+  - Una postazione **senza reparto** è quella di **ingresso e uscita** dallo stabilimento.
+  - Una postazione **di reparto** registra l'inizio e la fine del lavoro in quel reparto.
+- Ogni postazione ha un **link segreto**. Nel client del PC della postazione si mette quel link come indirizzo
+  del server, con la modalità chiosco attiva; la pagina mostra la configurazione da copiare in `client.toml`.
+  Non serve accedere con un utente: il link identifica la postazione.
+- Se il link finisce nelle mani sbagliate o il PC viene sostituito, **Nuovo link** disattiva il vecchio.
+- Lo stato **collegata / non collegata** indica se la postazione ha contattato il server negli ultimi 15 minuti.
+
+### Lavoratori e codici
+
+**Timbrature → Lavoratori**: nome, cognome, matricola, reparto abituale e **costo orario** (costo aziendale di
+un'ora, serve ai costi per reparto: lo vede solo chi ha il permesso dei costi).
+
+Ogni lavoratore ha un **codice personale** da digitare alla postazione.
+
+- Alla creazione DuMetodo genera un codice di 6 cifre e lo mostra **una sola volta**: comunicalo al lavoratore.
+- In alternativa si imposta un codice scelto, da 4 a 10 cifre (es. il numero del badge).
+- Il codice non è leggibile da nessuno, nemmeno dagli amministratori. Se il lavoratore lo dimentica, se ne genera
+  uno nuovo e il vecchio smette di funzionare.
+- Un lavoratore non attivo non può timbrare.
+
+### Timbrare
+
+Alla postazione il lavoratore digita il codice e preme **OK**. Compaiono il suo nome, dove si trova e **solo le
+timbrature possibili in quel momento**: la prima, evidenziata, è la più probabile.
+
+| Postazione | Timbrature |
+|---|---|
+| Ingresso e uscita | Entrata; poi Uscita, Inizio mensa, Inizio pausa; dalla mensa o dalla pausa, la loro fine |
+| Reparto | Inizio lavoro nel reparto (anche passando da un altro reparto), Fine lavoro, Inizio mensa e pausa |
+
+- Prima di lavorare in un reparto si timbra l'entrata alla postazione di ingresso. Se lo stabilimento non ha una
+  postazione di ingresso, le postazioni di reparto permettono anche entrata e uscita.
+- **Mensa e pausa** sospendono il reparto: alla fine il tempo torna al reparto di prima, senza timbrare di nuovo.
+- Un doppio tocco non registra due volte la stessa timbratura. Dopo 5 codici sbagliati la postazione si blocca
+  per un minuto.
+
+### Presenze e correzioni
+
+**Timbrature → Presenze** mostra per ogni lavoratore, per un giorno o un periodo:
+
+- dove si trova adesso;
+- entrata e uscita;
+- **ore lavorate** (presenza meno mensa e pause), divise **per reparto** più le ore «non assegnate» a un reparto;
+- le **anomalie**: uscita mancante, entrata doppia, entrata mancante.
+
+**Timbrature e correzioni** elenca le timbrature.
+
+- Una timbratura dimenticata si **aggiunge a mano**, con il motivo.
+- Una timbratura sbagliata si **annulla**, con il motivo: resta visibile barrata.
+- Ogni correzione registra chi l'ha fatta.
+
+Un turno senza uscita si chiude all'ultima timbratura e viene segnalato: correggilo aggiungendo l'uscita. Un
+turno di notte appartiene al giorno dell'entrata.
+
+### Costi per reparto
+
+**Timbrature → Costi per reparto** (permesso *Costi orari e costi per reparto*). Per un periodo, per ogni reparto:
+
+| Colonna | Significato |
+|---|---|
+| Ore lavorate | Dalle timbrature |
+| Costo | Ore × costo orario di chi le ha lavorate |
+| Ore teoriche consegnate | Valore delle righe consegnate dal reparto / resa oraria |
+| Efficienza | Ore teoriche / ore lavorate (in rosso sotto l'80%) |
+| Costo per ora teorica | Quanto costa un'ora di produzione consegnata |
+
+La riga «Non assegnato a un reparto» raccoglie il tempo di presenza fuori dai reparti. La pagina segnala i
+lavoratori senza costo orario. **Excel** scarica i dati.
+
+> Le timbrature sono dati personali: prima di usarle informa i lavoratori (informativa privacy) e verifica gli
+> eventuali accordi richiesti per il controllo delle presenze.
+
 ## Gestionale
 
 La sezione **Gestionale** emette i documenti fiscali partendo dalle righe consegnate in

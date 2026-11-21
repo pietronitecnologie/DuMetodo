@@ -7,7 +7,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 
-LIBERI = ("/static/", "/favicon.ico", "/uscita/", "/configurazione/logo.png")
+LIBERI = ("/static/", "/favicon.ico", "/uscita/", "/configurazione/logo.png", "/timbrature/p/")
 
 
 class PasswordDaCambiareMiddleware:

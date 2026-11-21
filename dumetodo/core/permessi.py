@@ -41,6 +41,7 @@ class Sezione(StrEnum):
     AMMINISTRAZIONE = "Amministrazione"
     UTENTI = "Utenti e permessi"
     GESTIONALE = "Gestionale (riservato)"
+    TIMBRATURE = "Timbrature"
 
 
 @dataclass(frozen=True)
@@ -101,6 +102,9 @@ class F:
     REPARTI = "reparti"
     CHAT = "chat"
     QUALITA_TEST = "qualita_test"
+    TIMBRATURE_VEDERE = "timbrature_vedere"
+    TIMBRATURE_GESTIRE = "timbrature_gestire"
+    TIMBRATURE_COSTI = "timbrature_costi"
     GESTIONALE_VEDERE = "gestionale_vedere"
     GESTIONALE_DDT = "gestionale_ddt"
     GESTIONALE_FATTURE = "gestionale_fatture"
@@ -176,6 +180,24 @@ FUNZIONI: list[Funzione] = [
     Funzione(F.CHAT, Sezione.UTILITA, "Usare la chat", "Chat 1 a 1 con gli altri utenti nel client desktop."),
     Funzione(F.UTILITA_CAMBIA_ORDINE, Sezione.UTILITA, "Cambia ordine (numero, serie, appendice, scadenza)"),
     Funzione(F.CONFIGURAZIONE, Sezione.AMMINISTRAZIONE, "Configurazione"),
+    Funzione(
+        F.TIMBRATURE_VEDERE,
+        Sezione.TIMBRATURE,
+        "Vedere presenze e timbrature",
+        "Chi è presente e dove, ore per lavoratore e per reparto, elenco delle timbrature.",
+    ),
+    Funzione(
+        F.TIMBRATURE_GESTIRE,
+        Sezione.TIMBRATURE,
+        "Gestire lavoratori, postazioni e correzioni",
+        "Anagrafica lavoratori e codici personali, postazioni (link per il client), timbrature manuali e annullamenti.",
+    ),
+    Funzione(
+        F.TIMBRATURE_COSTI,
+        Sezione.TIMBRATURE,
+        "Costi orari e costi per reparto",
+        "Vedere e modificare il costo orario dei lavoratori; report dei costi per reparto.",
+    ),
     Funzione(
         F.GESTIONALE_VEDERE,
         Sezione.GESTIONALE,
@@ -254,7 +276,7 @@ _OPERATORE = {
     F.TRACCIABILITA_REGISTRA,
     F.CHAT,
 }
-_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.UTENTI_VEDERE}
+_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.UTENTI_VEDERE, F.TIMBRATURE_VEDERE}
 PROFILI: dict[str, set[str]] = {
     "Operatore": _OPERATORE,
     "Caporeparto": _CAPOREPARTO,
@@ -270,6 +292,8 @@ PROFILI: dict[str, set[str]] = {
         F.GESTIONALE_DDT,
         F.GESTIONALE_FATTURE,
         F.GESTIONALE_IMPOSTAZIONI,
+        F.TIMBRATURE_VEDERE,
+        F.TIMBRATURE_COSTI,
     },
     "Cliente": {F.ORDINI_VEDERE, F.NOTE_SCRIVERE, F.AGENDA, F.TRACCIABILITA_CONSULTA},
 }

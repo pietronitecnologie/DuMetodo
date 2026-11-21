@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titolo %}Lavoratori{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><h1 class="h4 me-auto mb-0">Lavoratori</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="?{% if not tutti %}tutti=1{% endif %}">{% if tutti %}Solo attivi{% else %}Anche non attivi{% endif %}</a>
+  {% if puo_gestire %}<a class="btn btn-sm btn-primary" href="{% url 'timbrature:lavoratore_nuovo' %}">Nuovo lavoratore</a>{% endif %}</div>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle">
+  <thead><tr><th>Lavoratore</th><th>Matricola</th><th>Reparto abituale</th>{% if puo_costi %}<th class="text-end">Costo orario</th>{% endif %}<th>Codice</th><th>Stato</th></tr></thead>
+  <tbody>{% for l in lavoratori %}<tr class="{% if not l.attivo %}text-muted{% endif %}">
+    <td>{% if puo_gestire %}<a href="{{ l.get_absolute_url }}">{{ l }}</a>{% else %}{{ l }}{% endif %}</td><td>{{ l.matricola }}</td><td>{{ l.reparto.nome|default:"—" }}</td>
+    {% if puo_costi %}<td class="text-end">{% if l.costo_orario is not None %}€ {{ l.costo_orario }}{% else %}<span class="text-warning">mancante</span>{% endif %}</td>{% endif %}
+    <td>{% if l.codice_impronta %}impostato{% else %}<span class="text-danger">da assegnare</span>{% endif %}</td><td>{% if l.attivo %}attivo{% else %}non attivo{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Nessun lavoratore.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

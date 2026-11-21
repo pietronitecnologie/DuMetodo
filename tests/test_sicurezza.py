@@ -11,6 +11,10 @@ PUBBLICHE = {
     "logout",
     "utilita:annunci_attivi",  # frammento vuoto per chi non è del Fornitore
     "configurazione:logo",  # il logo compare anche nella pagina di accesso (404 se non caricato)
+    # Postazioni di timbratura: senza login, le protegge il link segreto (404 senza token valido).
+    "timbrature:postazione",
+    "timbrature:postazione_identifica",
+    "timbrature:postazione_timbra",
 }
 # Solo login: servono a ogni utente collegato e restituiscono dati già filtrati per i suoi permessi.
 SOLO_LOGIN = {

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titolo %}Postazioni di timbratura{% endblock %}
+{% block contenuto %}
+<h1 class="h4 mb-1">Postazioni di timbratura</h1>
+<p class="small text-muted">Ogni postazione è un PC (o un tablet) con il <b>client DuMetodo</b> che apre il link della postazione, meglio in modalità chiosco.
+Una postazione <b>senza reparto</b> è l'ingresso/uscita dallo stabilimento; quelle di reparto registrano inizio e fine del lavoro nel reparto.</p>
+<div class="row g-2">
+{% for x in postazioni %}{% with p=x.p %}
+  <div class="col-xl-6"><div class="card h-100{% if not p.attiva %} opacity-75{% endif %}">
+    <div class="card-header d-flex align-items-center gap-2"><span class="fw-semibold me-auto">{{ p.nome }}</span>
+      {% if p.reparto %}<span class="badge text-bg-light border">Reparto {{ p.reparto.nome }}</span>{% else %}<span class="badge text-bg-primary">Ingresso e uscita</span>{% endif %}
+      {% if not p.attiva %}<span class="badge text-bg-secondary">non attiva</span>{% elif x.collegata %}<span class="badge text-bg-success">collegata</span>{% else %}<span class="badge text-bg-warning">non collegata</span>{% endif %}</div>
+    <div class="card-body small">
+      <label class="form-label">Link della postazione (segreto)</label>
+      <div class="input-group input-group-sm mb-2"><input class="form-control" readonly value="{{ x.link }}" id="link-{{ p.pk }}">
+        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('link-{{ p.pk }}').value)">Copia</button></div>
+      <details class="mb-2"><summary>Configurazione del client della postazione</summary>
+        <pre class="bg-light border rounded p-2 mt-1 mb-0">url = "{{ x.link }}"
+schermo_intero = true   # modalità chiosco
+ripristina_schede = false</pre>
+        <div class="form-text">Nel file <code>client.toml</code> del PC della postazione (vedi il manuale del client).</div></details>
+      <div class="text-muted mb-2">Ultimo contatto: {{ p.ultimo_contatto|date:"d/m/Y H:i"|default:"mai" }}</div>
+      <details><summary>Modifica</summary>
+        <form method="post" class="row g-2 mt-1">{% csrf_token %}<input type="hidden" name="postazione" value="{{ p.pk }}">
+          <div class="col-sm-6"><input class="form-control form-control-sm" name="nome" value="{{ p.nome }}" required maxlength="60"></div>
+          <div class="col-sm-6"><select class="form-select form-select-sm" name="reparto"><option value="">Ingresso e uscita (nessun reparto)</option>
+            {% for r in reparti %}<option value="{{ r.pk }}"{% if p.reparto_id == r.pk %} selected{% endif %}>{{ r.nome }}</option>{% endfor %}</select></div>
+          <div class="col-12 d-flex gap-3 align-items-center"><div class="form-check"><input class="form-check-input" type="checkbox" name="attiva" id="att-{{ p.pk }}"{% if p.attiva %} checked{% endif %}><label class="form-check-label" for="att-{{ p.pk }}">Attiva</label></div>
+            <button class="btn btn-sm btn-outline-primary">Salva</button></div>
+        </form>
+        <form method="post" class="mt-2" onsubmit="return confirm('Creare un nuovo link? Quello attuale smetterà di funzionare e andrà aggiornato nel client della postazione.')">{% csrf_token %}
+          <input type="hidden" name="azione" value="rigenera"><input type="hidden" name="postazione" value="{{ p.pk }}"><button class="btn btn-sm btn-outline-danger">Nuovo link</button></form>
+      </details>
+    </div></div></div>
+{% endwith %}{% empty %}<div class="col-12"><div class="alert alert-light border">Nessuna postazione: creane una qui sotto.</div></div>{% endfor %}
+</div>
+<form method="post" class="card mt-3" style="max-width:36rem">{% csrf_token %}
+  <div class="card-header">Nuova postazione</div>
+  <div class="card-body row g-2">
+    <div class="col-sm-6"><label class="form-label">Nome</label><input class="form-control form-control-sm" name="nome" required maxlength="60" placeholder="es. Ingresso principale"></div>
+    <div class="col-sm-6"><label class="form-label">Reparto</label><select class="form-select form-select-sm" name="reparto"><option value="">Ingresso e uscita (nessun reparto)</option>
+      {% for r in reparti %}<option value="{{ r.pk }}">{{ r.nome }}</option>{% endfor %}</select></div>
+    <div class="col-12"><button class="btn btn-sm btn-primary">Crea</button></div>
+  </div>
+</form>
+{% endblock %}

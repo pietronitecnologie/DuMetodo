@@ -84,6 +84,9 @@ def test_dati_demo_si_caricano_e_le_pagine_rispondono(client):
 
     assert DDT.objects.filter(origine="DUM").exists() and Fattura.objects.filter(stato="BOZ").exists()
     assert "amministrazione" in out.getvalue()
+    from dumetodo.timbrature.models import Lavoratore, Timbratura
+
+    assert Lavoratore.objects.count() == 6 and Timbratura.objects.exists()
     client.force_login(User.objects.get(username="admin"))
     for nome in [
         "ordini:lista",

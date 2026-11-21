@@ -132,6 +132,7 @@ class Command(BaseCommand):
         self._magazzino()
         self._utilita_e_report()
         self._gestionale()
+        self._timbrature()
 
         self.stdout.write(self.style.SUCCESS("Dati di prova caricati."))
         self.stdout.write(f"  ordini: {Ordine.objects.count()}  ({self._riepilogo_stati()})")
@@ -423,6 +424,69 @@ class Command(BaseCommand):
         ddt = self._prova(gestionale.emetti_ddt, ufficio, righe, self.oggi, campi)
         if ddt is not None:
             self._prova(gestionale.crea_fattura_differita, ufficio, [ddt.pk], self.oggi)
+
+    def _timbrature(self) -> None:
+        """Postazioni (ingresso + 3 reparti), 6 lavoratori con codice 1001…1006 e due settimane di timbrature."""
+        import secrets as _s
+
+        from dumetodo.timbrature import servizi as tim
+        from dumetodo.timbrature.models import Lavoratore, Postazione, Timbratura
+
+        if Lavoratore.objects.exists():
+            return
+        reparti = {r.codice: r for r in Reparto.objects.all()}
+        Postazione.objects.create(nome="Ingresso", token=_s.token_urlsafe(24))
+        for codice in ("GK01-PLS", "GK01-CBL", "GK01-ASM"):
+            Postazione.objects.create(
+                nome=f"Banco {reparti[codice].nome}", reparto=reparti[codice], token=_s.token_urlsafe(24)
+            )
+        persone = [
+            ("Paolo", "Ferri", "GK01-PLS", "24.50"),
+            ("Sara", "Gallo", "GK01-PLS", "23.00"),
+            ("Luca", "Moretti", "GK01-CBL", "25.00"),
+            ("Elena", "Costa", "GK01-ASM", "26.50"),
+            ("Davide", "Rizzo", "GK01-ASM", "22.80"),
+            ("Chiara", "Fontana", "GK01-CBL", None),  # senza costo orario: segnalata nei costi
+        ]
+        lavoratori = []
+        for i, (nome, cognome, rep, costo) in enumerate(persone, start=1):
+            lavoratori.append(
+                Lavoratore.objects.create(
+                    nome=nome,
+                    cognome=cognome,
+                    matricola=f"D{i:03d}",
+                    reparto=reparti[rep],
+                    costo_orario=Decimal(costo) if costo else None,
+                    codice_impronta=tim.impronta(f"{1000 + i}"),
+                    codice_impostato_il=timezone.now(),
+                )
+            )
+
+        def alle(giorno: dt.date, h: int, m: int) -> dt.datetime:
+            return timezone.make_aware(dt.datetime.combine(giorno, dt.time(h, m)))
+
+        adesso = timezone.now()
+        giorni = [self.oggi - dt.timedelta(days=n) for n in range(14, -1, -1)]
+        for giorno in (g for g in giorni if g.weekday() < 5):
+            for lav in lavoratori:
+                if self.rnd.random() < 0.08:  # assente
+                    continue
+                e = self.rnd.randint(0, 12)
+                eventi = [
+                    ("ENT", alle(giorno, 7, 45 + e), None),
+                    ("IRP", alle(giorno, 7, 45 + e) + dt.timedelta(minutes=3), lav.reparto),
+                    ("IME", alle(giorno, 12, 30 + self.rnd.randint(0, 5)), None),
+                    ("FME", alle(giorno, 13, 15 + self.rnd.randint(0, 5)), None),
+                ]
+                if self.rnd.random() < 0.35:  # pomeriggio in un altro reparto
+                    altro = reparti[self.rnd.choice(["GK01-PLS", "GK01-CBL", "GK01-ASM"])]
+                    eventi.append(("IRP", alle(giorno, 15, self.rnd.randint(0, 30)), altro))
+                if not (giorno == self.oggi or self.rnd.random() < 0.03):  # oggi: ancora dentro; a volte dimenticata
+                    eventi.append(("USC", alle(giorno, 17, self.rnd.randint(0, 20)), None))
+                for tipo, momento, rep in eventi:
+                    if momento <= adesso:
+                        Timbratura.objects.create(lavoratore=lav, tipo=tipo, momento=momento, reparto=rep)
+        self.stdout.write("  timbrature di prova: codici 1001…1006 (Timbrature → Postazioni per i link)")
 
     def _prova(self, funzione: Any, *args: Any, **kwargs: Any) -> Any:
         """Esegue un servizio; un rifiuto (regola di business) non ferma il caricamento."""

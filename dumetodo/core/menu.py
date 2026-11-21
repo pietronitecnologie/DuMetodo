@@ -107,6 +107,17 @@ MENU: tuple[Sezione, ...] = (
         ),
     ),
     Sezione(
+        "Timbrature",
+        "timbrature",
+        (
+            Voce("Presenze", "timbrature:presenze", (F.TIMBRATURE_VEDERE,)),
+            Voce("Timbrature e correzioni", "timbrature:timbrature", (F.TIMBRATURE_VEDERE,)),
+            Voce("Costi per reparto", "timbrature:costi", (F.TIMBRATURE_COSTI,)),
+            Voce("Lavoratori", "timbrature:lavoratori", (F.TIMBRATURE_VEDERE,)),
+            Voce("Postazioni", "timbrature:postazioni", (F.TIMBRATURE_GESTIRE,)),
+        ),
+    ),
+    Sezione(
         "Gestionale",
         "gestionale",
         (

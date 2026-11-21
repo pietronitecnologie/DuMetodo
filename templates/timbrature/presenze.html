@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load dumetodo %}
+{% block titolo %}Presenze{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><h1 class="h4 me-auto mb-0">Presenze{% if oggi %} <span class="badge text-bg-success align-middle">{{ presenti }} presenti ora</span>{% endif %}</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'timbrature:timbrature' %}?dal={{ dal|date:'Y-m-d' }}&al={{ al|date:'Y-m-d' }}">Timbrature</a></div>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-2">
+  <div><label class="form-label small mb-0">Dal</label><input type="date" name="dal" class="form-control form-control-sm" value="{{ dal|date:'Y-m-d' }}"></div>
+  <div><label class="form-label small mb-0">Al</label><input type="date" name="al" class="form-control form-control-sm" value="{{ al|date:'Y-m-d' }}"></div>
+  <button class="btn btn-sm btn-primary">Aggiorna</button>
+  <a class="btn btn-sm btn-outline-primary" href="?dal={{ dal|date:'Y-m-d' }}&al={{ al|date:'Y-m-d' }}&formato=xlsx">Excel</a>
+</form>
+<p class="small text-muted">Ore lavorate = presenza meno mensa e pause, divise per reparto in base alle timbrature alle postazioni; «non assegnate» = presenza fuori da ogni reparto.</p>
+<div class="table-responsive"><table class="table table-sm bg-white align-middle small">
+  <thead><tr><th>Lavoratore</th>{% if oggi %}<th>Adesso</th>{% endif %}{% if un_giorno %}<th>Entrata</th><th>Uscita</th>{% endif %}
+    <th class="text-end">Ore lavorate</th>{% for r in reparti %}<th class="text-end">{{ r.nome }}</th>{% endfor %}<th class="text-end">Non assegnate</th><th class="text-end">Mensa e pause</th><th>Anomalie</th></tr></thead>
+  <tbody>{% for r in righe %}<tr>
+    <td><a href="{% url 'timbrature:timbrature' %}?lavoratore={{ r.lavoratore.pk }}&dal={{ dal|date:'Y-m-d' }}&al={{ al|date:'Y-m-d' }}">{{ r.lavoratore }}</a> <span class="text-muted">{{ r.lavoratore.matricola }}</span></td>
+    {% if oggi %}<td>{% if r.in_corso %}<span class="text-success fw-semibold">{{ r.stato }}</span>{% else %}<span class="text-muted">{{ r.stato }}</span>{% endif %}</td>{% endif %}
+    {% if un_giorno %}<td>{{ r.entrata|time:"H:i"|default:"—" }}</td><td>{{ r.uscita|time:"H:i"|default:"—" }}</td>{% endif %}
+    <td class="text-end fw-semibold">{% if r.turni %}{{ r.lavorato }}{% else %}—{% endif %}</td>
+    {% for rep in reparti %}<td class="text-end">{{ r.per_reparto|get_item:rep.pk|default:"" }}</td>{% endfor %}
+    <td class="text-end">{% if r.non_assegnato %}{{ r.non_assegnato }}{% endif %}</td><td class="text-end">{% if r.mensa_pausa %}{{ r.mensa_pausa }}{% endif %}</td>
+    <td class="text-danger">{{ r.anomalie|join:"; " }}</td></tr>
+  {% empty %}<tr><td colspan="99" class="text-center text-muted py-4">Nessun lavoratore: aggiungili in Timbrature → Lavoratori.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}
