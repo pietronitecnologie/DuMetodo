@@ -254,7 +254,9 @@ python manage.py preleva_da_metodo --stato           # a che punto è
   * `./preleva-da-metodo.sh` chiede i dati del server e del database di Metodo, apre il tunnel SSH, verifica e
     avvia il prelievo; alla fine chiude il tunnel;
   * le opzioni vengono passate al comando, es. `./preleva-da-metodo.sh --max-kb 256 --pausa 1`;
-  * le risposte vengono ricordate per la volta successiva, le password no.
+  * le risposte vengono ricordate per la volta successiva, le password no;
+  * su Windows: `powershell -ExecutionPolicy Bypass -File .\preleva-da-metodo.ps1` (stesse domande; il tunnel si
+    apre in una finestra di ssh in cui scrivere la password SSH, da lasciare aperta durante il prelievo).
 * **Sul server (Docker):** usa MetodoConsole: `metodoconsole prelievo verifica`, poi `prelievo avvia`, e segui
   l'avanzamento con `prelievo log -f`. Il prelievo gira in un container dedicato e prima fa un backup.
   Dettagli e tunnel SSH sono nel README di MetodoConsole.
