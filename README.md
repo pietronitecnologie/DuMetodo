@@ -250,6 +250,11 @@ python manage.py preleva_da_metodo --stato           # a che punto è
 * **Volumi:**
   * in prova sono stati elaborati circa 6000 record al secondo, a circa 220 byte per riga d'ordine;
   * 6 milioni di righe sono circa 1,3 GB, cioè poco più di 20 minuti a 1 MB/s.
+* **Da un computer con DuMetodo in Docker:**
+  * `./preleva-da-metodo.sh` chiede i dati del server e del database di Metodo, apre il tunnel SSH, verifica e
+    avvia il prelievo; alla fine chiude il tunnel;
+  * le opzioni vengono passate al comando, es. `./preleva-da-metodo.sh --max-kb 256 --pausa 1`;
+  * le risposte vengono ricordate per la volta successiva, le password no.
 * **Sul server (Docker):** usa MetodoConsole: `metodoconsole prelievo verifica`, poi `prelievo avvia`, e segui
   l'avanzamento con `prelievo log -f`. Il prelievo gira in un container dedicato e prima fa un backup.
   Dettagli e tunnel SSH sono nel README di MetodoConsole.
