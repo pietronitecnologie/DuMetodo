@@ -363,3 +363,18 @@ details.dm-config > summary:hover { background: #d3dcea; }
 .dm-contenuto h2, .dm-contenuto h3 { color: var(--dm-intestazione-testo); }
 /* Filtri in alto alle pagine: una fascia distinta dalle tabelle dei risultati */
 .dm-contenuto form[method=get].card { background: #f7f9fc; }
+
+/* ---- Pulsanti delle righe d'ordine: pieni, testo scuro e colorato, su una sola riga ---------------- */
+.dm-contenuto .table td.dm-azioni-riga { white-space: nowrap; width: 1%; padding-right: .6rem; }
+html .dm-contenuto .table .btn.btn-sm.dm-az, .btn.dm-az {
+  --bs-btn-padding-y: .22rem; --bs-btn-padding-x: .42rem; --bs-btn-font-size: .78rem; --bs-btn-font-weight: 600;
+  --bs-btn-border-radius: 6px; line-height: 1.25; letter-spacing: .01em;
+  background: var(--az-sfondo); color: var(--az-testo); border: 1px solid var(--az-bordo); }
+.btn.dm-az:hover, .btn.dm-az:focus-visible { background: var(--az-testo); color: #fff; border-color: var(--az-testo); }
+.dm-az-evadi    { --az-sfondo: #dff3e7; --az-testo: #12693b; --az-bordo: #9fd5b5; }
+.dm-az-blocca   { --az-sfondo: #fde3e5; --az-testo: #b01f28; --az-bordo: #f2a9ae; }
+.dm-az-scorpora { --az-sfondo: #dcf0f6; --az-testo: #0a5f78; --az-bordo: #95cfe0; }
+.dm-az-annulla  { --az-sfondo: #eceff3; --az-testo: #3f4a5a; --az-bordo: #c3cad4; }
+.dm-az-dividi   { --az-sfondo: #ebe7fb; --az-testo: #4a37a6; --az-bordo: #c3b8ef; }
+html.dm-modo-reparto .dm-contenuto .table .btn.btn-sm.dm-az { --bs-btn-font-size: .95rem; --bs-btn-padding-y: .45rem; --bs-btn-padding-x: .8rem; }
+@media (max-width: 767.98px) { .dm-azioni-riga { white-space: normal; width: auto; } .dm-azioni-riga > div, .dm-azioni-riga form { flex-wrap: wrap; } }

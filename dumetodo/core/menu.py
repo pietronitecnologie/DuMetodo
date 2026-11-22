@@ -40,7 +40,6 @@ MENU: tuple[Sezione, ...] = (
             Voce("Pianificazione", "pianificazione:pagina", (F.PIANIFICAZIONE,)),
             Voce("Tabulato settimanale", "pianificazione:tabulato_settimanale", (F.PIANIFICAZIONE,)),
             Voce("Tabulato scorte", "pianificazione:tabulato_scorte", (F.PIANIFICAZIONE,)),
-            Voce("Commesse per tabulato", "pianificazione:tabulato_commesse", (F.PIANIFICAZIONE,)),
         ),
     ),
     Sezione(

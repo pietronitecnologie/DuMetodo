@@ -12,5 +12,4 @@ urlpatterns = [
     path("agenda/pulsanti/", views.agenda_pulsanti, name="agenda_pulsanti"),
     path("tabulati/settimanale/", views.tabulato_settimanale, name="tabulato_settimanale"),
     path("tabulati/scorte/", views.tabulato_scorte, name="tabulato_scorte"),
-    path("tabulati/commesse/", views.tabulato_commesse, name="tabulato_commesse"),
 ]

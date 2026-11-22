@@ -230,7 +230,6 @@ settimana.
 - **Tabulato settimanale**: articoli da produrre in una settimana per un reparto, con ore totali. Scegli reparto e
   settimana (‹ precedente / successiva ›), poi **Stampa** o **Excel**.
 - **Tabulato scorte**: come il settimanale, solo per le commesse piccole.
-- **Commesse per tabulato**: gli ordini di un tabulato in un intervallo di scadenze, esportabili in Excel.
 
 ## Spedizioni
 

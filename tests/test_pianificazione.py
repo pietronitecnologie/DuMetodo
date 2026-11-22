@@ -188,8 +188,6 @@ def test_tabulati(scenario):
     per_art = {v.articolo: v for v in voci}
     # ordini INS/LAV con appendice e al massimo 45 pezzi non in bolla: '1' (41) e '5' (16,5); '3' (50) escluso
     assert per_art["P1"].qta == 44 and per_art["CAVO"].qta == Decimal("12.5")
-    commesse = servizi.commesse_per_tabulato(Tabulato.T2, LUN, LUN + dt.timedelta(days=13))
-    assert [o.numero for o in commesse] == ["1", "3", "5"]  # "3" è LAV: incluso come in Metodo
 
 
 def test_viste(client, scenario, operatore, cliente):
@@ -202,13 +200,11 @@ def test_viste(client, scenario, operatore, cliente):
         "/pianificazione/agenda/pulsanti/",
         f"/pianificazione/tabulati/settimanale/?reparto={scenario['pls'].pk}",
         f"/pianificazione/tabulati/scorte/?reparto={scenario['pls'].pk}&formato=stampa",
-        "/pianificazione/tabulati/commesse/?tabulato=2",
     ):
         assert client.get(url).status_code == 200, url
     for url in (
         "/pianificazione/export/",
         f"/pianificazione/tabulati/settimanale/?reparto={scenario['pls'].pk}&formato=xlsx",
-        "/pianificazione/tabulati/commesse/?tabulato=2&formato=xlsx",
     ):
         assert client.get(url)["Content-Type"] == servizi.XLSX, url
     assert client.post("/pianificazione/soglie/", {f"soglia_{scenario['pls'].pk}": "10"}).status_code == 403

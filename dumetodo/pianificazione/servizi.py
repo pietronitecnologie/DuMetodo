@@ -273,14 +273,3 @@ def tabulato_scorte(reparto: Reparto, lunedi: dt.date) -> tuple[list[VoceTabulat
         ordine__in=ordini, bolla_emessa=False, articolo__in=Articolo.objects.filter(reparto=reparto).values("codice")
     )
     return _voci(righe)
-
-
-def commesse_per_tabulato(tabulato: int, dal: dt.date, al: dt.date) -> QuerySet[Ordine]:
-    articoli = Articolo.objects.filter(tabulato=tabulato).values("codice")
-    return (
-        Ordine.objects.filter(data_scadenza__range=(dal, al))
-        .exclude(appendice="")
-        .exclude(stato__in=[StatoOrdine.CONSEGNATO, StatoOrdine.ANNULLATO, StatoOrdine.IN_SPEDIZIONE])
-        .filter(Exists(RigaOrdine.objects.attive().filter(ordine=OuterRef("pk"), articolo__in=articoli)))
-        .order_by("data_scadenza", "serie", "numero")
-    )

@@ -6,7 +6,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from dumetodo.anagrafica.models import Tabulato
 from dumetodo.core.models import Reparto
 from dumetodo.core.permessi import F, richiede_permesso
 from dumetodo.ordini.models import Ordine
@@ -192,42 +191,3 @@ def tabulato_settimanale(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.PIANIFICAZIONE)
 def tabulato_scorte(request: HttpRequest) -> HttpResponse:
     return _tabulato(request, "scorte")
-
-
-@require_GET
-@richiede_permesso(F.PIANIFICAZIONE)
-def tabulato_commesse(request: HttpRequest) -> HttpResponse:
-    oggi = timezone.localdate()
-    lun, dom = calendario.settimana(oggi)
-    dal, al = _data(request.GET.get("dal"), lun), _data(request.GET.get("al"), dom)
-    n = int(request.GET["tabulato"]) if request.GET.get("tabulato", "").isdigit() else None
-    ordini = (
-        servizi.commesse_per_tabulato(n, dal, al) if n is not None and n in Tabulato.values else Ordine.objects.none()
-    )
-    if n is not None and request.GET.get("formato") == "xlsx":
-        import io
-
-        from openpyxl import Workbook
-
-        wb = Workbook()
-        ws = wb.active
-        ws.append(["Commessa", "Articolo", "Variante", "Quantità", "Stato", "Data scadenza"])
-        for o in ordini.prefetch_related("righe"):
-            for r in o.righe.all():
-                if r.is_attiva:
-                    ws.append([o.codice, r.articolo, r.variante, float(r.qta), o.get_stato_display(), o.data_scadenza])
-                    ws.cell(ws.max_row, 6).number_format = "DD/MM/YYYY"
-        buf = io.BytesIO()
-        wb.save(buf)
-        return _xlsx(f"CommesseTabulato_{n}_{dal:%Y%m%d}_{al:%Y%m%d}.xlsx", buf.getvalue())
-    return render(
-        request,
-        "pianificazione/tabulato_commesse.html",
-        {
-            "tabulati": [t for t in Tabulato if t.value],
-            "tabulato": n,
-            "dal": dal,
-            "al": al,
-            "ordini": ordini,
-        },
-    )

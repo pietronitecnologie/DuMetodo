@@ -48,15 +48,15 @@
           <td>{{ r.data_scadenza|date:"d/m/Y" }}</td>
           <td class="small">{% if not r.is_attiva %}{{ r.get_stato_display }}{% elif r.bolla_emessa %}In bolla{% elif r.in_evasione %}In evasione{% elif r.bloccata %}Bloccata{% endif %}{% if r.scorporata %} · scorporata{% endif %}</td>
           {% if perms.core.ordini_righe or perms.core.ordini_dividi %}
-          <td><div class="d-flex flex-wrap gap-1 justify-content-end">{% if r.is_attiva and not r.bolla_emessa %}
-            <form method="post" action="{% url 'ordini:azione_riga' ordine.pk r.pk %}" class="d-flex flex-wrap gap-1">{% csrf_token %}
-              {% if not r.in_evasione %}<button name="azione" value="evadi" class="btn btn-sm btn-outline-success py-0">Evadi</button>{% endif %}
-              {% if not r.bloccata %}<button name="azione" value="blocca" class="btn btn-sm btn-outline-danger py-0">Blocca</button>{% endif %}
-              {% if r.scorporata %}<button name="azione" value="reincorpora" class="btn btn-sm btn-outline-info py-0">Reincorpora</button>
-              {% else %}<button name="azione" value="scorpora" class="btn btn-sm btn-outline-info py-0">Scorpora</button>{% endif %}
-              {% if perms.core.ordini_annulla %}<button name="azione" value="annulla" class="btn btn-sm btn-outline-secondary py-0" onclick="return confirm('Annullare la riga {{ r.n_riga|escapejs }}?')">Annulla</button>{% endif %}
+          <td class="dm-azioni-riga"><div class="d-flex gap-1 justify-content-end">{% if r.is_attiva and not r.bolla_emessa %}
+            <form method="post" action="{% url 'ordini:azione_riga' ordine.pk r.pk %}" class="d-flex gap-1">{% csrf_token %}
+              {% if not r.in_evasione %}<button name="azione" value="evadi" class="btn btn-sm dm-az dm-az-evadi" title="Segna la riga come in evasione">Evadi</button>{% endif %}
+              {% if not r.bloccata %}<button name="azione" value="blocca" class="btn btn-sm dm-az dm-az-blocca" title="Blocca la riga">Blocca</button>{% endif %}
+              {% if r.scorporata %}<button name="azione" value="reincorpora" class="btn btn-sm dm-az dm-az-scorpora" title="Riporta la riga nell'ordine">Reincorpora</button>
+              {% else %}<button name="azione" value="scorpora" class="btn btn-sm dm-az dm-az-scorpora" title="Scorpora la riga (fatturazione separata)">Scorpora</button>{% endif %}
+              {% if perms.core.ordini_annulla %}<button name="azione" value="annulla" class="btn btn-sm dm-az dm-az-annulla" title="Annulla la riga" onclick="return confirm('Annullare la riga {{ r.n_riga|escapejs }}?')">Annulla</button>{% endif %}
             </form>
-            {% if perms.core.ordini_dividi and not r.in_evasione %}<a class="btn btn-sm btn-outline-dark py-0" href="{% url 'ordini:dividi_riga' ordine.pk r.pk %}">Dividi</a>{% endif %}
+            {% if perms.core.ordini_dividi and not r.in_evasione %}<a class="btn btn-sm dm-az dm-az-dividi" title="Dividi la riga in più consegne" href="{% url 'ordini:dividi_riga' ordine.pk r.pk %}">Dividi</a>{% endif %}
           {% endif %}</div></td>
           {% endif %}
         </tr>
