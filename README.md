@@ -250,14 +250,9 @@ python manage.py preleva_da_metodo --stato           # a che punto è
 * **Volumi:**
   * in prova sono stati elaborati circa 6000 record al secondo, a circa 220 byte per riga d'ordine;
   * 6 milioni di righe sono circa 1,3 GB, cioè poco più di 20 minuti a 1 MB/s.
-* **Docker:**
-  * metti `METODO_DB_URL` nel `.env` e lancia il prelievo in un container a parte, che continua anche se
-    chiudi la sessione SSH:
-    `docker compose run -d --name prelievo web python manage.py preleva_da_metodo --log /app/media/prelievo.log`
-    e segui l'avanzamento con `docker logs -f prelievo`;
-  * se il database di Metodo non è esposto in rete, apri sull'host un tunnel SSH compresso:
-    `ssh -C -N -L 0.0.0.0:15432:localhost:5432 utente@server-metodo`. Poi usa
-    `host.docker.internal:15432` nell'URL.
+* **Sul server (Docker):** usa MetodoConsole: `metodoconsole prelievo verifica`, poi `prelievo avvia`, e segui
+  l'avanzamento con `prelievo log -f`. Il prelievo gira in un container dedicato e prima fa un backup.
+  Dettagli e tunnel SSH sono nel README di MetodoConsole.
 
 ## Sviluppo
 

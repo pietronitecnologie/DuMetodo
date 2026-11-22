@@ -51,9 +51,40 @@ Poi controlla la configurazione e, in DuMetodo, imposta chi riceve gli avvisi:
 | `metodoconsole log [servizio] [-f]` | Log dei servizi; `--errori` mostra solo gli errori delle ultime 24 ore; `--da 2h` |
 | `metodoconsole manage COMANDO` | Comando di Django, es. `metodoconsole manage changepassword admin` |
 | `metodoconsole psql` | Console SQL del database |
+| `metodoconsole prelievo verifica` / `avvia` / `stato` / `log [-f]` / `ferma` | Preleva i dati dal Metodo in produzione (vedi sotto) |
 
 Dove serve un `NOME` di backup basta l'inizio (`20261120`), una parte della nota (`prima-di-abc1234`) oppure
 `ultimo`.
+
+## Prelievo dei dati da Metodo
+
+Importa anni di produzione direttamente dal database di Metodo: lo fa a blocchi, con un limite di banda, e si
+può interrompere e riprendere (dettagli nel README di DuMetodo, «Prelievo dal Metodo in produzione»).
+
+1. Metti l'indirizzo del database di Metodo nel `.env` di DuMetodo e riavvia (`metodoconsole riavvia`):
+   `METODO_DB_URL=postgres://utente-sola-lettura:password@host:5432/metodo`.
+   * Se non lo vuoi nel `.env`, MetodoConsole lo chiede senza mostrarlo a schermo, oppure lo legge dalla
+     variabile `METODO_DB_URL`.
+   * Se il database di Metodo non è raggiungibile in rete, apri un tunnel SSH sul server:
+     `ssh -C -N -L 0.0.0.0:15432:localhost:5432 utente@server-metodo`. Nell'indirizzo usa poi
+     `host.docker.internal:15432`.
+2. `metodoconsole prelievo verifica`: controlla la connessione e lo schema, e mostra quanti record ci sono.
+3. `metodoconsole prelievo avvia`: fa un backup di sicurezza del database, poi avvia il prelievo in un
+   container dedicato.
+   * Il prelievo continua anche se chiudi la sessione SSH.
+   * Opzioni: `--max-kb 256 --pausa 1` per pesare meno sulla rete di Metodo; `--ricomincia ordini righe
+     consegne` per rileggere e aggiornare i dati già presi.
+4. Per seguirlo:
+   * `metodoconsole prelievo log -f` mostra l'avanzamento, con percentuale e tempo stimato;
+   * `metodoconsole prelievo stato` mostra a che punto è ogni passo.
+5. `metodoconsole prelievo ferma` lo interrompe in modo pulito: il blocco in corso viene annullato.
+   `prelievo avvia` riparte da dove era arrivato.
+
+Rilanciato nei giorni seguenti, `prelievo avvia` prende solo i record nuovi. Il giorno del passaggio basta un
+ultimo lancio con Metodo fermo. Tutti gli avvisi del prelievo (ordini duplicati, righe senza ordine…)
+finiscono nel file `prelievo-metodo.log` nella cartella dei file caricati, che è inclusa nei backup.
+`metodoconsole diagnostica` segnala se un prelievo si è interrotto. A migrazione finita togli
+`METODO_DB_URL` dal `.env`.
 
 ## Diagnostica
 

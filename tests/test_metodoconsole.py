@@ -103,3 +103,60 @@ def test_riga_di_comando():
     a = mc.parser().parse_args(["ripristina", "ultimo", "--solo-database", "--si"])
     assert a.funzione is mc.cmd_ripristina and a.solo_database and a.si
     assert mc.parser().parse_args(["avvia", "--ricostruisci"]).ricostruisci
+
+
+# ------------------------------------------------------------------------------------- prelievo da Metodo
+class _ComposeFinto:
+    def __init__(self):
+        self.chiamate = []
+
+    def __call__(self, *argomenti, **kw):
+        self.chiamate.append((argomenti, kw))
+        return mc.subprocess.CompletedProcess(argomenti, 0, "", "")
+
+    def servizi(self):
+        return {"web": {"State": "running"}, "db": {"State": "running"}}
+
+
+def _conf(tmp_path, env=""):
+    (tmp_path / ".env").write_text(env)
+    return mc.Conf(cartella=tmp_path, cartella_stato=tmp_path / "stato", progetto="DuMetodo")
+
+
+def test_prelievo_avvia_con_backup_e_opzioni(tmp_path, monkeypatch):
+    conf = _conf(tmp_path, "METODO_DB_URL='postgres://u:p@metodo/db'\n")
+    dc = _ComposeFinto()
+    backup = []
+    monkeypatch.setattr(mc, "stato_container", lambda nome: None)
+    monkeypatch.setattr(
+        mc, "esegui_backup", lambda c, d, nota, con_file: backup.append(nota) or mc.Backup("b", tmp_path, None, 0, {})
+    )
+    a = mc.parser().parse_args(["prelievo", "avvia", "--max-kb", "256", "--pausa", "1", "--ricomincia", "ordini"])
+    assert mc.cmd_prelievo(conf, dc, a) == 0
+    assert backup == ["prima-del-prelievo"]
+    ((argomenti, kw),) = dc.chiamate
+    assert argomenti[:4] == ("run", "-d", "--name", "dumetodo-prelievo") and "-e" not in argomenti
+    assert argomenti[argomenti.index("--max-kb") + 1] == "256.0" and "--ricomincia" in argomenti
+    assert "--log" in argomenti and kw["ambiente"] == {}  # URL già nel .env: non passa dalla riga di comando
+
+
+def test_prelievo_non_parte_due_volte_e_url_mancante(tmp_path, monkeypatch):
+    conf = _conf(tmp_path)
+    monkeypatch.setattr(mc, "stato_container", lambda nome: {"Running": True})
+    a = mc.parser().parse_args(["prelievo", "avvia"])
+    with pytest.raises(mc.Errore, match="già in corso"):
+        mc.cmd_prelievo(conf, _ComposeFinto(), a)
+    monkeypatch.delenv("METODO_DB_URL", raising=False)
+    monkeypatch.setattr(mc.sys.stdin, "isatty", lambda: False)
+    with pytest.raises(mc.Errore, match="METODO_DB_URL"):
+        mc.url_metodo(conf)
+    monkeypatch.setenv("METODO_DB_URL", "postgres://x")
+    assert mc.url_metodo(conf) == {"METODO_DB_URL": "postgres://x"}
+
+
+def test_prelievo_nella_diagnostica():
+    assert mc.descrivi_prelievo(None) is None
+    assert mc.descrivi_prelievo({"Running": True, "StartedAt": "2026-11-22T20:00:00.1Z"}).esito == mc.OK
+    e = mc.descrivi_prelievo({"Running": False, "ExitCode": 1, "FinishedAt": "2026-11-22T21:00:00Z"})
+    assert e.esito == mc.ATTENZIONE and "prelievo avvia" in e.dettaglio
+    assert mc.descrivi_prelievo({"Running": False, "ExitCode": 0, "FinishedAt": "x"}).dettaglio == "completato il x"

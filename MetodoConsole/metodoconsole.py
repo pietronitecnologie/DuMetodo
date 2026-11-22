@@ -8,6 +8,7 @@ caricati, aggiornamento, avvisi via email. Solo libreria standard di Python (3.1
     metodoconsole diagnostica [--json]
     metodoconsole backup [--nota TESTO]
     metodoconsole ripristina NOME
+    metodoconsole prelievo avvia    (dati da Metodo: verifica | avvia | stato | log | ferma)
     metodoconsole --help            (tutti i comandi)
 
 Configurazione: /etc/metodoconsole/metodoconsole.conf (vedi metodoconsole.conf.example).
@@ -20,6 +21,7 @@ import configparser
 import contextlib
 import datetime as dt
 import fcntl
+import getpass
 import hashlib
 import json
 import os
@@ -33,7 +35,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-VERSIONE = "1.0.0"
+VERSIONE = "1.1.0"
 CONF_PREDEFINITA = "/etc/metodoconsole/metodoconsole.conf"
 OK, ATTENZIONE, ERRORE = "ok", "attenzione", "errore"
 GRAVITA = {OK: 0, ATTENZIONE: 1, ERRORE: 2}
@@ -221,7 +223,8 @@ class Compose:
         elementi = (
             json.loads(righe) if righe.startswith("[") else [json.loads(x) for x in righe.splitlines() if x.strip()]
         )
-        return {e["Service"]: e for e in elementi}
+        # Il container del prelievo (docker compose run) usa l'immagine di «web»: non va confuso con il servizio.
+        return {e["Service"]: e for e in elementi if not str(e.get("Name", "")).endswith("-prelievo")}
 
     def manage(self, *argomenti: str, **kw: Any) -> subprocess.CompletedProcess:
         return self.exec("web", "python", "manage.py", *argomenti, **kw)
@@ -324,6 +327,9 @@ def controlli_server(conf: Conf, dc: Compose) -> list[Esito]:
 
     agg(_ultimo_backup(conf))
     agg(_orologio())
+    prelievo = descrivi_prelievo(stato_container(nome_prelievo(conf)))
+    if prelievo is not None:
+        agg(prelievo)
     return esiti
 
 
@@ -965,6 +971,187 @@ def cmd_versione(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     return 0
 
 
+# ============================================================================================ prelievo
+LOG_PRELIEVO = "/app/media/prelievo-metodo.log"  # nel volume dei file: resta anche dopo il container
+
+
+def nome_prelievo(conf: Conf) -> str:
+    """Container dedicato al prelievo: separato da «web», continua anche se si chiude la sessione SSH."""
+    base = conf.progetto or conf.cartella.name or "dumetodo"
+    return "".join(c if c.isalnum() or c in "-_" else "-" for c in base.lower()) + "-prelievo"
+
+
+def leggi_env(conf: Conf) -> dict[str, str]:
+    valori: dict[str, str] = {}
+    env = conf.cartella / ".env"
+    if not env.exists():
+        return valori
+    for riga in env.read_text(encoding="utf-8", errors="replace").splitlines():
+        riga = riga.strip()
+        if riga and not riga.startswith("#") and "=" in riga:
+            k, v = riga.split("=", 1)
+            valori[k.strip()] = v.strip().strip("'\"")
+    return valori
+
+
+def url_metodo(conf: Conf, *, chiedi: bool = True) -> dict[str, str]:
+    """Ambiente da passare al container: vuoto se METODO_DB_URL è già nel .env di DuMetodo.
+
+    In alternativa si legge dall'ambiente o si chiede (senza eco): l'URL contiene una password e così non
+    finisce né nella riga di comando (visibile con ps) né nella cronologia della shell."""
+    if leggi_env(conf).get("METODO_DB_URL"):
+        return {}
+    if os.environ.get("METODO_DB_URL"):
+        return {"METODO_DB_URL": os.environ["METODO_DB_URL"]}
+    if not chiedi or not sys.stdin.isatty():
+        raise Errore(
+            f"Manca l'indirizzo del database di Metodo: aggiungi METODO_DB_URL a {conf.cartella / '.env'} "
+            "(vedi .env.example) oppure esporta la variabile prima del comando."
+        )
+    url = getpass.getpass("Database di Metodo (postgres://utente:password@host:porta/nome): ").strip()
+    if not url.startswith(("postgres://", "postgresql://")):
+        raise Errore("Indirizzo non valido: deve iniziare con postgres://")
+    return {"METODO_DB_URL": url}
+
+
+def stato_container(nome: str) -> dict[str, Any] | None:
+    r = esegui(["docker", "inspect", "--format", "{{json .State}}", nome], controlla=False, timeout=20)
+    if r.returncode != 0 or not r.stdout.strip():
+        return None
+    return json.loads(r.stdout)
+
+
+def _ora_docker(testo: str) -> str:
+    try:
+        quando = dt.datetime.fromisoformat(testo[:19]).replace(tzinfo=dt.UTC).astimezone()
+    except ValueError:
+        return testo
+    return quando.strftime("%d/%m/%Y %H:%M")
+
+
+def descrivi_prelievo(st: dict[str, Any] | None) -> Esito | None:
+    if st is None:
+        return None
+    if st.get("Running"):
+        return Esito("Prelievo da Metodo", OK, f"in corso dal {_ora_docker(st.get('StartedAt', ''))}", "app")
+    codice = st.get("ExitCode")
+    fine = _ora_docker(st.get("FinishedAt", ""))
+    if codice == 0:
+        return Esito("Prelievo da Metodo", OK, f"completato il {fine}", "app")
+    return Esito(
+        "Prelievo da Metodo",
+        ATTENZIONE,
+        f"interrotto il {fine} (codice {codice}): metodoconsole prelievo log, poi prelievo avvia per riprendere",
+        "app",
+    )
+
+
+def opzioni_prelievo(a: argparse.Namespace) -> list[str]:
+    opzioni = ["--log", LOG_PRELIEVO]
+    for nome in ("blocco", "max_kb", "pausa", "timeout", "tentativi"):
+        valore = getattr(a, nome, None)
+        if valore is not None:
+            opzioni += [f"--{nome.replace('_', '-')}", str(valore)]
+    if getattr(a, "solo", None):
+        opzioni += ["--solo", *a.solo]
+    if getattr(a, "ricomincia", None):
+        opzioni += ["--ricomincia", *a.ricomincia]
+    return opzioni
+
+
+def cmd_prelievo(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
+    nome = nome_prelievo(conf)
+    st = stato_container(nome)
+    in_corso = bool(st and st.get("Running"))
+
+    if a.azione == "verifica":
+        amb = url_metodo(conf)
+        cmd = ["run", "--rm", "-T", *(["-e", "METODO_DB_URL"] if amb else []), "web"]
+        return dc(
+            *cmd,
+            "python",
+            "manage.py",
+            "preleva_da_metodo",
+            "--verifica",
+            ambiente=amb,
+            uscita=None,
+            controlla=False,
+            timeout=600,
+        ).returncode
+
+    if a.azione == "avvia":
+        if in_corso:
+            raise Errore("Un prelievo è già in corso: metodoconsole prelievo stato / prelievo log -f")
+        amb = url_metodo(conf)
+        if not a.senza_backup:
+            with lucchetto(conf, "operazione"):
+                passo("Backup di sicurezza prima del prelievo…")
+                b = esegui_backup(conf, dc, "prima-del-prelievo", con_file=False)
+                info(f"  backup {b.nome}")
+        if st is not None:
+            esegui(["docker", "rm", nome], timeout=60)  # il container del prelievo precedente, già fermo
+        passo("Avvio il prelievo in un container dedicato…")
+        dc(
+            "run",
+            "-d",
+            "--name",
+            nome,
+            *(["-e", "METODO_DB_URL"] if amb else []),
+            "web",
+            "python",
+            "manage.py",
+            "preleva_da_metodo",
+            *opzioni_prelievo(a),
+            ambiente=amb,
+            timeout=600,
+        )
+        info(tinta("Prelievo avviato: continua anche se chiudi la sessione.", OK))
+        info("  Avanzamento:  metodoconsole prelievo log -f")
+        info("  Stato:        metodoconsole prelievo stato")
+        info("  Interrompi:   metodoconsole prelievo ferma   (poi «prelievo avvia» riprende da dove era)")
+        return 0
+
+    if a.azione == "stato":
+        e = descrivi_prelievo(st)
+        if e is None:
+            info("Nessun prelievo avviato con MetodoConsole.")
+        else:
+            info(f"  {tinta(ETICHETTA[e.esito], e.esito)}  {e.dettaglio}")
+        if dc.servizi().get("web", {}).get("State") == "running":
+            info(tinta("\nAvanzamento salvato in DuMetodo", "titolo"))
+            r = dc.manage("preleva_da_metodo", "--stato", controlla=False, timeout=60)
+            info(r.stdout.rstrip() or r.stderr.strip())
+        if st is not None:
+            info(tinta("\nUltime righe del log", "titolo"))
+            r = esegui(["docker", "logs", "--tail", "8", nome], controlla=False, timeout=30)
+            info((r.stdout + r.stderr).rstrip())
+        return 0
+
+    if st is None:
+        info("Nessun prelievo avviato con MetodoConsole.")
+        return 0
+
+    if a.azione == "log":
+        argomenti = ["docker", "logs", "--tail", str(a.righe)] + (["--follow"] if a.segui else []) + [nome]
+        with contextlib.suppress(KeyboardInterrupt):
+            subprocess.run(argomenti)
+        return 0
+
+    # ferma: Ctrl+C al comando, che chiude il blocco in corso e stampa il riepilogo
+    if not in_corso:
+        info("Il prelievo non è in corso.")
+        return 0
+    passo("Interrompo il prelievo…")
+    esegui(["docker", "kill", "--signal", "SIGINT", nome], controlla=False, timeout=30)
+    fine = time.time() + 120
+    while time.time() < fine and (stato_container(nome) or {}).get("Running"):
+        time.sleep(2)
+    if (stato_container(nome) or {}).get("Running"):
+        esegui(["docker", "stop", nome], controlla=False, timeout=120)
+    info("Prelievo interrotto. Rilancia «metodoconsole prelievo avvia» per riprendere da dove era arrivato.")
+    return 0
+
+
 # ================================================================================================== main
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="metodoconsole", description="Controllo del server DuMetodo (Docker su Debian).")
@@ -1014,6 +1201,22 @@ def parser() -> argparse.ArgumentParser:
     x = sub("manage", cmd_manage, "esegue un comando di Django (es. manage createsuperuser)")
     x.add_argument("argomenti", nargs=argparse.REMAINDER)
     sub("psql", cmd_psql, "console SQL del database")
+    x = sub("prelievo", cmd_prelievo, "preleva i dati dal Metodo in produzione (a blocchi, riprendibile)")
+    x.add_argument(
+        "azione",
+        choices=("verifica", "avvia", "stato", "log", "ferma"),
+        help="verifica: connessione e volumi · avvia: avvia o riprende · stato · log · ferma",
+    )
+    x.add_argument("--max-kb", type=float, help="banda massima in KB/s (predefinito 1024, 0 = nessun limite)")
+    x.add_argument("--pausa", type=float, help="secondi di pausa tra due letture (predefinito 0.2)")
+    x.add_argument("--blocco", type=int, help="record per lettura (predefinito 2000)")
+    x.add_argument("--timeout", type=int, help="durata massima di una lettura su Metodo, in secondi")
+    x.add_argument("--tentativi", type=int, help="tentativi se Metodo non risponde")
+    x.add_argument("--solo", nargs="+", metavar="PASSO", help="solo questi passi (es. ordini righe)")
+    x.add_argument("--ricomincia", nargs="+", metavar="PASSO", help="rilegge e aggiorna (ordini righe consegne…)")
+    x.add_argument("--senza-backup", action="store_true", help="avvia senza il backup di sicurezza")
+    x.add_argument("-f", "--segui", action="store_true", help="con «log»: segue l'avanzamento")
+    x.add_argument("-n", "--righe", type=int, default=50, help="con «log»: righe da mostrare")
     sub("versione", cmd_versione, "versione di MetodoConsole e di DuMetodo")
     return p
 
