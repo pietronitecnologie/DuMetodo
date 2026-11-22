@@ -6,7 +6,7 @@
 {% for d in pagina %}<tr><td>{{ d.numero }}/{{ d.anno }}</td><td>{{ d.data|date:"d/m/Y" }}</td><td class="text-end">{{ d.n_righe }}</td><td>{{ d.creato_da|default:"" }}</td>
   <td><a href="{% url 'consegne:ddt_file' d.pk %}">{{ d.file_nome }}</a></td>
   <td>{% if d.email %}<span class="badge text-bg-{% if d.email.stato == 'INV' %}success{% elif d.email.stato == 'FAL' %}danger{% else %}warning{% endif %}">{{ d.email.get_stato_display }}</span>{% else %}<span class="badge text-bg-secondary">non inviato</span>{% endif %}</td>
-  <td>{% if perms.core.ddt_reinvia %}<form method="post" action="{% url 'consegne:ddt_reinvia' d.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary py-0">Reinvia</button></form>{% endif %}</td></tr>
+  <td>{% if perms.core.ddt_reinvia %}<form method="post" action="{% url 'consegne:ddt_reinvia' d.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">Reinvia</button></form>{% endif %}</td></tr>
 {% empty %}<tr><td colspan="7" class="text-muted text-center">Nessun DDT.</td></tr>{% endfor %}
 </tbody></table>
 {% include "_paginazione.html" %}

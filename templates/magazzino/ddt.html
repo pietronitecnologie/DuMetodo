@@ -42,7 +42,7 @@
     <td class="text-end">{% if m.prezzo_unitario is not None %}€ {{ m.prezzo_unitario|floatformat:"-4" }}{% endif %}</td><td>{{ m.data_ingresso|date:"d/m/Y" }}</td>
     <td>{% if m.verificato %}<span class="badge text-bg-success">Verificato</span>{% else %}<span class="badge text-bg-warning">Da verificare</span>{% endif %}</td>
     <td class="small">{{ m.note }}</td>
-    {% if perms.core.magazzino_ddt_elimina %}<td class="text-end"><form method="post" action="{% url 'magazzino:ddt_materiale_elimina' m.pk %}" onsubmit="return confirm('Eliminare la riga?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger py-0">Elimina</button></form></td>{% endif %}
+    {% if perms.core.magazzino_ddt_elimina %}<td class="text-end"><form method="post" action="{% url 'magazzino:ddt_materiale_elimina' m.pk %}" onsubmit="return confirm('Eliminare la riga?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Elimina</button></form></td>{% endif %}
   </tr>{% empty %}<tr><td colspan="11" class="text-muted text-center py-4">Nessun materiale ancora inserito in questo DDT.</td></tr>{% endfor %}</tbody>
 </table></div>
 {% endblock %}

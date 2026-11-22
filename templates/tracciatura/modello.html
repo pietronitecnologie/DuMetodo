@@ -26,7 +26,7 @@
           {% if not c.attivo %}<span class="badge text-bg-secondary">non attivo</span>{% endif %}
           <form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="campo" value="{{ c.pk }}">
             <button class="btn btn-sm btn-light border py-0" name="azione" value="su" title="Su">↑</button><button class="btn btn-sm btn-light border py-0" name="azione" value="giu" title="Giù">↓</button>
-            <button class="btn btn-sm btn-outline-danger py-0" name="azione" value="elimina" onclick="return confirm('{% if c.pk in usati %}Il campo ha dei valori: verrà disattivato (i valori restano).{% else %}Eliminare il campo?{% endif %}')">{% if c.pk in usati %}Disattiva{% else %}Elimina{% endif %}</button></form></div>
+            <button class="btn btn-sm btn-outline-danger" name="azione" value="elimina" onclick="return confirm('{% if c.pk in usati %}Il campo ha dei valori: verrà disattivato (i valori restano).{% else %}Eliminare il campo?{% endif %}')">{% if c.pk in usati %}Disattiva{% else %}Elimina{% endif %}</button></form></div>
         <details class="mt-1"><summary class="small text-muted">Modifica</summary><div class="mt-2">{% include "tracciatura/_campo_form.html" %}</div></details>
       </li>{% empty %}<li class="list-group-item text-muted small">Nessun campo: aggiungine qui sotto.</li>{% endfor %}</ul></div>
     <div class="card"><div class="card-header">Nuovo campo</div><div class="card-body">{% include "tracciatura/_campo_form.html" with c=None %}</div></div>

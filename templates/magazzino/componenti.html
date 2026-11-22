@@ -28,7 +28,7 @@
     <td class="text-end">{% if c.prezzo_medio is not None %}€ {{ c.prezzo_medio|floatformat:2 }}{% endif %}</td>
     <td>{{ c.fornitore }}</td><td>{{ c.creato_il|date:"d/m/Y" }}</td>
     <td>{% if c.attivo %}<span class="badge text-bg-success">attivo</span>{% else %}<span class="badge text-bg-secondary">non attivo</span>{% endif %}</td>
-    <td class="text-end"><a class="btn btn-sm btn-outline-primary py-0" href="{% url 'magazzino:componente' c.pk %}?torna={{ request.get_full_path|urlencode }}">Modifica</a></td>
+    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'magazzino:componente' c.pk %}?torna={{ request.get_full_path|urlencode }}">Modifica</a></td>
   </tr>{% empty %}<tr><td colspan="8" class="text-muted text-center py-4">Nessun componente.</td></tr>{% endfor %}
   </tbody></table></div>
 <div class="d-flex align-items-center"><span class="small text-muted me-auto">{{ totale }} componenti</span>{% include "magazzino/_paginazione.html" %}</div>

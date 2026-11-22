@@ -8,7 +8,7 @@
   <td><span class="badge text-bg-{% if p.livello == 'ERR' %}danger{% else %}warning{% endif %}">{{ p.get_livello_display }}</span></td>
   <td>{{ p.messaggio }}{% if p.ordine %} — <a href="{{ p.ordine.get_absolute_url }}">ordine</a>{% endif %}</td>
   <td><a href="{% url 'importazione:dettaglio_file' p.file_id %}">{{ p.file.nome }}</a></td>
-  <td>{% if not p.gestito %}<form method="post" action="{% url 'importazione:segna_gestito' p.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success py-0">Gestito</button></form>{% endif %}</td></tr>
+  <td>{% if not p.gestito %}<form method="post" action="{% url 'importazione:segna_gestito' p.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success">Gestito</button></form>{% endif %}</td></tr>
 {% empty %}<tr><td colspan="5" class="text-muted text-center">Nessun problema.</td></tr>{% endfor %}
 </tbody></table>
 {% endblock %}

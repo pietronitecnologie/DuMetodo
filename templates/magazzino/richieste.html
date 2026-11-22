@@ -38,9 +38,9 @@
         {% if not r.mail_mancante and not r.mail_urgente and not r.mail_sollecito %}<span class="text-muted">-</span>{% endif %}
         {% if r.ultima_email %}<div class="small text-muted">ultima email: {{ r.ultima_email.get_stato_display|lower }}</div>{% endif %}</td>
       {% if perms.core.magazzino_richieste_gestione %}<td class="text-end text-nowrap">
-        <form method="post" action="{% url 'magazzino:richiesta_urgenza' r.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><input type="hidden" name="urgente" value="{% if r.urgente %}0{% else %}1{% endif %}"><button class="btn btn-sm btn-outline-secondary py-0">{% if r.urgente %}Non urgente{% else %}Urgente{% endif %}</button></form>
+        <form method="post" action="{% url 'magazzino:richiesta_urgenza' r.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><input type="hidden" name="urgente" value="{% if r.urgente %}0{% else %}1{% endif %}"><button class="btn btn-sm btn-outline-secondary">{% if r.urgente %}Non urgente{% else %}Urgente{% endif %}</button></form>
         <form method="post" action="{% url 'magazzino:richiesta_ricevi' r.pk %}" class="d-inline" onsubmit="return confirm('Hai veramente ricevuto il materiale?')">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-success py-0">Ricevi</button></form>
-        <form method="post" action="{% url 'magazzino:richiesta_elimina' r.pk %}" class="d-inline" onsubmit="return confirm('Vuoi eliminare la richiesta?')">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-outline-danger py-0">Elimina</button></form>
+        <form method="post" action="{% url 'magazzino:richiesta_elimina' r.pk %}" class="d-inline" onsubmit="return confirm('Vuoi eliminare la richiesta?')">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-outline-danger">Elimina</button></form>
       </td>{% endif %}
     </tr>{% empty %}<tr><td colspan="8" class="text-muted text-center py-4">Nessuna richiesta aperta.</td></tr>{% endfor %}
     </tbody></table></div>

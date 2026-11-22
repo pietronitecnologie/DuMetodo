@@ -20,7 +20,7 @@
     <td>{{ t.chiave_leggibile }}</td>
     <td>{{ t.valore }}</td>
     <td>{{ t.reparto|default:"" }}</td>
-    <td>{% if t.elemento %}<a class="btn btn-sm btn-outline-primary py-0" href="{% url 'tracciabilita:traccia_nuova' %}?codice={{ t.elemento.codice|urlencode }}">Aggiungi evento</a>{% endif %}</td>
+    <td>{% if t.elemento %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tracciabilita:traccia_nuova' %}?codice={{ t.elemento.codice|urlencode }}">Aggiungi evento</a>{% endif %}</td>
   </tr>
   {% empty %}<tr><td colspan="9" class="text-muted text-center">Nessuna traccia nel periodo.</td></tr>
   {% endfor %}

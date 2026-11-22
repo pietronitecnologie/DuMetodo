@@ -16,7 +16,7 @@
         <td class="text-end text-nowrap">
           {% if x.n %}<form method="post" action="{% url 'consegne:consegna' %}" class="d-inline" onsubmit="return confirm('Consegnare {{ o.codice_breve|escapejs }}?')">{% csrf_token %}
             <input type="hidden" name="ordine" value="{{ o.pk }}"><button class="btn btn-sm btn-success py-0">Consegna</button></form>{% endif %}
-          <form method="post" action="{% url 'consegne:rimuovi' o.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary py-0">Rimuovi</button></form>
+          <form method="post" action="{% url 'consegne:rimuovi' o.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">Rimuovi</button></form>
         </td>
       </tr>{% endwith %}
     {% empty %}<tr><td colspan="6" class="text-muted text-center py-4">Nessun ordine in spedizione.</td></tr>{% endfor %}

@@ -44,9 +44,9 @@
       <td><input form="riga-{{ c.pk }}" class="form-control form-control-sm" name="note" value="{{ c.note }}"></td>
       <td class="text-end text-nowrap">
         <button form="riga-{{ c.pk }}" class="btn btn-sm btn-success py-0">Salva</button>
-        <form method="post" action="{% url 'magazzino:riga_distinta_sposta' c.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="direzione" value="su"><button class="btn btn-sm btn-outline-secondary py-0" {% if forloop.first %}disabled{% endif %} title="Sposta su">↑</button></form>
-        <form method="post" action="{% url 'magazzino:riga_distinta_sposta' c.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="direzione" value="giu"><button class="btn btn-sm btn-outline-secondary py-0" {% if forloop.last %}disabled{% endif %} title="Sposta giù">↓</button></form>
-        <form method="post" action="{% url 'magazzino:riga_distinta_elimina' c.pk %}" class="d-inline" onsubmit="return confirm('Eliminare il componente dalla distinta?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger py-0">Elimina</button></form>
+        <form method="post" action="{% url 'magazzino:riga_distinta_sposta' c.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="direzione" value="su"><button class="btn btn-sm btn-outline-secondary" {% if forloop.first %}disabled{% endif %} title="Sposta su">↑</button></form>
+        <form method="post" action="{% url 'magazzino:riga_distinta_sposta' c.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="direzione" value="giu"><button class="btn btn-sm btn-outline-secondary" {% if forloop.last %}disabled{% endif %} title="Sposta giù">↓</button></form>
+        <form method="post" action="{% url 'magazzino:riga_distinta_elimina' c.pk %}" class="d-inline" onsubmit="return confirm('Eliminare il componente dalla distinta?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Elimina</button></form>
       </td>
       {% else %}
       <td>{{ c.quantita|floatformat:"-4" }}</td><td>{{ c.get_um_display }}</td><td class="small">{{ c.note }}</td>

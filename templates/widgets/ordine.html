@@ -2,7 +2,7 @@
   <input type="hidden" name="{{ widget.name }}" value="{{ widget.pk }}" data-dm-ordine-valore>
   <div class="dm-ordine-scelto {% if not widget.ordine %}d-none{% endif %}" data-dm-ordine-scelto>
     <span class="dm-ordine-etichetta" data-dm-ordine-etichetta>{% if widget.ordine %}{% include "ordini/_ordine_etichetta.html" with o=widget.ordine %}{% endif %}</span>
-    <button type="button" class="btn btn-sm btn-outline-secondary py-0 ms-auto" data-dm-ordine-cambia>Cambia</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-dm-ordine-cambia>Cambia</button>
   </div>
   <div class="position-relative {% if widget.ordine %}d-none{% endif %}" data-dm-ordine-ricerca>
     <div class="input-group input-group-sm">

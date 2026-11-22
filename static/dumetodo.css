@@ -235,7 +235,6 @@ body.dm-pubblica .dm-contenuto { min-height: calc(100vh - 44px); display: grid; 
 }
 
 /* Pulsanti dentro le tabelle: piccoli, non devono allargare le righe (in modalità reparto tornano grandi) */
-html:not(.dm-modo-reparto) .dm-contenuto .table .btn-sm { --bs-btn-padding-y: .05rem; --bs-btn-padding-x: .45rem; --bs-btn-font-size: .75rem; }
 .dm-contenuto .form-check-input { border-color: #b9c2ce; }
 
 /* Configurazione: schede comprimibili (chiuse all'apertura della pagina) */
@@ -386,3 +385,26 @@ html.dm-modo-reparto .dm-contenuto .table .btn.btn-sm.dm-az { --bs-btn-font-size
 .dm-az-a-SPP { --az-sfondo: #ffe6c7; --az-testo: #9a4300; --az-bordo: #f3bf86; }
 .dm-az-a-CON { --az-sfondo: #dff3e7; --az-testo: #12693b; --az-bordo: #9fd5b5; }
 .dm-az-a-ANN { --az-sfondo: #fde3e5; --az-testo: #b01f28; --az-bordo: #f2a9ae; }
+
+/* ==== Pulsanti di tutte le pagine: stesso stile leggibile dei pulsanti dell'ordine ====================
+   I pulsanti "contornati" di Bootstrap diventano pieni e tenui, con testo scuro colorato e grassetto;
+   al passaggio del mouse si riempiono del colore pieno. Restano uguali i pulsanti principali (pieni). */
+.dm-contenuto .btn[class*="btn-outline-"] { --bs-btn-font-weight: 600; --bs-btn-color: var(--az-testo);
+  --bs-btn-bg: var(--az-sfondo); --bs-btn-border-color: var(--az-bordo);
+  --bs-btn-hover-color: #fff; --bs-btn-hover-bg: var(--az-testo); --bs-btn-hover-border-color: var(--az-testo);
+  --bs-btn-active-color: #fff; --bs-btn-active-bg: var(--az-testo); --bs-btn-active-border-color: var(--az-testo);
+  --bs-btn-disabled-color: #8a94a3; --bs-btn-disabled-bg: #eef0f3; --bs-btn-disabled-border-color: #d6dbe2; }
+.dm-contenuto .btn-outline-primary   { --az-sfondo: #e1ebff; --az-testo: #1450bd; --az-bordo: #a9c3f5; }
+.dm-contenuto .btn-outline-secondary { --az-sfondo: #eceff3; --az-testo: #3f4a5a; --az-bordo: #c3cad4; }
+.dm-contenuto .btn-outline-success   { --az-sfondo: #dff3e7; --az-testo: #12693b; --az-bordo: #9fd5b5; }
+.dm-contenuto .btn-outline-danger    { --az-sfondo: #fde3e5; --az-testo: #b01f28; --az-bordo: #f2a9ae; }
+.dm-contenuto .btn-outline-warning   { --az-sfondo: #fff0d1; --az-testo: #8a4f00; --az-bordo: #f0cd86; }
+.dm-contenuto .btn-outline-info      { --az-sfondo: #dcf0f6; --az-testo: #0a5f78; --az-bordo: #95cfe0; }
+.dm-contenuto .btn-outline-dark      { --az-sfondo: #ebe7fb; --az-testo: #4a37a6; --az-bordo: #c3b8ef; }
+.dm-contenuto .btn-outline-light     { --az-sfondo: #f7f8fa; --az-testo: #3f4a5a; --az-bordo: #d6dbe2; }
+/* I pulsanti scelti (es. gruppi di filtri con btn-check) restano pieni */
+.dm-contenuto .btn-check:checked + .btn[class*="btn-outline-"] { color: #fff; background: var(--az-testo); border-color: var(--az-testo); }
+/* Pulsanti pieni: grassetto anche loro, per coerenza */
+.dm-contenuto .btn-primary, .dm-contenuto .btn-success, .dm-contenuto .btn-danger, .dm-contenuto .btn-secondary { --bs-btn-font-weight: 600; }
+/* Nelle tabelle i pulsanti piccoli non vanno rimpiccioliti troppo: stessa misura dei pulsanti delle righe */
+html:not(.dm-modo-reparto) .dm-contenuto .table .btn-sm { --bs-btn-padding-y: .22rem; --bs-btn-padding-x: .42rem; --bs-btn-font-size: .78rem; }
