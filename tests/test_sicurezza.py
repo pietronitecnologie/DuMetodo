@@ -24,6 +24,7 @@ SOLO_LOGIN = {
     "utenti:mia_password",
     "manuale",
     "manuale_md",
+    "timbrature:timbra_qui",  # apre la postazione associata al PC (o torna alla home)
 }
 
 

@@ -118,7 +118,13 @@ def test_regole_alle_postazioni(impianto):
     ing, pls = impianto["ingresso"], impianto["pls"]
     r = servizi.identifica(pls, "1234")
     assert r["azioni"] == [] and "postazione di ingresso" in r["messaggio"]  # prima si entra in azienda
-    assert [a["tipo"] for a in servizi.identifica(ing, "1234")["azioni"]] == ["ENT"]
+    pul, cab = impianto["pulsanti"], impianto["cablaggi"]
+    assert [a["tipo"] for a in servizi.identifica(ing, "1234")["azioni"]] == [
+        "ENT",
+        *sorted(
+            [f"IRP:{cab.pk}", f"IRP:{pul.pk}"], key=lambda x: {f"IRP:{pul.pk}": pul.nome, f"IRP:{cab.pk}": cab.nome}[x]
+        ),
+    ]
     adesso = timezone.now() - dt.timedelta(hours=3)
     servizi.timbra(ing, "1234", "ENT", adesso)
     with pytest.raises(OperazioneNonConsentita, match="non è possibile"):
@@ -332,3 +338,64 @@ def test_pagine_badge(client, impianto, capo, caporeparto):
     assert client.get(f"/timbrature/badge/{mario.identificativi.get(tipo='NFC').pk}/").status_code == 404
     client.force_login(caporeparto)
     assert client.get(f"/timbrature/badge/{badge.pk}/").status_code == 403
+
+
+# ------------------------------------------------------------------ PC associato alla postazione
+def test_pc_associato_usa_dumetodo_e_timbra_dal_menu(client, impianto, operatore):
+    ing = impianto["ingresso"]
+    client.force_login(operatore)  # nessun permesso sulle timbrature
+    assert "/timbrature/timbra/" not in client.get("/ordini/").content.decode()
+    r = client.get("/timbrature/timbra/")
+    assert r.status_code == 302 and r["Location"] == "/"  # PC non associato
+
+    html = client.get(f"/timbrature/p/{ing.token}/").content.decode()  # aprire il link associa il PC
+    assert "Apri DuMetodo" in html
+    pagina = client.get("/ordini/").content.decode()
+    # unica voce di Timbrature per chi non ha altri permessi: il menu «Timbrature» porta diritto alla timbratura
+    assert 'href="/timbrature/timbra/"' in pagina
+    r = client.get("/timbrature/timbra/")
+    assert r.status_code == 302 and r["Location"] == f"/timbrature/p/{ing.token}/"
+
+    servizi.rigenera_link(User.objects.get(username="capo-tim"), ing.pk)  # link nuovo: PC da riassociare
+    assert "/timbrature/timbra/" not in client.get("/ordini/").content.decode()
+
+
+def test_associa_e_scollega_dalla_pagina_postazioni(client, impianto, capo):
+    rep = impianto["pls"]
+    client.force_login(capo)
+    assert "non è una postazione" in client.get("/timbrature/postazioni/").content.decode()
+    client.post("/timbrature/postazioni/", {"azione": "associa", "postazione": rep.pk})
+    pagina = client.get("/timbrature/postazioni/").content.decode()
+    assert f"è la postazione «{rep.nome}»" in pagina and f"Timbra · {rep.nome}" in pagina
+    client.post("/timbrature/postazioni/", {"azione": "scollega"})
+    assert "Timbra ·" not in client.get("/timbrature/postazioni/").content.decode()
+
+
+def test_dall_ingresso_uscita_mensa_e_qualsiasi_reparto(impianto):
+    ing, pul, cab = impianto["ingresso"], impianto["pulsanti"], impianto["cablaggi"]
+    adesso = timezone.now() - dt.timedelta(hours=4)
+    # Si entra scegliendo subito il reparto: entrata automatica + inizio lavoro
+    r = servizi.identifica(ing, "1234")
+    etichette = {a["tipo"]: a["etichetta"] for a in r["azioni"]}
+    assert etichette[f"IRP:{pul.pk}"] == f"Entrata e inizio lavoro – {pul.nome}"
+    servizi.timbra(ing, "1234", f"IRP:{pul.pk}", adesso)
+    assert list(Timbratura.objects.order_by("id").values_list("tipo", "reparto")) == [("ENT", None), ("IRP", pul.pk)]
+    assert servizi.stato(impianto["mario"]).reparto_id == pul.pk
+    # Presente in Pulsanti: dall'ingresso uscita, mensa, pausa, fine lavoro e gli altri reparti
+    tipi = [a["tipo"] for a in servizi.identifica(ing, "1234")["azioni"]]
+    assert tipi == ["USC", "IME", "IPA", f"FRP:{pul.pk}", f"IRP:{cab.pk}"]
+    servizi.timbra(ing, "1234", f"IRP:{cab.pk}", adesso + dt.timedelta(hours=1))  # cambio reparto
+    assert servizi.stato(impianto["mario"]).reparto_id == cab.pk
+    servizi.timbra(ing, "1234", "IME", adesso + dt.timedelta(hours=2))
+    servizi.timbra(ing, "1234", "FME", adesso + dt.timedelta(hours=2, minutes=30))
+    servizi.timbra(ing, "1234", "USC", adesso + dt.timedelta(hours=3))
+    [turno] = servizi.turni(timezone.localdate(adesso), timezone.localdate())[impianto["mario"].pk]
+    assert round(turno.per_reparto[pul.pk]) == 3600 and round(turno.per_reparto[cab.pk]) == 5400  # mensa esclusa
+    with pytest.raises(OperazioneNonConsentita):
+        servizi.timbra(ing, "1234", "IRP:999999", adesso + dt.timedelta(hours=5))  # reparto inesistente
+
+
+def test_messaggio_della_postazione_col_reparto_scelto(client, impianto):
+    ing, pul = impianto["ingresso"], impianto["pulsanti"]
+    r = client.post(f"/timbrature/p/{ing.token}/timbra/", {"codice": "1234", "tipo": f"IRP:{pul.pk}"}).json()
+    assert r["ok"] and f"inizio lavoro – {pul.nome}" in r["messaggio"]

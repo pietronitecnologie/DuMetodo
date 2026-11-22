@@ -153,8 +153,11 @@ MENU: tuple[Sezione, ...] = (
 )
 
 
-def menu_utente(user: Any, percorso: str) -> dict[str, Any]:
-    """Sezioni e voci visibili all'utente, con la voce attiva segnata."""
+def menu_utente(user: Any, percorso: str, postazione: Any = None) -> dict[str, Any]:
+    """Sezioni e voci visibili all'utente, con la voce attiva segnata.
+
+    ``postazione``: la postazione di timbratura a cui è associato questo PC; se c'è, in Timbrature compare
+    «Timbra» per chiunque usi il PC (la timbratura non richiede permessi: identifica il codice personale)."""
     if not getattr(user, "is_authenticated", False):
         return {"sezioni": [], "attiva": None}
     sezioni: list[dict[str, Any]] = []
@@ -176,6 +179,11 @@ def menu_utente(user: Any, percorso: str) -> dict[str, Any]:
             if percorso.startswith(url) and (attiva is None or len(url) > len(attiva["url"])):
                 attiva = voce
             voci.append(voce)
+        if s.titolo == "Timbrature" and postazione is not None:
+            url = reverse("timbrature:timbra_qui")
+            voci.insert(
+                0, {"etichetta": f"Timbra · {postazione.nome}", "url": url, "attiva": False, "sezione": s.titolo}
+            )
         if voci:
             sezioni.append({"titolo": s.titolo, "icona": s.icona, "voci": voci})
     if attiva is not None:

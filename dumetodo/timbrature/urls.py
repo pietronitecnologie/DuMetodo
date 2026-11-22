@@ -14,6 +14,7 @@ urlpatterns = [
     path("costi/", views.costi, name="costi"),
     # Pagina della postazione, senza login: il link segreto identifica la postazione.
     path("p/<str:token>/", views.postazione, name="postazione"),
+    path("timbra/", views.timbra_qui, name="timbra_qui"),
     path("p/<str:token>/identifica/", views.postazione_identifica, name="postazione_identifica"),
     path("p/<str:token>/timbra/", views.postazione_timbra, name="postazione_timbra"),
 ]

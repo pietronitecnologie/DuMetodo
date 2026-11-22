@@ -1,6 +1,7 @@
 import datetime as dt
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -48,7 +49,25 @@ def postazione(request: HttpRequest, token: str) -> HttpResponse:
     )
     r["Cache-Control"] = "no-store"
     r["X-Robots-Tag"] = "noindex"
+    # Aprire il link associa questo PC alla postazione: da qui in poi si può usare tutto DuMetodo
+    # (con il proprio utente) e tornare alla timbratura da Timbrature → Timbra.
+    servizi.associa_pc(r, request, p)
     return r
+
+
+@require_GET
+@login_required
+def timbra_qui(request: HttpRequest) -> HttpResponse:
+    """Voce di menu «Timbra»: apre la timbratura della postazione a cui è associato questo PC."""
+    p = servizi.postazione_del_pc(request)
+    if p is None:
+        messages.warning(
+            request,
+            "Questo PC non è associato a nessuna postazione di timbratura "
+            "(Timbrature → Postazioni → Associa questo PC).",
+        )
+        return redirect("home")
+    return redirect("timbrature:postazione", token=p.token)
 
 
 @require_POST
@@ -71,10 +90,11 @@ def postazione_timbra(request: HttpRequest, token: str) -> JsonResponse:
     saluto = "Buongiorno" if ora.hour < 13 else "Buonasera" if ora.hour >= 18 else "Buon pomeriggio"
     if t.tipo == TipoTimbratura.USCITA:
         saluto = "Arrivederci"
+    cosa = servizi.etichetta_timbratura(t)
     return JsonResponse(
         {
             "ok": True,
-            "messaggio": f"{saluto} {t.lavoratore.nome}: {_minuscola(servizi._etichetta(t.tipo, p))} alle {ora:%H:%M}.",
+            "messaggio": f"{saluto} {t.lavoratore.nome}: {_minuscola(cosa)} alle {ora:%H:%M}.",
         }
     )
 
@@ -263,6 +283,17 @@ def postazioni(request: HttpRequest) -> HttpResponse:
             if p.get("azione") == "rigenera":
                 servizi.rigenera_link(request.user, int(p["postazione"]))
                 messages.success(request, "Nuovo link creato: aggiornalo nel client della postazione.")
+            elif p.get("azione") == "associa":
+                pos = get_object_or_404(Postazione, pk=int(p["postazione"]), attiva=True)
+                messages.success(request, f"Questo PC ora è la postazione «{pos}»: si timbra da Timbrature → Timbra.")
+                r = redirect("timbrature:postazioni")
+                servizi.associa_pc(r, request, pos)
+                return r
+            elif p.get("azione") == "scollega":
+                messages.success(request, "Questo PC non è più una postazione di timbratura.")
+                r = redirect("timbrature:postazioni")
+                servizi.scollega_pc(r)
+                return r
             else:
                 pk = int(p["postazione"]) if p.get("postazione", "").isdigit() else None
                 pos = servizi.salva_postazione(
@@ -293,7 +324,12 @@ def postazioni(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "timbrature/postazioni.html",
-        {"postazioni": lista, "reparti": Reparto.objects.filter(attivo=True).order_by("nome")},
+        {
+            "postazioni": lista,
+            "reparti": Reparto.objects.filter(attivo=True).order_by("nome"),
+            "questo_pc": servizi.postazione_del_pc(request),
+            "indirizzo_server": request.build_absolute_uri("/"),
+        },
     )
 
 

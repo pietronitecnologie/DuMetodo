@@ -238,6 +238,18 @@ def esiste_ingresso() -> bool:
     return Postazione.objects.filter(reparto__isnull=True, attiva=True).exists()
 
 
+def _reparti_attivi() -> list[Reparto]:
+    return list(Reparto.objects.filter(attivo=True).order_by("nome"))
+
+
+def tipo_e_reparto(postazione: Postazione, tipo: str) -> tuple[str, int | None]:
+    """«IRP:5» (scelta del reparto alla postazione di ingresso) -> ("IRP", 5); «IRP» -> reparto della postazione."""
+    base, _, rid = tipo.partition(":")
+    if rid:
+        return base, int(rid) if rid.isdigit() else -1
+    return base, postazione.reparto_id if base in (T.INIZIO_REPARTO, T.FINE_REPARTO) else None
+
+
 def azioni(postazione: Postazione, s: calcolo.Stato) -> list[str]:
     """Timbrature possibili adesso, in ordine (la prima è quella proposta)."""
     if s.in_mensa:
@@ -245,7 +257,14 @@ def azioni(postazione: Postazione, s: calcolo.Stato) -> list[str]:
     if s.in_pausa:
         return [T.FINE_PAUSA]
     if postazione.is_ingresso:
-        return [T.USCITA, T.INIZIO_MENSA, T.INIZIO_PAUSA] if s.presente else [T.ENTRATA]
+        # Dall'ingresso si può anche andare (o passare) in qualsiasi reparto: «IRP:<id del reparto>».
+        reparti = [r for r in _reparti_attivi() if r.pk != s.reparto_id]
+        if not s.presente:
+            return [T.ENTRATA, *(f"{T.INIZIO_REPARTO}:{r.pk}" for r in reparti)]
+        lista = [T.USCITA, T.INIZIO_MENSA, T.INIZIO_PAUSA]
+        if s.reparto_id:
+            lista.append(f"{T.FINE_REPARTO}:{s.reparto_id}")
+        return [*lista, *(f"{T.INIZIO_REPARTO}:{r.pk}" for r in reparti)]
     # Postazione di reparto. Se lo stabilimento non ha una postazione di ingresso, si entra ed esce anche da qui.
     ingresso_qui = not esiste_ingresso()
     if not s.presente:
@@ -295,6 +314,35 @@ def _riconosci(postazione: Postazione, codice: str) -> Lavoratore:
     return lav
 
 
+COOKIE_POSTAZIONE = "dm_postazione"
+SALE_COOKIE = "dumetodo.timbrature.postazione"
+DURATA_COOKIE = 10 * 365 * 24 * 3600  # il PC resta associato finché non lo si scollega
+
+
+def postazione_del_pc(request: Any) -> Postazione | None:
+    """Postazione a cui è associato questo PC (cookie firmato con il token), se ancora valida."""
+    token = request.get_signed_cookie(COOKIE_POSTAZIONE, default=None, salt=SALE_COOKIE)
+    if not token:
+        return None
+    return Postazione.objects.filter(token=token, attiva=True).select_related("reparto").first()
+
+
+def associa_pc(response: Any, request: Any, postazione: Postazione) -> None:
+    response.set_signed_cookie(
+        COOKIE_POSTAZIONE,
+        postazione.token,
+        salt=SALE_COOKIE,
+        max_age=DURATA_COOKIE,
+        httponly=True,
+        samesite="Lax",
+        secure=request.is_secure(),
+    )
+
+
+def scollega_pc(response: Any) -> None:
+    response.delete_cookie(COOKIE_POSTAZIONE, samesite="Lax")
+
+
 def postazione_da_token(token: str) -> Postazione | None:
     p = Postazione.objects.filter(token=token, attiva=True).select_related("reparto").first()
     if p is not None and (p.ultimo_contatto is None or timezone.now() - p.ultimo_contatto > dt.timedelta(minutes=1)):
@@ -310,17 +358,29 @@ def identifica(postazione: Postazione, codice: str) -> dict[str, Any]:
     return {
         "nome": f"{lav.nome} {lav.cognome}",
         "stato": descrivi_stato(s),
-        "azioni": [{"tipo": t, "etichetta": _etichetta(t, postazione)} for t in possibili],
+        "azioni": [{"tipo": t, "etichetta": _etichetta(t, postazione, s.presente)} for t in possibili],
         "messaggio": messaggio,
     }
 
 
-def _etichetta(tipo: str, postazione: Postazione) -> str:
-    if tipo == T.INIZIO_REPARTO and postazione.reparto:
-        return f"Inizio lavoro – {postazione.reparto.nome}"
-    if tipo == T.FINE_REPARTO and postazione.reparto:
-        return f"Fine lavoro – {postazione.reparto.nome}"
-    return T(tipo).label
+def _etichetta(tipo: str, postazione: Postazione, presente: bool = True) -> str:
+    base, reparto_id = tipo_e_reparto(postazione, tipo)
+    reparto = (
+        postazione.reparto if reparto_id == postazione.reparto_id else Reparto.objects.filter(pk=reparto_id).first()
+    )
+    if base == T.INIZIO_REPARTO and reparto:
+        return f"{'Inizio lavoro' if presente else 'Entrata e inizio lavoro'} – {reparto.nome}"
+    if base == T.FINE_REPARTO and reparto:
+        return f"Fine lavoro – {reparto.nome}"
+    return T(base).label
+
+
+def etichetta_timbratura(t: Timbratura) -> str:
+    if t.tipo == T.INIZIO_REPARTO and t.reparto:
+        return f"Inizio lavoro – {t.reparto.nome}"
+    if t.tipo == T.FINE_REPARTO and t.reparto:
+        return f"Fine lavoro – {t.reparto.nome}"
+    return T(t.tipo).label
 
 
 @transaction.atomic
@@ -335,17 +395,15 @@ def timbra(postazione: Postazione, codice: str, tipo: str, adesso: dt.datetime |
         lavoratore=lav, tipo=tipo, annullata_il__isnull=True, momento__gte=adesso - dt.timedelta(seconds=DOPPIA_SECONDI)
     ).exists():
         raise OperazioneNonConsentita("Timbratura già registrata.")
-    if tipo == T.INIZIO_REPARTO and not attuale.presente:
-        # Stabilimento senza postazione di ingresso: chi inizia in reparto entra anche in azienda.
+    base, reparto_id = tipo_e_reparto(postazione, tipo)
+    if base == T.INIZIO_REPARTO and not attuale.presente:
+        # Chi inizia in un reparto senza aver timbrato l'entrata (stabilimento senza postazione di ingresso,
+        # oppure reparto scelto all'ingresso) entra anche in azienda.
         Timbratura.objects.create(
             lavoratore=lav, tipo=T.ENTRATA, momento=adesso, postazione=postazione, nota="entrata automatica"
         )
     return Timbratura.objects.create(
-        lavoratore=lav,
-        tipo=tipo,
-        momento=adesso,
-        postazione=postazione,
-        reparto=postazione.reparto if tipo in (T.INIZIO_REPARTO, T.FINE_REPARTO) else None,
+        lavoratore=lav, tipo=base, momento=adesso, postazione=postazione, reparto_id=reparto_id
     )
 
 

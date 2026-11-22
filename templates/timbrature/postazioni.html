@@ -2,8 +2,16 @@
 {% block titolo %}Postazioni di timbratura{% endblock %}
 {% block contenuto %}
 <h1 class="h4 mb-1">Postazioni di timbratura</h1>
-<p class="small text-muted">Ogni postazione è un PC (o un tablet) con il <b>client DuMetodo</b> che apre il link della postazione, meglio in modalità chiosco.
-Una postazione <b>senza reparto</b> è l'ingresso/uscita dallo stabilimento; quelle di reparto registrano inizio e fine del lavoro nel reparto.</p>
+<p class="small text-muted">Ogni postazione è un PC (o un tablet) con il <b>client DuMetodo</b> <b>associato</b> alla postazione.
+Sul PC associato si usa tutto DuMetodo con il proprio utente e si apre la timbratura da <b>Timbrature → Timbra</b>
+(per timbrare non serve accedere). Una postazione <b>senza reparto</b> è l'ingresso/uscita dallo stabilimento; quelle di reparto
+registrano inizio e fine del lavoro nel reparto.</p>
+<div class="alert {% if questo_pc %}alert-success{% else %}alert-light border{% endif %} d-flex flex-wrap align-items-center gap-2 py-2">
+  {% if questo_pc %}<span><b>Questo PC</b> è la postazione «{{ questo_pc.nome }}». Si timbra da Timbrature → Timbra.</span>
+  <form method="post" class="ms-auto" onsubmit="return confirm('Questo PC non sarà più una postazione di timbratura. Continuare?')">{% csrf_token %}
+    <input type="hidden" name="azione" value="scollega"><button class="btn btn-sm btn-outline-danger">Scollega questo PC</button></form>
+  {% else %}<span><b>Questo PC</b> non è una postazione. Per farlo diventare una postazione premi <b>Associa questo PC</b> sulla postazione giusta qui sotto.</span>{% endif %}
+</div>
 <div class="row g-2">
 {% for x in postazioni %}{% with p=x.p %}
   <div class="col-xl-6"><div class="card h-100{% if not p.attiva %} opacity-75{% endif %}">
@@ -14,11 +22,19 @@ Una postazione <b>senza reparto</b> è l'ingresso/uscita dallo stabilimento; que
       <label class="form-label">Link della postazione (segreto)</label>
       <div class="input-group input-group-sm mb-2"><input class="form-control" readonly value="{{ x.link }}" id="link-{{ p.pk }}">
         <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('link-{{ p.pk }}').value)">Copia</button></div>
+      {% if not questo_pc or questo_pc.pk != p.pk %}<form method="post" class="mb-2">{% csrf_token %}
+        <input type="hidden" name="azione" value="associa"><input type="hidden" name="postazione" value="{{ p.pk }}">
+        <button class="btn btn-sm btn-outline-success"{% if not p.attiva %} disabled{% endif %}>Associa questo PC</button>
+        <span class="form-text ms-1">da premere sul PC della postazione</span></form>{% else %}<div class="mb-2"><span class="badge text-bg-success">questo PC</span></div>{% endif %}
       <details class="mb-2"><summary>Configurazione del client della postazione</summary>
+        <div class="form-text mt-1">Due modi, nel file <code>client.toml</code> del PC della postazione (vedi il manuale del client):</div>
+        <div class="mt-1"><b>PC usato anche per lavorare</b>: il client apre DuMetodo; associa il PC con il pulsante qui sopra
+          (o aprendo una volta il link della postazione) e si timbra da Timbrature → Timbra.</div>
+        <pre class="bg-light border rounded p-2 mt-1 mb-2">url = "{{ indirizzo_server }}"</pre>
+        <div><b>PC solo per timbrare</b> (chiosco): il client apre subito la timbratura, a schermo intero; «Apri DuMetodo» porta comunque al resto.</div>
         <pre class="bg-light border rounded p-2 mt-1 mb-0">url = "{{ x.link }}"
-schermo_intero = true   # modalità chiosco
-ripristina_schede = false</pre>
-        <div class="form-text">Nel file <code>client.toml</code> del PC della postazione (vedi il manuale del client).</div></details>
+schermo_intero = true
+ripristina_schede = false</pre></details>
       <div class="text-muted mb-2">Identificazione: {% if p.usa_tastierino %}tastierino {% endif %}{% if p.usa_lettori %}· tastiera e lettori {% endif %}{% if p.usa_fotocamera %}· fotocamera QR{% endif %}
         · ultimo contatto {{ p.ultimo_contatto|date:"d/m/Y H:i"|default:"mai" }}</div>
       <details><summary>Modifica</summary>

@@ -466,8 +466,9 @@ tracciature vecchie. Un modello non più usato si disattiva.
 ## Timbrature
 
 Il modulo **Timbrature** registra le entrate e le uscite dei lavoratori e **il tempo passato in ogni reparto**,
-per avere ore e costi per reparto. Si timbra alle **postazioni**: PC o tablet con il client DuMetodo, in
-modalità chiosco, all'ingresso dello stabilimento e nei reparti.
+per avere ore e costi per reparto. Si timbra alle **postazioni**: PC o tablet con il client DuMetodo
+all'ingresso dello stabilimento e nei reparti. Un PC associato a una postazione si usa anche per tutto il resto
+di DuMetodo: la timbratura si apre dal menu **Timbrature → Timbra**.
 
 ### Postazioni di timbratura
 
@@ -476,10 +477,19 @@ modalità chiosco, all'ingresso dello stabilimento e nei reparti.
 - **Nuova postazione**: nome e reparto.
   - Una postazione **senza reparto** è quella di **ingresso e uscita** dallo stabilimento.
   - Una postazione **di reparto** registra l'inizio e la fine del lavoro in quel reparto.
-- Ogni postazione ha un **link segreto**. Nel client del PC della postazione si mette quel link come indirizzo
-  del server, con la modalità chiosco attiva; la pagina mostra la configurazione da copiare in `client.toml`.
-  Non serve accedere con un utente: il link identifica la postazione.
-- Se il link finisce nelle mani sbagliate o il PC viene sostituito, **Nuovo link** disattiva il vecchio.
+- **Associare il PC alla postazione**: sul PC della postazione apri **Timbrature → Postazioni** e premi
+  **Associa questo PC** sulla postazione giusta.
+  - In alternativa basta aprire una volta, su quel PC, il **link segreto** della postazione.
+  - Da quel momento, su quel PC, chiunque usi DuMetodo trova in **Timbrature** la voce **Timbra · nome della
+    postazione**, anche senza permessi sulle timbrature. Per timbrare non serve un utente: basta il codice
+    personale.
+  - Dalla timbratura, **Apri DuMetodo** (in alto a destra) porta al resto del programma.
+  - **Scollega questo PC** toglie l'associazione.
+- **PC solo per timbrare** (chiosco): nel `client.toml` del PC si mette come indirizzo il link segreto, a
+  schermo intero. Il client apre subito la timbratura. La pagina Postazioni mostra le due configurazioni da
+  copiare.
+- Se il link finisce nelle mani sbagliate o il PC viene sostituito, **Nuovo link** disattiva il vecchio. Anche
+  i PC associati smettono di essere postazioni: vanno associati di nuovo.
 - Lo stato **collegata / non collegata** indica se la postazione ha contattato il server negli ultimi 15 minuti.
 - **Come ci si identifica**: per ogni postazione si attivano uno o più modi.
   - **Tastierino sullo schermo**: il codice personale, con il dito o il mouse.
@@ -523,7 +533,7 @@ timbrature possibili in quel momento**: la prima, evidenziata, è la più probab
 
 | Postazione | Timbrature |
 |---|---|
-| Ingresso e uscita | Entrata; poi Uscita, Inizio mensa, Inizio pausa; dalla mensa o dalla pausa, la loro fine |
+| Ingresso e uscita | Entrata, oppure **Entrata e inizio lavoro** in un reparto a scelta; poi Uscita, Inizio mensa, Inizio pausa, Fine lavoro nel reparto attuale e **Inizio lavoro in qualsiasi altro reparto**; dalla mensa o dalla pausa, la loro fine |
 | Reparto | Inizio lavoro nel reparto (anche passando da un altro reparto), Fine lavoro, Inizio mensa e pausa |
 
 - Prima di lavorare in un reparto si timbra l'entrata alla postazione di ingresso. Se lo stabilimento non ha una

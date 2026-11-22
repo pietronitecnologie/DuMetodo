@@ -30,7 +30,15 @@ def navigazione(request: HttpRequest) -> dict[str, object]:
 
     from .menu import menu_utente
 
-    contesto: dict[str, object] = {"menu": menu_utente(request.user, request.path), "oggi": timezone.localdate()}
+    postazione = None
+    if getattr(request.user, "is_authenticated", False):
+        from dumetodo.timbrature.servizi import postazione_del_pc
+
+        postazione = postazione_del_pc(request)
+    contesto: dict[str, object] = {
+        "menu": menu_utente(request.user, request.path, postazione),
+        "oggi": timezone.localdate(),
+    }
     if getattr(request.user, "is_authenticated", False):
         from django import forms
 

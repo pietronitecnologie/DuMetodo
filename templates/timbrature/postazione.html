@@ -9,6 +9,8 @@
     display: grid; grid-template-rows: auto 1fr auto; }
   header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: #fff; border-bottom: 1px solid #dde3ec; }
   header .dove { font-weight: 700; font-size: 22px; } header .tipo { color: var(--tenue); }
+  header .apri-dumetodo { color: var(--tenue); font-size: 14px; text-decoration: none; border: 1px solid #dde3ec; border-radius: 8px; padding: 6px 10px; }
+  header .apri-dumetodo:hover { color: #1450bd; border-color: #a9c3f5; }
   header .ora { margin-left: auto; font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
   main { display: grid; place-items: center; padding: 16px; }
   .pannello { width: min(560px, 100%); background: #fff; border-radius: 18px; box-shadow: 0 6px 24px rgba(20,40,80,.08); padding: 24px; }
@@ -21,6 +23,8 @@
   .tasti .canc { font-size: 22px; color: var(--tenue); }
   .chi { font-size: 30px; font-weight: 700; } .stato { color: var(--tenue); margin-bottom: 18px; }
   .azioni { display: grid; gap: 12px; } .azioni button { padding: 22px; font-size: 24px; font-weight: 600; background: #eef2f7; color: var(--testo); text-align: left; }
+  .azioni.molte { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); } .azioni.molte button { padding: 16px; font-size: 20px; }
+  .azioni.molte .annulla, .azioni.molte .stato { grid-column: 1 / -1; }
   .azioni button.principale { background: var(--accento); color: #fff; } .azioni .annulla { background: none; color: var(--tenue); font-size: 18px; text-align: center; }
   .esito { text-align: center; padding: 30px 10px; } .esito .segno { font-size: 72px; line-height: 1; } .esito .testo { font-size: 26px; margin-top: 12px; }
   .esito.ok .segno { color: var(--ok); } .esito.errore .segno { color: var(--errore); }
@@ -33,7 +37,8 @@
 </style></head>
 <body>
 <header><div><div class="dove">{{ p.nome }}</div><div class="tipo">{% if p.reparto %}Reparto {{ p.reparto.nome }}{% else %}Ingresso e uscita{% endif %}</div></div>
-  <div class="ora" id="ora">--:--</div></header>
+  <div class="ora" id="ora">--:--</div>
+  <a class="apri-dumetodo" href="/" title="Usa DuMetodo con il tuo utente; per tornare qui: Timbrature → Timbra">Apri DuMetodo</a></header>
 <main>
   <section class="pannello" id="fase-codice">
     <div class="invito">{% if p.usa_tastierino %}Digita il tuo codice{% if p.usa_lettori %} o passa il badge / la tessera sul lettore{% endif %}{% elif p.usa_lettori %}Passa il badge o la tessera sul lettore{% else %}Inquadra il QR del tuo badge{% endif %}</div>
@@ -90,6 +95,7 @@
     const box = $("azioni"); box.replaceChildren();
     if (d.messaggio) { const m = document.createElement("div"); m.className = "stato"; m.textContent = d.messaggio; box.append(m); }
     const letto = codice;
+    box.classList.toggle("molte", d.azioni.length > 4);
     d.azioni.forEach((a, i) => { const b = document.createElement("button"); b.type = "button"; b.textContent = a.etichetta;
       if (i === 0) b.className = "principale";
       b.addEventListener("click", async () => { b.disabled = true; const r = await invia(base + "timbra/", { codice: letto, tipo: a.tipo });
