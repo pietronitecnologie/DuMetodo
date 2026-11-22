@@ -15,8 +15,10 @@ import os
 import sys
 from typing import Any
 
+import psycopg
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
+from psycopg.conninfo import conninfo_to_dict
 
 from dumetodo.migrazione.prelievo import (
     PASSI,
@@ -30,6 +32,25 @@ from dumetodo.migrazione.prelievo import (
     stato_attuale,
 )
 from dumetodo.migrazione.sorgente import TABELLE, SchemaNonCompatibile
+
+
+def controlla_url(url: str) -> None:
+    """Errore chiaro (senza mostrare la password) se l'indirizzo di Metodo non è valido."""
+    if not url.startswith(("postgres://", "postgresql://")):
+        raise CommandError("Indirizzo di Metodo non valido: deve essere postgres://utente:password@host:5432/database")
+    credenziali = url.split("://", 1)[1].split("/", 1)[0]
+    if credenziali.count("@") > 1:
+        raise CommandError(
+            "La password (o l'utente) contiene «@»: nell'indirizzo va scritta %40. Codifica così anche gli altri "
+            "caratteri speciali: ! = %21, # = %23, / = %2F, : = %3A, ? = %3F, % = %25."
+        )
+    try:
+        conninfo_to_dict(url)
+    except psycopg.ProgrammingError as exc:
+        raise CommandError(
+            "Indirizzo di Metodo non valido. Formato: postgres://utente:password@host:5432/database "
+            "(i caratteri speciali nella password vanno codificati, es. @ = %40)."
+        ) from exc
 
 
 class Command(BaseCommand):
@@ -64,7 +85,11 @@ class Command(BaseCommand):
             self._stato()
             return
         if not opts["db"]:
-            raise CommandError("Indica il database di Metodo con --db o con la variabile METODO_DB_URL.")
+            raise CommandError(
+                "Indica il database di Metodo con --db o con la variabile METODO_DB_URL. In Docker la variabile "
+                "va nel .env oppure passata al container: docker compose exec -e METODO_DB_URL web python manage.py …"
+            )
+        controlla_url(opts["db"])
         if opts["blocco"] < 1:
             raise CommandError("--blocco deve essere almeno 1.")
         sorgente = SorgenteRemota(

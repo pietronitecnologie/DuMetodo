@@ -253,3 +253,16 @@ def test_senza_database_indicato(monkeypatch):
     monkeypatch.delenv("METODO_DB_URL", raising=False)
     with pytest.raises(CommandError, match="METODO_DB_URL"):
         call_command("preleva_da_metodo", "--db", "", stdout=StringIO())
+
+
+@pytest.mark.parametrize(
+    ("url", "messaggio"),
+    [
+        ("metodo", "deve essere postgres://"),
+        ("postgres://root:pa@ss!@host:5432/metodo", "%40"),
+    ],
+)
+def test_indirizzo_non_valido_spiegato_senza_password(url, messaggio):
+    with pytest.raises(CommandError, match=messaggio) as exc:
+        call_command("preleva_da_metodo", "--db", url, "--verifica", stdout=StringIO())
+    assert "pa@ss" not in str(exc.value)
