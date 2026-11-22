@@ -8,6 +8,8 @@ x-app: &app
   image: dumetodo:locale
   env_file: .env
   restart: unless-stopped
+  # Permette di raggiungere servizi dell'host (es. il tunnel SSH verso Metodo per preleva_da_metodo).
+  extra_hosts: ["host.docker.internal:host-gateway"]
   depends_on:
     db: {condition: service_healthy}
     redis: {condition: service_started}

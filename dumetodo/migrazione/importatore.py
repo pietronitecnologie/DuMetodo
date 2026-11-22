@@ -110,6 +110,88 @@ def _aware(v: Any) -> Any:
     return v
 
 
+def valori_ordine(scelto: dict[str, Any], chiave: Chiave, reparti: dict[int, Reparto], r: Report) -> dict[str, Any]:
+    """Campi dell'``Ordine`` DuMetodo per il record di Metodo scelto (stessa chiave = stesso ordine)."""
+    stato = STATI_LEGACY.get(scelto["stato"], scelto["stato"])
+    if stato not in StatoOrdine.values:
+        r.avviso("ordini", f"{chiave}: stato {scelto['stato']!r} sconosciuto -> Inserito")
+        stato = StatoOrdine.INSERITO
+    return {
+        "serie": chiave[0],
+        "numero": chiave[1],
+        "appendice": chiave[2],
+        "anno": chiave[3],
+        "stato": stato,
+        "urgenza": scelto.get("urgenza") if scelto.get("urgenza") in Urgenza.values else Urgenza.NORMALE,
+        "tipo": scelto.get("tipo") if scelto.get("tipo") in TipoOrdine.values else TipoOrdine.ASSEMBLAGGIO,
+        "reparto": reparti.get(scelto.get("location_id")),
+        "data_scadenza": scelto.get("data_scadenza"),
+        "data_consegna": scelto.get("data_consegna"),
+        "creato_il": _aware(scelto.get("data_inserimento")) or timezone.now(),
+    }
+
+
+def chiave_vincente(o: dict[str, Any]) -> tuple[bool, dt.datetime]:
+    """Tra record duplicati di Metodo vince il più recente non annullato (a parità, l'id maggiore)."""
+    return (
+        o["stato"] != StatoOrdine.ANNULLATO,
+        _aware(o.get("data_inserimento")) or dt.datetime.min.replace(tzinfo=dt.UTC),
+    )
+
+
+def valori_ordine_da_riga(riga: dict[str, Any], chiave: Chiave) -> dict[str, Any]:
+    """Ordine mancante in Metodo ma citato da una riga: lo si ricrea dalla riga."""
+    return {
+        "serie": chiave[0],
+        "numero": chiave[1],
+        "appendice": chiave[2],
+        "anno": chiave[3],
+        "stato": StatoOrdine.CONSEGNATO if riga.get("emessa_bolla") else StatoOrdine.INSERITO,
+        "data_scadenza": riga.get("data_scadenza"),
+        "creato_il": _aware(riga.get("data_inserimento")) or timezone.now(),
+    }
+
+
+def valori_riga(ln: dict[str, Any], r: Report) -> dict[str, Any]:
+    """Campi della ``RigaOrdine`` DuMetodo (senza l'ordine) per una ``Linea`` di Metodo."""
+    qta = _decimale(ln.get("qta"))
+    if qta is None or qta < 0:
+        r.avviso("righe", f"linea id {ln['id']}: quantità {ln.get('qta')!r} non valida -> 0")
+        qta = Decimal(0)
+    prezzo = _decimale(ln.get("prezzo_ea"))
+    if _testo(ln.get("prezzo_ea")) and (prezzo is None or prezzo < 0):
+        r.avviso("prezzi", f"linea id {ln['id']}: prezzo {ln.get('prezzo_ea')!r} illeggibile -> vuoto")
+        prezzo = None
+    sconto = _decimale(ln.get("sconto_uni"))
+    n_riga = _testo(ln.get("n_riga"))[:30] or f"M{ln['id']}"
+    stato = StatoRiga.ATTIVA
+    if ln.get("annullata"):
+        stato = StatoRiga.ANNULLATA
+    elif ln.get("duplicata"):
+        stato = StatoRiga.SOSTITUITA
+    bolla = bool(ln.get("emessa_bolla"))
+    bloccata = bool(ln.get("blocca_linea")) and not bolla
+    return {
+        "n_riga": n_riga,
+        "articolo": _testo(ln.get("articolo"))[:50] or "?",
+        "variante": _testo(ln.get("variante"))[:20],
+        "qta": qta.quantize(Decimal("0.001")),
+        "prezzo_unitario": prezzo.quantize(Decimal("0.0001")) if prezzo is not None else None,
+        "sconto": sconto.quantize(Decimal("0.0001")) if sconto is not None and sconto >= 0 else None,
+        "cliente": _testo(ln.get("cliente"))[:30],
+        "magazzino": _testo(ln.get("magazzino"))[:20],
+        "data_scadenza": ln.get("data_scadenza"),
+        "data_consegna": ln.get("data_consegna"),
+        "stato": stato,
+        "bloccata": bloccata,
+        "in_evasione": bool(ln.get("evasione_parziale")) and not bolla and not bloccata,
+        "bolla_emessa": bolla,
+        "scorporata": bool(ln.get("scorporato")),
+        "origine": OrigineRiga.DIVISIONE if n_riga.startswith("D") else OrigineRiga.IMPORTAZIONE,
+        "creato_il": _aware(ln.get("data_inserimento")) or timezone.now(),
+    }
+
+
 class Importatore:
     def __init__(self, metodo: Metodo) -> None:
         self.m = metodo
@@ -200,7 +282,11 @@ class Importatore:
             codice = _testo(a.get("articolo"))[:50]
             if codice:
                 per_codice[codice].append(a)
+        esistenti = set(Articolo.objects.values_list("codice", flat=True))
         for codice, gruppo in per_codice.items():
+            if codice in esistenti:
+                self.r.conteggi["articoli già presenti in DuMetodo (non modificati)"] += 1
+                continue
             # Doppioni: si tiene il record più completo (in Metodo un job ne cancellava uno a caso).
             gruppo.sort(key=lambda a: (bool(_testo(a.get("description"))), a.get("location_id") is not None, a["id"]))
             a = gruppo[-1]
@@ -245,13 +331,7 @@ class Importatore:
                 candidati[chiave].append(o)
         for chiave, gruppo in candidati.items():
             # Duplicati: vince il più recente non annullato.
-            gruppo.sort(
-                key=lambda o: (
-                    o["stato"] != StatoOrdine.ANNULLATO,
-                    o.get("data_inserimento") or dt.datetime.min.replace(tzinfo=dt.UTC),
-                    o["id"],
-                )
-            )
+            gruppo.sort(key=lambda o: (*chiave_vincente(o), o["id"]))
             scelto = gruppo[-1]
             if len(gruppo) > 1:
                 self.r.avviso(
@@ -259,23 +339,7 @@ class Importatore:
                     f"{chiave}: {len(gruppo)} record in Metodo (id "
                     f"{', '.join(str(g['id']) for g in gruppo)}), tenuto id {scelto['id']}",
                 )
-            stato = STATI_LEGACY.get(scelto["stato"], scelto["stato"])
-            if stato not in StatoOrdine.values:
-                self.r.avviso("ordini", f"{chiave}: stato {scelto['stato']!r} sconosciuto -> Inserito")
-                stato = StatoOrdine.INSERITO
-            ordine = Ordine.objects.create(
-                serie=chiave[0],
-                numero=chiave[1],
-                appendice=chiave[2],
-                anno=chiave[3],
-                stato=stato,
-                urgenza=scelto.get("urgenza") if scelto.get("urgenza") in Urgenza.values else Urgenza.NORMALE,
-                tipo=scelto.get("tipo") if scelto.get("tipo") in TipoOrdine.values else TipoOrdine.ASSEMBLAGGIO,
-                reparto=self.reparti.get(scelto.get("location_id")),
-                data_scadenza=scelto.get("data_scadenza"),
-                data_consegna=scelto.get("data_consegna"),
-                creato_il=_aware(scelto.get("data_inserimento")) or timezone.now(),
-            )
+            ordine = Ordine.objects.create(**valori_ordine(scelto, chiave, self.reparti, self.r))
             self.ordini_per_chiave[chiave] = ordine
             for g in gruppo:
                 self.ordini_per_id[g["id"]] = ordine
@@ -285,16 +349,8 @@ class Importatore:
     def _ordine_per_riga(self, chiave: Chiave, riga: dict[str, Any]) -> Ordine:
         ordine = self.ordini_per_chiave.get(chiave)
         if ordine is None:
-            stato = StatoOrdine.CONSEGNATO if riga.get("emessa_bolla") else StatoOrdine.INSERITO
-            ordine = Ordine.objects.create(
-                serie=chiave[0],
-                numero=chiave[1],
-                appendice=chiave[2],
-                anno=chiave[3],
-                stato=stato,
-                data_scadenza=riga.get("data_scadenza"),
-                creato_il=_aware(riga.get("data_inserimento")) or timezone.now(),
-            )
+            ordine = Ordine.objects.create(**valori_ordine_da_riga(riga, chiave))
+            stato = ordine.stato
             self.ordini_per_chiave[chiave] = ordine
             self.r.avviso("righe senza ordine", f"{chiave}: ordine mancante in Metodo, creato ({stato})")
             self.r.conteggi["ordini creati da righe"] += 1
@@ -307,52 +363,15 @@ class Importatore:
             if chiave is None:
                 continue
             ordine = self._ordine_per_riga(chiave, ln)
-            qta = _decimale(ln.get("qta"))
-            if qta is None or qta < 0:
-                self.r.avviso("righe", f"linea id {ln['id']}: quantità {ln.get('qta')!r} non valida -> 0")
-                qta = Decimal(0)
-            prezzo = _decimale(ln.get("prezzo_ea"))
-            if _testo(ln.get("prezzo_ea")) and (prezzo is None or prezzo < 0):
-                self.r.avviso("prezzi", f"linea id {ln['id']}: prezzo {ln.get('prezzo_ea')!r} illeggibile -> vuoto")
-                prezzo = None
-            sconto = _decimale(ln.get("sconto_uni"))
-            n_riga = _testo(ln.get("n_riga"))[:30] or f"M{ln['id']}"
-            stato = (
-                StatoRiga.ANNULLATA
-                if ln.get("annullata")
-                else StatoRiga.SOSTITUITA
-                if ln.get("duplicata")
-                else StatoRiga.ATTIVA
-            )
-            bolla = bool(ln.get("emessa_bolla"))
-            bloccata = bool(ln.get("blocca_linea")) and not bolla
-            in_evasione = bool(ln.get("evasione_parziale")) and not bolla and not bloccata
+            valori = valori_riga(ln, self.r)
+            n_riga, stato = valori["n_riga"], valori["stato"]
             if stato == StatoRiga.ATTIVA:
                 precedente = attive.get((ordine.pk, n_riga))
                 if precedente is not None:  # due righe attive con lo stesso numero: vince la più recente
                     precedente.stato = StatoRiga.SOSTITUITA
                     precedente.save(update_fields=["stato"])
                     self.r.avviso("righe", f"{ordine}: riga {n_riga} doppia, la precedente diventa 'sostituita'")
-            riga = RigaOrdine.objects.create(
-                ordine=ordine,
-                n_riga=n_riga,
-                articolo=_testo(ln.get("articolo"))[:50] or "?",
-                variante=_testo(ln.get("variante"))[:20],
-                qta=qta.quantize(Decimal("0.001")),
-                prezzo_unitario=prezzo.quantize(Decimal("0.0001")) if prezzo is not None else None,
-                sconto=sconto.quantize(Decimal("0.0001")) if sconto is not None and sconto >= 0 else None,
-                cliente=_testo(ln.get("cliente"))[:30],
-                magazzino=_testo(ln.get("magazzino"))[:20],
-                data_scadenza=ln.get("data_scadenza"),
-                data_consegna=ln.get("data_consegna"),
-                stato=stato,
-                bloccata=bloccata,
-                in_evasione=in_evasione,
-                bolla_emessa=bolla,
-                scorporata=bool(ln.get("scorporato")),
-                origine=OrigineRiga.DIVISIONE if n_riga.startswith("D") else OrigineRiga.IMPORTAZIONE,
-                creato_il=_aware(ln.get("data_inserimento")) or timezone.now(),
-            )
+            riga = RigaOrdine.objects.create(ordine=ordine, **valori)
             if stato == StatoRiga.ATTIVA:
                 attive[(ordine.pk, n_riga)] = riga
             self.righe_per_id[ln["id"]] = riga

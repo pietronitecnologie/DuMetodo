@@ -217,6 +217,48 @@ python manage.py importa_configurazione_metodo configuration.csv --applica
     copiati: copia la cartella `file/` della cartella media di Metodo in `MEDIA_ROOT`.
 * **Ordini duplicati in Metodo:** quelli con la stessa chiave vengono fusi in uno solo e segnalati nel report.
 
+### Prelievo dal Metodo in produzione (grandi volumi)
+
+`importa_da_metodo` lavora in un'unica transazione ed è adatto a database piccoli o copie locali.
+Per leggere direttamente dal server di Metodo anni di produzione (milioni di righe) usa invece
+`preleva_da_metodo`. Applica le stesse regole di conversione e produce lo stesso risultato, ma legge e salva
+a blocchi:
+
+```bash
+export METODO_DB_URL='postgres://utente-sola-lettura:password@host:5432/metodo'   # niente password nella cronologia
+python manage.py preleva_da_metodo --verifica        # connessione, schema e numero di record stimati
+python manage.py preleva_da_metodo                   # avvia o riprende
+python manage.py preleva_da_metodo --stato           # a che punto è
+```
+
+* **Rete:** ogni query legge al massimo `--blocco` record (default 2000) usando la chiave primaria, quindi
+  resta breve e non va in timeout. Non resta aperta nessuna transazione lunga su Metodo. La banda è
+  limitata a `--max-kb` KB/s (default 1024; `0` = nessun limite) e tra due query c'è una pausa di
+  `--pausa` secondi. Per non disturbare Metodo in orario di lavoro: `--max-kb 256 --pausa 1`.
+* **Interruzioni:**
+  * ogni blocco viene salvato insieme al punto raggiunto, quindi si può interrompere in qualsiasi momento
+    (Ctrl+C, caduta di rete, riavvio) e rilanciando lo stesso comando riparte da lì;
+  * se Metodo non risponde, il comando ritenta da solo con attese crescenti (`--tentativi`, default 10);
+  * due prelievi contemporanei non sono possibili.
+* **Aggiornamenti (incrementale):**
+  * rilanciato dopo giorni, legge solo i record nuovi. Il giorno del passaggio basta un ultimo lancio a
+    Metodo fermo;
+  * per ricaricare anche le modifiche ai record già presi (cambi di stato, DDT emessi dopo) usa
+    `--ricomincia ordini righe consegne`;
+  * gli ordini che esistono già in DuMetodo e non vengono da Metodo non vengono modificati.
+* **Avvisi:** tutti gli avvisi vanno in un file con `--log prelievo.log`; a video ne compaiono solo i primi.
+* **Volumi:**
+  * in prova sono stati elaborati circa 6000 record al secondo, a circa 220 byte per riga d'ordine;
+  * 6 milioni di righe sono circa 1,3 GB, cioè poco più di 20 minuti a 1 MB/s.
+* **Docker:**
+  * metti `METODO_DB_URL` nel `.env` e lancia il prelievo in un container a parte, che continua anche se
+    chiudi la sessione SSH:
+    `docker compose run -d --name prelievo web python manage.py preleva_da_metodo --log /app/media/prelievo.log`
+    e segui l'avanzamento con `docker logs -f prelievo`;
+  * se il database di Metodo non è esposto in rete, apri sull'host un tunnel SSH compresso:
+    `ssh -C -N -L 0.0.0.0:15432:localhost:5432 utente@server-metodo`. Poi usa
+    `host.docker.internal:15432` nell'URL.
+
 ## Sviluppo
 
 ```bash

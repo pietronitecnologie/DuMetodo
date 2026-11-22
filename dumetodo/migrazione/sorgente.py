@@ -151,25 +151,30 @@ FACOLTATIVE |= {
 }
 
 
+QUERY_COLONNE = "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema()"
+
+
 class SchemaNonCompatibile(Exception):
     pass
 
 
 class Metodo:
-    def __init__(self, conn: psycopg.Connection[Any]) -> None:
+    def __init__(self, conn: psycopg.Connection[Any] | None) -> None:
         self.conn = conn
         self.colonne: dict[str, set[str]] = {}
+
+    def _colonne_presenti(self) -> dict[str, set[str]]:
+        presenti: dict[str, set[str]] = {}
+        with self.conn.cursor() as cur:
+            cur.execute(QUERY_COLONNE)
+            for tabella, colonna in cur.fetchall():
+                presenti.setdefault(tabella, set()).add(colonna)
+        return presenti
 
     def verifica_schema(self) -> list[str]:
         """Ritorna gli avvisi; solleva SchemaNonCompatibile se manca qualcosa di indispensabile."""
         avvisi, errori = [], []
-        with self.conn.cursor() as cur:
-            cur.execute(
-                "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = current_schema()"
-            )
-            presenti: dict[str, set[str]] = {}
-            for tabella, colonna in cur.fetchall():
-                presenti.setdefault(tabella, set()).add(colonna)
+        presenti = self._colonne_presenti()
         for tabella, (obbligatorie, facoltative) in TABELLE.items():
             if tabella not in presenti:
                 (avvisi if tabella in FACOLTATIVE else errori).append(f"tabella {tabella} assente")
