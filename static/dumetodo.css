@@ -378,3 +378,11 @@ html .dm-contenuto .table .btn.btn-sm.dm-az, .btn.dm-az {
 .dm-az-dividi   { --az-sfondo: #ebe7fb; --az-testo: #4a37a6; --az-bordo: #c3b8ef; }
 html.dm-modo-reparto .dm-contenuto .table .btn.btn-sm.dm-az { --bs-btn-font-size: .95rem; --bs-btn-padding-y: .45rem; --bs-btn-padding-x: .8rem; }
 @media (max-width: 767.98px) { .dm-azioni-riga { white-space: normal; width: auto; } .dm-azioni-riga > div, .dm-azioni-riga form { flex-wrap: wrap; } }
+/* Pulsanti in testa all'ordine (cambi di stato): stesso stile, un po' più grandi, colori come gli stati */
+.btn.btn-sm.dm-az.dm-az-testata { --bs-btn-padding-y: .32rem; --bs-btn-padding-x: .8rem; --bs-btn-font-size: .85rem; }
+.dm-az-a-INS { --az-sfondo: #eceff3; --az-testo: #3f4a5a; --az-bordo: #c3cad4; }
+.dm-az-a-LAV { --az-sfondo: #e1ebff; --az-testo: #1450bd; --az-bordo: #a9c3f5; }
+.dm-az-a-SPE { --az-sfondo: #fff0d1; --az-testo: #8a4f00; --az-bordo: #f0cd86; }
+.dm-az-a-SPP { --az-sfondo: #ffe6c7; --az-testo: #9a4300; --az-bordo: #f3bf86; }
+.dm-az-a-CON { --az-sfondo: #dff3e7; --az-testo: #12693b; --az-bordo: #9fd5b5; }
+.dm-az-a-ANN { --az-sfondo: #fde3e5; --az-testo: #b01f28; --az-bordo: #f2a9ae; }

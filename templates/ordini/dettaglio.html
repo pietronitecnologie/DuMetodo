@@ -2,14 +2,14 @@
 {% block titolo %}Ordine {{ ordine.codice_breve }}{% endblock %}
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-  <a href="{% url 'ordini:lista' %}" class="btn btn-sm btn-outline-secondary">← Ordini</a>
+  <a href="{% url 'ordini:lista' %}" class="btn btn-sm dm-az dm-az-testata dm-az-annulla">← Ordini</a>
   <h1 class="h4 mb-0 me-auto" data-dm-menu="ordine" data-dm-id="{{ ordine.pk }}" data-dm-codice="{{ ordine.codice_breve }}">Ordine {{ ordine.codice_breve }}
     <span class="align-middle dm-stato dm-stato-{{ ordine.stato }}">{{ ordine.get_stato_display }}</span></h1>
   {% for t in transizioni %}
   <form method="post" action="{% url 'ordini:cambia_stato' ordine.pk %}"
         onsubmit="return confirm('Confermi: {{ t.etichetta|escapejs }}?')">{% csrf_token %}
     <input type="hidden" name="stato" value="{{ t.a }}">
-    <button class="btn btn-sm {% if t.a == 'ANN' %}btn-outline-danger{% elif t.a == 'CON' %}btn-outline-success{% else %}btn-outline-primary{% endif %}">{{ t.etichetta }}</button>
+    <button class="btn btn-sm dm-az dm-az-testata dm-az-a-{{ t.a }}" title="Porta l'ordine in «{{ t.etichetta }}»">{{ t.etichetta }}</button>
   </form>
   {% endfor %}
 </div>
