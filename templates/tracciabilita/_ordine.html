@@ -1,2 +1,0 @@
-{# Incluso nella pagina dell'ordine: le tracce dell'archivio, caricate a parte (HTMX); niente se non ce ne sono. #}
-<div id="pannello-tracciabilita" hx-get="{% url 'tracciabilita:pannello_ordine' ordine.pk %}" hx-trigger="load" hx-swap="outerHTML"></div>

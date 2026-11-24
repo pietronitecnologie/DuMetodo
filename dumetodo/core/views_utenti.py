@@ -8,6 +8,8 @@ from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from dumetodo.tracciatura.da_qualita import UTENTE_SISTEMA
+
 from . import utenti as servizi
 from .models import EventoUtente
 from .permessi import FUNZIONI, GRUPPO_CLIENTE, PROFILI, F, Sezione, ha_permesso, richiede_permesso
@@ -21,10 +23,15 @@ def lista(request: HttpRequest) -> HttpResponse:
     q = request.GET.get("q", "").strip()[:50]
     stato = request.GET.get("stato", "attivi")
     tipo = request.GET.get("tipo", "")
-    utenti = User.objects.annotate(
-        n_permessi=Count("user_permissions", filter=Q(user_permissions__content_type__model="funzionalita")),
-        cliente=Count("groups", filter=Q(groups__name=GRUPPO_CLIENTE)),
-    ).select_related("profilo_dumetodo")
+    # L'utente tecnico «dumetodo-sistema» (autore dei dati storici importati) non è una persona: nascosto.
+    utenti = (
+        User.objects.exclude(username=UTENTE_SISTEMA)
+        .annotate(
+            n_permessi=Count("user_permissions", filter=Q(user_permissions__content_type__model="funzionalita")),
+            cliente=Count("groups", filter=Q(groups__name=GRUPPO_CLIENTE)),
+        )
+        .select_related("profilo_dumetodo")
+    )
     if q:
         utenti = utenti.filter(
             Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(email__icontains=q)
@@ -116,7 +123,7 @@ def nuovo(request: HttpRequest) -> HttpResponse:
 
 @richiede_permesso(*AREA)
 def modifica(request: HttpRequest, pk: int) -> HttpResponse:
-    utente = get_object_or_404(User, pk=pk)
+    utente = get_object_or_404(User.objects.exclude(username=UTENTE_SISTEMA), pk=pk)
     extra: dict[str, object] = {}
     if request.method == "POST":
         azione = request.POST.get("azione", "")

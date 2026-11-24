@@ -1,7 +1,7 @@
 """Importazione da Metodo di tracciabilità e qualità (passo dell'``Importatore``).
 
-- ``Plan.Coding`` + ``Stored_Item`` -> ``Elemento`` (uno per codice), solo per le tracce generiche;
-- ``Tracciabilita`` -> ``Traccia`` con l'ordine come ForeignKey (era già una FK in Metodo);
+- ``Tracciabilita`` -> tracciature del modello «Tracce (da Metodo)»: evento, valore e reparto come campi,
+  il codice dell'elemento (``Plan.Coding`` via ``Stored_Item``) come riferimento, l'ordine collegato;
 - batterie (eventi IN/RC), cavi (eventi dei banchi o codici col prefisso ``ITEM_CODE_CAVI``) e
   ``Plan.Asset`` (postazioni) NON vengono importati: funzioni eliminate da DuMetodo;
 - ``Test`` (con i suoi ``Check``) -> **modello di tracciatura** di categoria Controllo qualità: ogni check
@@ -30,7 +30,6 @@ from django.utils import timezone
 
 from dumetodo.ordini.models import Ordine
 from dumetodo.tracciabilita import servizi
-from dumetodo.tracciabilita.models import Elemento, Traccia
 from dumetodo.tracciatura import da_qualita as dq
 from dumetodo.tracciatura.models import Campo, Modello, Tracciatura, Valore
 
@@ -41,10 +40,7 @@ if TYPE_CHECKING:
 CHECK_METODO_PRESENZA = {8: "Distinta", 9: "Disegno"}
 MODELLI = dq.Modelli(Modello=Modello, Campo=Campo, Tracciatura=Tracciatura, Valore=Valore, User=User)
 
-CAMPI_DATA_ORIGINALE = (
-    (Elemento, "creato_il"),
-    (Traccia, "inserita_il"),
-)
+CAMPI_DATA_ORIGINALE: tuple[tuple[Any, str], ...] = ()  # le tracciature hanno già la data dell'evento
 
 
 def _t(v: Any) -> str:
@@ -134,7 +130,7 @@ class ImportaTracciabilita:
             cod = item_codifica.get(t.get("stored_item_id"))
             if cod in codifiche:
                 eventi[cod].append(t)
-        elementi: dict[int, Elemento] = {}
+        codici: dict[int, str] = {}
         scartati: set[int] = set()
         for cod, lista in eventi.items():
             codice = _t(codifiche[cod]["internalCode"])[:50]
@@ -147,35 +143,34 @@ class ImportaTracciabilita:
                 scartati.add(cod)
                 self.r.conteggi["batterie e cavi (non importati)"] += 1
                 continue
-            prima = min(_aware(t.get("data")) or _aware(t.get("data_inserimento")) or timezone.now() for t in lista)
-            elementi[cod] = Elemento.objects.create(codice=codice, creato_il=prima)
-        self.r.conteggi["elementi tracciati"] += len(elementi)
+            codici[cod] = codice
+        self.r.conteggi["elementi tracciati"] += len(codici)
 
-        nuove: list[Traccia] = []
+        nuove: list[dict[str, Any]] = []
         for t in tracce:
             if t.get("asset_id") or item_codifica.get(t.get("stored_item_id")) in scartati:
                 self.r.conteggi["tracce di batterie, cavi e banchi (non importate)"] += 1
                 continue
-            elemento = elementi.get(item_codifica.get(t.get("stored_item_id")))
+            codice = codici.get(item_codifica.get(t.get("stored_item_id")))  # type: ignore[arg-type]
             ordine = self.imp.ordini_per_id.get(t.get("rif_ordine_id"))
-            if elemento is None and ordine is None:
+            if codice is None and ordine is None:
                 self.r.conteggi["tracce senza elemento né ordine (ignorate)"] += 1
                 continue
-            data = _aware(t.get("data")) or _aware(t.get("data_inserimento")) or timezone.now()
-            chiave, valore = _t(t["chiave"])[:50] or "?", _t(t.get("valore"))[:100]
+            reparto = self.imp.reparti.get(t.get("location_id"))
             nuove.append(
-                Traccia(
-                    elemento=elemento,
-                    ordine=ordine,
-                    data=data,
-                    chiave=chiave,
-                    valore=valore,
-                    reparto=self.imp.reparti.get(t.get("location_id")),
-                    inserita_il=_aware(t.get("data_inserimento")) or data,
-                )
+                {
+                    "momento": _aware(t.get("data")) or _aware(t.get("data_inserimento")) or timezone.now(),
+                    "operatore_id": self._operatore().pk,
+                    "ordine_id": ordine.pk if ordine else None,
+                    "codice": codice or "",
+                    "chiave": _t(t["chiave"])[:50] or "?",
+                    "valore": _t(t.get("valore"))[:100],
+                    "reparto": reparto.nome if reparto else "",
+                }
             )
-        Traccia.objects.bulk_create(nuove, batch_size=2000)
-        self.r.conteggi["tracce"] += len(nuove)
+        if nuove:
+            modello, campi = dq.modello_tracce(MODELLI)
+            self.r.conteggi["tracce"] += dq.tracce_in_blocco(MODELLI, modello, campi, nuove)
 
     # ------------------------------------------------------------------ qualità
     def _test(self) -> None:

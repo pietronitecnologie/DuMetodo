@@ -97,7 +97,6 @@ def test_dati_demo_si_caricano_e_le_pagine_rispondono(client):
         "report:dashboard",
         "pianificazione:agenda",
         "consegne:pagina",
-        "tracciabilita:tracce",
     ]:
         assert client.get(reverse(nome)).status_code == 200, nome
     with pytest.raises(Exception, match="già ordini"):

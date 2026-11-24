@@ -36,7 +36,6 @@ CAPITOLI: tuple[tuple[str, str], ...] = (
     ("magazzino:ddt", "ddt-in-ingresso"),
     ("magazzino:materiali", "ddt-in-ingresso"),
     ("magazzino:", "componenti-e-articoli"),
-    ("tracciabilita:", "tracciatura"),
     ("report:", "report"),
     ("utilita:", "utilita"),
     ("configurazione:", "configurazione"),

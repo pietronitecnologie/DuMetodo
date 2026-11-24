@@ -1,36 +1,20 @@
-"""Logica di business di tracciabilità e qualità. Le viste chiamano SOLO queste funzioni.
+"""Funzioni condivise rimaste dalla tracciabilità di Metodo (ora tutto passa dalle Tracciature).
 
-Come negli altri moduli ``servizi``: ogni operazione gira in una transazione, blocca le righe che
-modifica, verifica i permessi lato server e solleva ``OperazioneNonConsentita`` con un messaggio
-leggibile. Difetti di Metodo corretti qui (vedi docs/analisi-metodo/04, §9):
-- nessun ordine viene più creato implicitamente: un ordine sconosciuto è un errore;
-- l'ordine si trova per chiave completa (serie, numero, appendice, anno), mai con ``contains``;
-- il valore delle tracce generiche viene salvato; a un elemento esistente si possono aggiungere eventi;
+- ordini scritti come testo: si trovano per chiave completa (serie, numero, appendice, anno), mai con
+  ``contains`` sul solo numero come in Metodo (usate dall'importazione da Metodo);
+- controllo dei file caricati (tipo verificato dal contenuto, dimensione massima): usato dalle Tracciature.
 """
 
 from __future__ import annotations
 
-import datetime as dt
-import io
 import re
-from collections.abc import Iterable, Mapping, Sequence
-from decimal import Decimal
 from pathlib import PurePath
-from typing import Any
 
 from django.core.files.uploadedfile import UploadedFile
-from django.db.models import QuerySet
-from django.utils import timezone
-from openpyxl import Workbook
-from openpyxl.styles import Font
 
 from dumetodo.configurazione import servizi as config
 from dumetodo.ordini.models import Ordine
 from dumetodo.ordini.servizi import OperazioneNonConsentita
-
-from .models import (
-    Traccia,
-)
 
 __all__ = ["OperazioneNonConsentita"]
 
@@ -110,55 +94,3 @@ def valida_file(f: UploadedFile) -> tuple[str, str]:
 
 def _nome_originale(nome: str | None) -> str:
     return PurePath((nome or "file").replace("\\", "/")).name[-200:] or "file"
-
-
-# =========================================================================== esportazioni xlsx
-def _cella(v: Any) -> Any:
-    if isinstance(v, dt.datetime):
-        return timezone.localtime(v).replace(tzinfo=None) if timezone.is_aware(v) else v
-    if isinstance(v, Decimal):
-        return float(v)
-    return v
-
-
-def xlsx(titolo: str, intestazioni: Sequence[str], righe: Iterable[Sequence[Any]], formati: Mapping[int, str]) -> bytes:
-    """Foglio xlsx semplice. ``formati``: indice colonna (0-based) -> formato numerico (es. date)."""
-    wb = Workbook()
-    ws = wb.active
-    ws.title = titolo[:31]
-    ws.append(["N", *intestazioni])
-    for c in ws[1]:
-        c.font = Font(bold=True)
-    for n, riga in enumerate(righe, start=1):
-        ws.append([n, *(_cella(v) for v in riga)])
-        for indice, formato in formati.items():
-            ws.cell(row=n + 1, column=indice + 2).number_format = formato
-    ws.freeze_panes = "A2"
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    return buffer.getvalue()
-
-
-DATA = "dd/mm/yyyy"
-DATA_ORA = "dd/mm/yyyy hh:mm"
-
-
-def _ordine_testo(o: Ordine | None) -> str:
-    return o.codice_breve if o else ""
-
-
-def esporta_tracce(qs: QuerySet[Traccia]) -> bytes:
-    righe = (
-        (
-            t.elemento.codice if t.elemento else "",
-            _ordine_testo(t.ordine),
-            t.inserita_il,
-            t.data,
-            t.chiave,
-            t.valore,
-            str(t.reparto or ""),
-        )
-        for t in qs
-    )
-    intestazioni = ("Codice", "Ordine", "Data inserimento", "Data", "Chiave", "Valore", "Reparto")
-    return xlsx("Tracce", intestazioni, righe, {2: DATA_ORA, 3: DATA_ORA})

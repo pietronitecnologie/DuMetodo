@@ -121,7 +121,7 @@ def cambia_scadenza(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @require_GET
-@richiede_permesso(F.ORDINI_VEDERE, F.TRACCIABILITA_CONSULTA, F.UTILITA_CAMBIA_ORDINE, F.CONSEGNA)
+@richiede_permesso(F.ORDINI_VEDERE, F.UTILITA_CAMBIA_ORDINE, F.CONSEGNA, F.TRACCIATURA_REGISTRA)
 def seleziona(request: HttpRequest) -> HttpResponse:
     """Elenco degli ordini per il campo di selezione (HTMX)."""
     testo = request.GET.get(f"{request.GET.get('campo', 'ordine')}_cerca", "")[:60].strip()

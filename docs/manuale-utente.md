@@ -403,7 +403,8 @@ lotto, un'operazione su un ordine, un documento, una fotografia. Che cosa si reg
 **modelli**; gli operatori compilano il modulo che ne risulta.
 
 È l'unico modo per registrare controlli e tracce. Le vecchie funzioni **Controlli qualità**, **Nuova traccia**,
-**Lotto e busta** e **Foto e file** sono state sostituite dalle tracciature, e i loro dati sono stati convertiti:
+**Lotto e busta**, **Foto e file** e l'**archivio delle tracce** sono state sostituite dalle tracciature, e i loro
+dati sono stati convertiti:
 
 - ogni **test qualità** è diventato un modello di categoria *Controllo qualità*:
   - un controllo a campione diventa due campi numerici, **campione** e **KO**; un KO maggiore di zero rende la
@@ -412,15 +413,15 @@ lotto, un'operazione su un ordine, un documento, una fotografia. Che cosa si reg
   - ogni controllo già registrato è diventato una tracciatura dello stesso ordine;
 - **foto e file** degli ordini sono tracciature del modello *Foto e file dell'ordine*; i file sono gli stessi;
 - **lotto e busta** si registrano con il modello *Lotto e busta*, se lo usavate; altrimenti crea un modello
-  con quei due campi.
+  con quei due campi;
+- le **tracce** registrate in passato, anche quelle importate da Metodo, sono tracciature del modello *Tracce (da
+  Metodo)*: evento, valore e reparto sono i campi, il codice dell'elemento tracciato è il *riferimento*. Si
+  cercano in **Tracciature** filtrando per modello o per riferimento. Il modello non è attivo, quindi non si usa
+  per le nuove registrazioni.
 
 Per un nuovo controllo qualità crea un modello con i campi che servono, per esempio *campione* e *KO* con un
 massimo di 0, oppure un campo *Esito OK/KO*. Indica a quali codici si applica: verrà proposto sugli ordini con
 quei codici.
-
-Le **tracce** registrate in passato, anche quelle importate da Metodo, restano consultabili in sola lettura in
-**Tracciature → Tracce (archivio)** e nella pagina dell'ordine, nel riquadro *Tracce (archivio)*. Da lì si può
-ancora stampare l'etichetta col codice a barre.
 
 ### Registrare una tracciatura
 
@@ -822,6 +823,10 @@ per i report e stato attivo/disattivato.
 ha in automatico. Un superuser apre **Amministrazione → Utenti e permessi**, sceglie l'utente e fa **Applica
 profilo → Amministrazione**. In alternativa, sul server: `python manage.py assegna_profilo <utente> Amministrazione`.
 Per creare i DDT non serve: bastano **Spedizioni → DDT** e la numerazione in **Amministrazione → Numerazione DDT**.
+
+**Nell'elenco delle tracciature compare l'operatore «dumetodo-sistema».** È l'autore tecnico dei dati storici
+(importati da Metodo o convertiti dalle vecchie funzioni) di cui non si conosce chi li ha registrati. Non è una
+persona: non compare tra gli utenti e non può accedere.
 
 **Ho sbagliato una fattura già emessa.** Non si cancella: stornala con una nota di credito ed emetti quella giusta.
 

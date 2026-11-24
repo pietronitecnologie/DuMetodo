@@ -260,3 +260,16 @@ def test_nuovo_articolo_dall_app(client, db):
     assert a.descrizione == "Prova" and str(a.prezzo_riferimento) == "12.5000" and not a.nuovo
     r = client.post("/magazzino/articoli/crea/", {"codice": "ART-99", "um": "EA"}, follow=True)
     assert "esiste già" in r.content.decode()
+
+
+def test_utente_di_sistema_nascosto(client, db):
+    from dumetodo.migrazione.tracciabilita import MODELLI
+    from dumetodo.tracciatura import da_qualita
+
+    sistema = da_qualita.utente_sistema(MODELLI)
+    admin = User.objects.create_superuser("root", password="password-di-test")
+    client.force_login(admin)
+    pagina = client.get("/utenti/?stato=tutti").content.decode()
+    assert "root" in pagina and da_qualita.UTENTE_SISTEMA not in pagina
+    assert client.get(f"/utenti/{sistema.pk}/").status_code == 404
+    assert not sistema.is_active and not sistema.has_usable_password()

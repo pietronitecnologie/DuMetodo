@@ -35,7 +35,6 @@ GRUPPO_CLIENTE = "Cliente"
 class Sezione(StrEnum):
     PRODUZIONE = "Produzione"
     MAGAZZINO = "Magazzino"
-    QUALITA = "Archivio tracce"
     REPORT = "Report"
     UTILITA = "Utilità"
     AMMINISTRAZIONE = "Amministrazione"
@@ -83,7 +82,6 @@ class F:
     MAGAZZINO_DISTINTE_MODIFICA = "magazzino_distinte_modifica"
     MAGAZZINO_DDT = "magazzino_ddt"
     MAGAZZINO_DDT_ELIMINA = "magazzino_ddt_elimina"
-    TRACCIABILITA_CONSULTA = "tracciabilita_consulta"
     REPORT_DASHBOARD = "report_dashboard"
     REPORT_PRODUTTIVITA = "report_produttivita"
     REPORT_MATERIALE = "report_materiale"
@@ -152,12 +150,6 @@ FUNZIONI: list[Funzione] = [
     Funzione(F.MAGAZZINO_DISTINTE_MODIFICA, Sezione.MAGAZZINO, "Modificare le distinte base"),
     Funzione(F.MAGAZZINO_DDT, Sezione.MAGAZZINO, "DDT in ingresso", "Inserimento, importazione, verifica, ricerca."),
     Funzione(F.MAGAZZINO_DDT_ELIMINA, Sezione.MAGAZZINO, "Eliminare righe dei DDT in ingresso"),
-    Funzione(
-        F.TRACCIABILITA_CONSULTA,
-        Sezione.QUALITA,
-        "Consultare l'archivio delle tracce",
-        "Tracce registrate in passato (anche importate da Metodo), in sola lettura.",
-    ),
     Funzione(F.REPORT_DASHBOARD, Sezione.REPORT, "Dashboard"),
     Funzione(F.REPORT_PRODUTTIVITA, Sezione.REPORT, "Analisi produttività"),
     Funzione(F.REPORT_MATERIALE, Sezione.REPORT, "Materiale per reparto e settimana"),
@@ -278,7 +270,6 @@ _OPERATORE = {
     F.MAGAZZINO_RICHIESTE,
     F.MAGAZZINO_DISTINTE,
     F.MAGAZZINO_DDT,
-    F.TRACCIABILITA_CONSULTA,
     F.CHAT,
     F.TRACCIATURA_VEDERE,
     F.TRACCIATURA_REGISTRA,
@@ -302,7 +293,7 @@ PROFILI: dict[str, set[str]] = {
         F.TIMBRATURE_VEDERE,
         F.TIMBRATURE_COSTI,
     },
-    "Cliente": {F.ORDINI_VEDERE, F.NOTE_SCRIVERE, F.AGENDA, F.TRACCIABILITA_CONSULTA},
+    "Cliente": {F.ORDINI_VEDERE, F.NOTE_SCRIVERE, F.AGENDA},
 }
 
 
@@ -459,7 +450,7 @@ def sincronizza_permessi(**kwargs: Any) -> None:
 RINOMINATI: dict[str, tuple[str, ...]] = {
     "utenti": (F.UTENTI_VEDERE, F.UTENTI_GESTIRE, F.UTENTI_PASSWORD, F.UTENTI_PERMESSI),
     # Tracce, controlli qualità e foto ora si registrano con il modulo Tracciatura.
-    "tracciabilita_registra": (F.TRACCIABILITA_CONSULTA, F.TRACCIATURA_VEDERE, F.TRACCIATURA_REGISTRA),
+    "tracciabilita_registra": (F.TRACCIATURA_VEDERE, F.TRACCIATURA_REGISTRA),
     "qualita_test": (F.TRACCIATURA_CONFIGURA,),
 }
 

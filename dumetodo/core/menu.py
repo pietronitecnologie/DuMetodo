@@ -68,11 +68,10 @@ MENU: tuple[Sezione, ...] = (
         "Tracciature",
         "tracciatura",
         (
-            # Tracciatura configurabile (controlli qualità, lotti, foto…) e l'archivio delle tracce di Metodo.
+            # Tracciatura configurabile: controlli qualità, lotti, operazioni, foto e documenti.
             Voce("Nuova tracciatura", "tracciatura:nuova", (F.TRACCIATURA_REGISTRA,)),
             Voce("Tracciature", "tracciatura:elenco", (F.TRACCIATURA_VEDERE,)),
             Voce("Modelli di tracciatura", "tracciatura:modelli", (F.TRACCIATURA_CONFIGURA,)),
-            Voce("Tracce (archivio)", "tracciabilita:tracce", (F.TRACCIABILITA_CONSULTA,)),
         ),
     ),
     Sezione(

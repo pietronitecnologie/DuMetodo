@@ -43,7 +43,7 @@ from dumetodo.ordini.models import (
     StatoRiga,
     StoricoScadenza,
 )
-from dumetodo.tracciabilita.models import Elemento, Traccia
+from dumetodo.tracciatura import da_qualita as dq
 
 from .importatore import (
     Chiave,
@@ -58,6 +58,7 @@ from .importatore import (
 )
 from .models import Avanzamento, CodificaMetodo, Corrispondenza
 from .sorgente import QUERY_COLONNE, TABELLE, Metodo
+from .tracciabilita import MODELLI
 
 # Passi nell'ordine di esecuzione. "a blocchi" = tabelle grandi, lette per id e riprendibili.
 PASSI = (
@@ -334,6 +335,8 @@ class Prelievo:
         self.scrivi, self.ogni_secondi = avanzamento, ogni_secondi
         self._ddt: dict[tuple[str, int], DDT] = {}
         self._consegna: Consegna | None = None
+        self._tracce: tuple[Any, dict[str, Any]] | None = None
+        self._id_sistema: int | None = None
 
     # ---------------------------------------------------------------- esecuzione
     def esegui(self) -> ReportPrelievo:
@@ -352,8 +355,6 @@ class Prelievo:
                 (StoricoScadenza, "creato_il"),
                 (Consegna, "creata_il"),
                 (DDT, "creato_il"),
-                (Elemento, "creato_il"),
-                (Traccia, "inserita_il"),
             ):
                 self._utenti_e_reparti()  # sempre: servono a tutti gli altri passi
                 for passo in PASSI[1:]:
@@ -818,8 +819,8 @@ class Prelievo:
     def _passo_tracce(self) -> None:
         """Tre fasi, tutte riprendibili:
         1. riepilogo per codice tracciato calcolato da Metodo a intervalli di id (pochi dati in rete);
-        2. creazione degli ``Elemento`` (esclusi batterie e cavi, come nell'importatore);
-        3. tracce, a blocchi."""
+        2. codice di ogni elemento (esclusi batterie e cavi, come nell'importatore);
+        3. tracce, a blocchi, come tracciature del modello «Tracce (da Metodo)»."""
         if "Prod_tracciabilita" not in self.m.colonne:
             return
         self._tracce_riepilogo()
@@ -865,8 +866,8 @@ class Prelievo:
         tabella = CodificaMetodo._meta.db_table
         with connection.cursor() as cur:
             cur.executemany(
-                f"INSERT INTO {tabella} (id_metodo, batteria, banco, prima, elaborata, scartata) "  # noqa: S608
-                "VALUES (%s, %s, %s, %s, false, false) ON CONFLICT (id_metodo) DO UPDATE SET "
+                f"INSERT INTO {tabella} (id_metodo, batteria, banco, prima, elaborata, scartata, codice) "  # noqa: S608
+                "VALUES (%s, %s, %s, %s, false, false, '') ON CONFLICT (id_metodo) DO UPDATE SET "
                 f"batteria = {tabella}.batteria OR EXCLUDED.batteria, banco = {tabella}.banco OR EXCLUDED.banco, "
                 f"prima = LEAST({tabella}.prima, EXCLUDED.prima)",
                 [(r["cod"], bool(r["batteria"]), bool(r["banco"]), _aware(r["prima"])) for r in righe],
@@ -886,7 +887,6 @@ class Prelievo:
                 for c in self.m.per_valori("Plan_coding", "id", [g.id_metodo for g in gruppo])
             }
             with transaction.atomic():
-                per_codice: dict[str, list[CodificaMetodo]] = defaultdict(list)
                 for g in gruppo:
                     g.elaborata = True
                     if g.id_metodo not in codifiche:
@@ -901,20 +901,9 @@ class Prelievo:
                         g.scartata = True
                         self.r.conteggi["batterie e cavi (non importati)"] += 1
                         continue
-                    per_codice[codice].append(g)
-                esistenti = dict(Elemento.objects.filter(codice__in=per_codice).values_list("codice", "pk"))
-                nuovi = [
-                    Elemento(codice=c, creato_il=min((g.prima for g in gs if g.prima), default=timezone.now()))
-                    for c, gs in per_codice.items()
-                    if c not in esistenti
-                ]
-                Elemento.objects.bulk_create(nuovi, batch_size=2000)
-                esistenti |= {e.codice: e.pk for e in nuovi}
-                for c, gs in per_codice.items():
-                    for g in gs:
-                        g.elemento_id = esistenti[c]
-                self.r.conteggi["elementi tracciati"] += len(nuovi)
-                CodificaMetodo.objects.bulk_update(gruppo, ["elaborata", "scartata", "elemento_id"], batch_size=2000)
+                    g.codice = codice
+                    self.r.conteggi["elementi tracciati"] += 1
+                CodificaMetodo.objects.bulk_update(gruppo, ["elaborata", "scartata", "codice"], batch_size=2000)
 
     def _blocco_tracce(self, blocco: list[dict[str, Any]]) -> None:
         item_codifica = {
@@ -926,32 +915,38 @@ class Prelievo:
             for c in CodificaMetodo.objects.filter(id_metodo__in={v for v in item_codifica.values() if v is not None})
         }
         ordini = self._mappa("Prod_ordine", {t.get("rif_ordine_id") for t in blocco})
-        nuove: list[Traccia] = []
+        nuove: list[dict[str, Any]] = []
         for t in blocco:
             cod = codifiche.get(item_codifica.get(t.get("stored_item_id")))  # type: ignore[arg-type]
             if t.get("asset_id") or (cod is not None and cod.scartata):
                 self.r.conteggi["tracce di batterie, cavi e banchi (non importate)"] += 1
                 continue
-            elemento = cod.elemento_id if cod is not None else None
+            codice = cod.codice if cod is not None and cod.codice else None
             ordine = ordini.get(t.get("rif_ordine_id"))
-            if elemento is None and ordine is None:
+            if codice is None and ordine is None:
                 self.r.conteggi["tracce senza elemento né ordine (ignorate)"] += 1
                 continue
-            data = _aware(t.get("data")) or _aware(t.get("data_inserimento")) or timezone.now()
             reparto = self.imp.reparti.get(t.get("location_id"))
             nuove.append(
-                Traccia(
-                    elemento_id=elemento,
-                    ordine_id=ordine,
-                    data=data,
-                    chiave=_testo(t["chiave"])[:50] or "?",
-                    valore=_testo(t.get("valore"))[:100],
-                    reparto=reparto,
-                    inserita_il=_aware(t.get("data_inserimento")) or data,
-                )
+                {
+                    "momento": _aware(t.get("data")) or _aware(t.get("data_inserimento")) or timezone.now(),
+                    "operatore_id": self._sistema(),
+                    "ordine_id": ordine,
+                    "codice": codice or "",
+                    "chiave": _testo(t["chiave"])[:50] or "?",
+                    "valore": _testo(t.get("valore"))[:100],
+                    "reparto": reparto.nome if reparto else "",
+                }
             )
-        Traccia.objects.bulk_create(nuove, batch_size=2000)
-        self.r.conteggi["tracce"] += len(nuove)
+        if nuove:
+            if self._tracce is None:
+                self._tracce = dq.modello_tracce(MODELLI)
+            self.r.conteggi["tracce"] += dq.tracce_in_blocco(MODELLI, *self._tracce, nuove)
+
+    def _sistema(self) -> int:
+        if self._id_sistema is None:
+            self._id_sistema = dq.utente_sistema(MODELLI).pk
+        return self._id_sistema
 
 
 def stato_attuale() -> list[Avanzamento]:

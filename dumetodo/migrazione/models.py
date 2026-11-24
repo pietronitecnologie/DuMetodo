@@ -44,7 +44,7 @@ class CodificaMetodo(models.Model):
     batteria = models.BooleanField(default=False)
     banco = models.BooleanField(default=False)
     prima = models.DateTimeField(null=True, blank=True)
-    elemento_id = models.BigIntegerField(null=True, blank=True)
+    codice = models.CharField(max_length=50, blank=True, default="", help_text="Codice dell'elemento (internalCode)")
     elaborata = models.BooleanField(default=False)
     scartata = models.BooleanField(default=False)
 

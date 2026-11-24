@@ -616,24 +616,6 @@ PARAMETRI: tuple[Parametro, ...] = (
     ),
     # --- Tracciabilità e qualità --------------------------------------------------------
     Parametro(
-        "tracciabilita.reparto_lotti",
-        Tipo.TESTO,
-        Gruppo.TRACCIABILITA,
-        "Reparto di lotto e busta",
-        "Codice del reparto registrato sulle tracce lotto/busta inserite dalla pagina dell'ordine "
-        "(in Metodo: GK01-PLS, Pulsanti). Se il reparto non esiste la traccia resta senza reparto.",
-        default="GK01-PLS",
-    ),
-    Parametro(
-        "tracciabilita.giorni_liste",
-        Tipo.INTERO,
-        Gruppo.TRACCIABILITA,
-        "Giorni mostrati di default nelle liste",
-        "Lista tracce: senza filtri mostrano gli eventi degli ultimi N giorni (oggi compreso).",
-        default=2,
-        minimo=0,
-    ),
-    Parametro(
         "tracciabilita.dimensione_massima_file_mb",
         Tipo.INTERO,
         Gruppo.TRACCIABILITA,

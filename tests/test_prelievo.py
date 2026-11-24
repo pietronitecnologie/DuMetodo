@@ -17,7 +17,6 @@ from dumetodo.migrazione import prelievo as modulo
 from dumetodo.migrazione.models import Avanzamento
 from dumetodo.migrazione.prelievo import Limitatore
 from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StoricoScadenza
-from dumetodo.tracciabilita.models import Elemento, Traccia
 from dumetodo.tracciatura.models import Tracciatura, Valore
 
 from .test_migrazione_tracciabilita import metodo_db  # noqa: F401  (fixture)
@@ -78,18 +77,19 @@ def _fotografia():
             for rc in RigaConsegnata.objects.all()
         ),
         "ddt": sorted(DDT.objects.values_list("numero", "anno", "data")),
-        "elementi": sorted(Elemento.objects.values_list("codice", "creato_il")),
-        "tracce": sorted(
-            (t.chiave, t.valore, t.ordine and _k(t.ordine), t.elemento and t.elemento.codice, t.data, t.inserita_il)
-            for t in Traccia.objects.all()
-        ),
         "tracciature": sorted(
-            (t.modello.nome, t.ordine and _k(t.ordine), t.articolo, t.riferimento, t.esito, t.momento)
-            for t in Tracciatura.objects.select_related("modello", "ordine")
+            (
+                (t.modello.nome, t.ordine and _k(t.ordine), t.articolo, t.riferimento, t.esito, t.momento)
+                for t in Tracciatura.objects.select_related("modello", "ordine")
+            ),
+            key=repr,
         ),
         "valori": sorted(
-            (v.campo.etichetta, v.intero, v.booleano, v.decimale, v.file.name)
-            for v in Valore.objects.select_related("campo")
+            (
+                (v.campo.etichetta, v.intero, v.booleano, v.decimale, v.file.name, v.testo)
+                for v in Valore.objects.select_related("campo")
+            ),
+            key=repr,
         ),
     }
 
@@ -112,7 +112,7 @@ def _con_importatore(url):
 @pytest.mark.parametrize("blocco", ["1", "3", "2000"])
 def test_stesso_risultato_dell_importatore(metodo_db, blocco):
     atteso = _con_importatore(metodo_db)
-    assert atteso["ordini"] and atteso["righe"] and atteso["tracce"]
+    assert atteso["ordini"] and atteso["righe"] and atteso["tracciature"]
     out = _preleva(metodo_db, "--blocco", blocco)
     assert "Prelievo completato" in out and "ordini duplicati" in out
     assert _fotografia() == atteso

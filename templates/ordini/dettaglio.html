@@ -89,7 +89,6 @@
       {% endif %}
     </div>
     {% if perms.core.tracciatura_vedere %}<div hx-get="{% url 'tracciatura:pannello' %}?ordine={{ ordine.pk }}" hx-trigger="load" hx-swap="outerHTML"></div>{% endif %}
-    {% include "tracciabilita/_ordine.html" %}
   </div>
 
   <div class="col-lg-4">

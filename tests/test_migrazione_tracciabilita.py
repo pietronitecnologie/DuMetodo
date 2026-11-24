@@ -12,7 +12,6 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from dumetodo.ordini.models import Ordine
-from dumetodo.tracciabilita.models import Elemento, Traccia
 from dumetodo.tracciatura.models import Modello, Tracciatura
 
 from .test_migrazione import DATI, SCHEMA
@@ -94,9 +93,14 @@ def test_migrazione_tracciabilita_e_qualita(metodo_db):
     o4300 = Ordine.objects.get(numero="0004300")
 
     # batterie, cavi e postazioni non vengono più importati: restano solo le tracce generiche
-    assert list(Elemento.objects.values_list("codice", flat=True)) == ["GEN-1"]
-    assert set(Traccia.objects.values_list("chiave", flat=True)) == {"LOTTO", "Collaudo"}
-    assert Traccia.objects.get(chiave="LOTTO").ordine == o4300
+    # (diventano tracciature del modello «Tracce (da Metodo)»: evento, valore, reparto; codice = riferimento)
+    tracce = {
+        t.valori.get(campo__etichetta="Evento").testo: t
+        for t in Tracciatura.objects.filter(modello__nome="Tracce (da Metodo)")
+    }
+    assert set(tracce) == {"LOTTO", "Collaudo"}
+    assert tracce["LOTTO"].ordine == o4300 and tracce["LOTTO"].riferimento == ""
+    assert tracce["Collaudo"].riferimento == "GEN-1" and tracce["Collaudo"].ordine is None
     assert "batterie e cavi (non importati)" in out
 
     # qualità: il test diventa un modello di tracciatura, le righe della stessa registrazione una tracciatura

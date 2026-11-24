@@ -209,3 +209,54 @@ def modello_lotto(m: Modelli) -> Any:
         for i, etichetta in enumerate(("Lotto produzione", "Busta"), start=1):
             m.Campo.objects.create(modello=modello, etichetta=etichetta, tipo="TXT", ordine=i, obbligatorio=i == 1)
     return modello
+
+
+# ------------------------------------------------------------------------------------------- tracce
+NOME_MODELLO_TRACCE = "Tracce (da Metodo)"
+
+
+def modello_tracce(m: Modelli) -> tuple[Any, dict[str, Any]]:
+    """Modello per le vecchie tracce (evento = valore su un codice o su un ordine): (modello, campi)."""
+    modello = m.Modello.objects.filter(nome=NOME_MODELLO_TRACCE).first()
+    if modello is None:
+        modello = m.Modello.objects.create(
+            nome=NOME_MODELLO_TRACCE,
+            categoria="ALT",
+            descrizione="Eventi registrati con la vecchia tracciabilità o importati da Metodo. "
+            "Il riferimento è il codice dell'elemento tracciato.",
+            uso_ordine="F",
+            uso_articolo="",
+            uso_riferimento="F",
+            attivo=False,
+        )
+        for i, etichetta in enumerate(("Evento", "Valore", "Reparto"), start=1):
+            m.Campo.objects.create(modello=modello, etichetta=etichetta, tipo="TXT", ordine=i)
+    campi = {c.etichetta: c for c in m.Campo.objects.filter(modello=modello)}
+    return modello, {"chiave": campi["Evento"], "valore": campi["Valore"], "reparto": campi["Reparto"]}
+
+
+def tracce_in_blocco(m: Modelli, modello: Any, campi: dict[str, Any], tracce: list[dict[str, Any]]) -> int:
+    """Crea molte tracciature insieme (righe da milioni di tracce: niente salvataggi uno per uno).
+
+    Ogni traccia: momento, operatore_id, ordine_id, codice (riferimento), chiave, valore, reparto (testo)."""
+    if not tracce:
+        return 0
+    oggetti = [
+        m.Tracciatura(
+            modello=modello,
+            momento=t["momento"],
+            operatore_id=t["operatore_id"],
+            ordine_id=t.get("ordine_id"),
+            riferimento=(t.get("codice") or "")[:120],
+        )
+        for t in tracce
+    ]
+    m.Tracciatura.objects.bulk_create(oggetti, batch_size=2000)
+    valori = []
+    for obj, t in zip(oggetti, tracce, strict=True):
+        for chiave in ("chiave", "valore", "reparto"):
+            testo = (t.get(chiave) or "").strip()
+            if testo:
+                valori.append(m.Valore(tracciatura=obj, campo=campi[chiave], testo=testo))
+    m.Valore.objects.bulk_create(valori, batch_size=5000)
+    return len(oggetti)

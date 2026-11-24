@@ -23,7 +23,7 @@ Tutte le funzioni dell'app `Prod` di Metodo sono state riscritte.
 | **Consegna** con bolla, **DDT** con file tecnico, **etichette** | ✅ |
 | **Anagrafica articoli**, **agenda** ordini e pulsanti, **pianificazione** con report email, **tabulati** | ✅ |
 | **Magazzino**: componenti, inventario, richieste materiali, distinte base, DDT in ingresso | ✅ |
-| **Tracciature**: controlli qualità, lotti, operazioni, foto e documenti (modelli configurabili); archivio delle tracce | ✅ |
+| **Tracciature**: controlli qualità, lotti, operazioni, foto e documenti, tracce di Metodo (modelli configurabili) | ✅ |
 | **Report**: dashboard, analisi produttività, materiale per reparto/settimana, controllo prezzi | ✅ |
 | **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ✅ |
 | **Permessi granulari** per funzione, pagina Utenti e permessi | ✅ |
@@ -148,7 +148,7 @@ d'inventario. Quando un materiale arriva con un DDT in ingresso (inserito a mano
 richieste materiali aperte per lo stesso codice e variante, di qualsiasi reparto, vengono **chiuse
 automaticamente**; sulla richiesta resta la riga del DDT che l'ha chiusa. La giacenza non cambia.
 
-## Tracciature e archivio delle tracce
+## Tracciature
 
 Tutto ciò che si registra (controlli qualità, lotti, operazioni, foto e documenti) passa dal modulo
 **Tracciatura** (`dumetodo.tracciatura`): modelli configurabili con campi tipizzati ed esito automatico.
@@ -163,16 +163,18 @@ Tutto ciò che si registra (controlli qualità, lotti, operazioni, foto e docume
   * se lotto/busta era in uso, viene creato il modello *Lotto e busta*.
 
   La logica è in `dumetodo/tracciatura/da_qualita.py`, usata anche dall'importazione da Metodo.
-* **Archivio delle tracce** (`dumetodo.tracciabilita`, in sola lettura): le tracce registrate in passato e
-  quelle importate da Metodo (anche milioni di righe), con ricerca, esportazione xlsx, storia dell'elemento ed
-  etichetta Code128. Il Cliente vede solo le tracce dei suoi ordini.
+* **Tracce**: anche le tracce (dell'archivio e quelle importate da Metodo, anche milioni) diventano
+  tracciature del modello *Tracce (da Metodo)*, create a blocchi (migrazione `tracciatura 0003`, prelievo
+  e importatore); l'archivio `dumetodo.tracciabilita` non ha più modelli né pagine.
+* **Utente `dumetodo-sistema`**: autore dei dati storici senza operatore; disattivato, senza password
+  utilizzabile e nascosto dall'elenco utenti.
 * Non riportati da Metodo perché non più usati: reclami, test display, batterie (con i work order di
   ricarica), cavi e postazioni dei banchi di prova (API `insertTracciaCavi`), *Attiva produzione*.
 
 ## Permessi
 
 Ogni funzione del sito è un permesso assegnabile al singolo utente dalla pagina **Amministrazione → Utenti e
-permessi**, raggruppato per sezione (Produzione, Magazzino, Archivio tracce, Report, Utilità,
+permessi**, raggruppato per sezione (Produzione, Magazzino, Tracciature, Report, Utilità,
 Amministrazione). I **profili** (Operatore, Caporeparto, Amministratore, Cliente) sono punti di partenza:
 applicati a un utente, gli assegnano un insieme di permessi che poi si personalizza funzione per funzione.
 Il catalogo delle funzioni è in `dumetodo/core/permessi.py`; un test controlla che ogni pagina richieda
@@ -210,7 +212,7 @@ python manage.py importa_configurazione_metodo configuration.csv --applica
   * note, segnate come già lette;
   * storico scadenze;
   * righe consegnate con i relativi DDT.
-  * tracce (nell'archivio), controlli qualità e file per ordine (come tracciature); reclami e test display
+  * tracce, controlli qualità e file per ordine (come tracciature); reclami e test display
     non vengono importati. I file non vengono copiati: copia la cartella `file/` della cartella media di
     Metodo in `MEDIA_ROOT`.
 * **Ordini duplicati in Metodo:** quelli con la stessa chiave vengono fusi in uno solo e segnalati nel report.

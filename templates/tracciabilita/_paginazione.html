@@ -1,9 +1,0 @@
-{# Come _paginazione.html, ma conserva i filtri della lista. #}
-<div class="d-flex align-items-center gap-3 small">
-  <span class="text-muted">{{ pagina.paginator.count }} risultati</span>
-  {% if pagina.has_other_pages %}<nav><ul class="pagination pagination-sm mb-0">
-    {% if pagina.has_previous %}<li class="page-item"><a class="page-link" href="{% querystring pagina=pagina.previous_page_number %}">‹</a></li>{% endif %}
-    <li class="page-item disabled"><span class="page-link">{{ pagina.number }} / {{ pagina.paginator.num_pages }}</span></li>
-    {% if pagina.has_next %}<li class="page-item"><a class="page-link" href="{% querystring pagina=pagina.next_page_number %}">›</a></li>{% endif %}
-  </ul></nav>{% endif %}
-</div>
