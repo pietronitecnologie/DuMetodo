@@ -268,7 +268,9 @@ def azioni(postazione: Postazione, s: calcolo.Stato) -> list[str]:
     # Postazione di reparto. Se lo stabilimento non ha una postazione di ingresso, si entra ed esce anche da qui.
     ingresso_qui = not esiste_ingresso()
     if not s.presente:
-        return [T.INIZIO_REPARTO, T.ENTRATA] if ingresso_qui else []
+        # Prima timbratura della giornata direttamente in reparto: si accetta e si registra anche l'entrata
+        # (vedi ``timbra``), così il turno inizia comunque e non resta un buco nelle presenze.
+        return [T.INIZIO_REPARTO, T.ENTRATA] if ingresso_qui else [T.INIZIO_REPARTO]
     if s.reparto_id == postazione.reparto_id:
         lista = [T.FINE_REPARTO, T.INIZIO_MENSA, T.INIZIO_PAUSA]
     else:
@@ -354,7 +356,7 @@ def identifica(postazione: Postazione, codice: str) -> dict[str, Any]:
     lav = _riconosci(postazione, codice)
     s = stato(lav)
     possibili = azioni(postazione, s)
-    messaggio = "" if possibili else "Prima timbra l'entrata alla postazione di ingresso."
+    messaggio = "" if possibili else "Nessuna timbratura possibile adesso."
     return {
         "nome": f"{lav.nome} {lav.cognome}",
         "stato": descrivi_stato(s),

@@ -19,6 +19,7 @@ from dumetodo.anagrafica.models import Articolo
 from dumetodo.comunicazioni.models import EmailInUscita, StatoEmail
 from dumetodo.configurazione import servizi as config
 from dumetodo.consegne.models import RigaConsegnata
+from dumetodo.consegne.servizi import ordini_da_consegnare
 from dumetodo.core.permessi import F as Fn
 from dumetodo.core.permessi import ha_permesso
 from dumetodo.importazione.models import ProblemaImportazione
@@ -82,9 +83,7 @@ def dashboard(oggi: dt.date | None = None) -> dict[str, Any]:
         "in_ritardo": in_ritardo.count(),
         "prossime": Ordine.objects.filter(stato__in=APERTI, data_scadenza__gte=oggi).order_by("data_scadenza")[:10],
         "ritardi": in_ritardo.order_by("data_scadenza")[:10],
-        "da_consegnare": Ordine.objects.filter(
-            stato__in=[StatoOrdine.IN_SPEDIZIONE, StatoOrdine.EVASIONE_PARZIALE]
-        ).count(),
+        "da_consegnare": ordini_da_consegnare().count(),
         "senza_ddt": RigaConsegnata.objects.filter(ddt__isnull=True).count(),
         "problemi_importazione": ProblemaImportazione.objects.filter(gestito=False).count(),
         "email_in_errore": EmailInUscita.objects.filter(stato__in=[StatoEmail.ERRORE, StatoEmail.FALLITA]).count(),

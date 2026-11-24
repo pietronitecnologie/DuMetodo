@@ -243,6 +243,15 @@ settimana.
 3. **Genera bolla e consegna**: crea il file della bolla per il gestionale (con il tracciato scelto in
    Configurazione) e segna le righe come consegnate.
 
+Dopo la consegna:
+
+- un ordine con tutte le righe consegnate diventa **Consegnato** ed esce dall'elenco;
+- un ordine che ha ancora righe da consegnare (bloccate o non messe in evasione) resta in **Evasione parziale**,
+  ma esce comunque dall'elenco. Ricompare quando metti in evasione altre sue righe (**Evadi** nella pagina
+  dell'ordine).
+
+L'elenco mostra solo gli ordini che hanno davvero qualcosa da consegnare.
+
 **Consegne effettuate** mostra lo storico: numero, data, utente, selezione e file della bolla, sempre
 riscaricabile.
 
@@ -554,8 +563,10 @@ timbrature possibili in quel momento**: la prima, evidenziata, è la più probab
 | Ingresso e uscita | Entrata, oppure **Entrata e inizio lavoro** in un reparto a scelta; poi Uscita, Inizio mensa, Inizio pausa, Fine lavoro nel reparto attuale e **Inizio lavoro in qualsiasi altro reparto**; dalla mensa o dalla pausa, la loro fine |
 | Reparto | Inizio lavoro nel reparto (anche passando da un altro reparto), Fine lavoro, Inizio mensa e pausa |
 
-- Prima di lavorare in un reparto si timbra l'entrata alla postazione di ingresso. Se lo stabilimento non ha una
-  postazione di ingresso, le postazioni di reparto permettono anche entrata e uscita.
+- Di solito si timbra l'entrata alla postazione di ingresso. Se la prima timbratura della giornata è in un
+  reparto, la postazione la accetta (**Entrata e inizio lavoro**) e registra in automatico anche l'entrata, alla
+  stessa ora. Se lo stabilimento non ha una postazione di ingresso, le postazioni di reparto permettono anche
+  l'uscita.
 - **Mensa e pausa** sospendono il reparto: alla fine il tempo torna al reparto di prima, senza timbrare di nuovo.
 - Un doppio tocco non registra due volte la stessa timbratura. Dopo 5 codici sbagliati la postazione si blocca
   per un minuto.

@@ -51,6 +51,25 @@ def test_evasione_parziale_consegna_solo_le_righe_evase(ordine, operatore):
     assert ordine.stato == StatoOrdine.EVASIONE_PARZIALE  # resta la riga bloccata
     b.refresh_from_db()
     assert not b.bolla_emessa
+    # Consegnato solo se completo: resta aperto, ma senza righe da consegnare esce dall'area Consegna
+    assert not servizi.ordini_da_consegnare().filter(pk=ordine.pk).exists()
+    ordini.azione_riga(b.pk, "evadi", operatore)  # più avanti si evade anche la riga che era bloccata
+    assert servizi.ordini_da_consegnare().filter(pk=ordine.pk).exists()
+    servizi.consegna(operatore, ordini_ids=[ordine.pk])
+    ordine.refresh_from_db()
+    assert ordine.stato == StatoOrdine.CONSEGNATO and not servizi.ordini_da_consegnare().exists()
+
+
+def test_area_consegna_mostra_solo_ordini_con_righe_da_consegnare(client, ordine, operatore):
+    a, b = ordine.righe.order_by("n_riga")
+    for r in (a, b):
+        ordini.azione_riga(r.pk, "blocca", operatore)
+    ordini.cambia_stato(ordine.pk, StatoOrdine.IN_SPEDIZIONE, operatore)
+    ordine.refresh_from_db()
+    assert ordine.stato in (StatoOrdine.IN_SPEDIZIONE, StatoOrdine.EVASIONE_PARZIALE)
+    assert not servizi.ordini_da_consegnare().exists()  # tutte bloccate: niente da consegnare
+    client.force_login(operatore)
+    assert ordine.codice_breve not in client.get("/consegne/").content.decode()
 
 
 def test_doppio_clic_non_consegna_due_volte(in_spedizione, operatore):

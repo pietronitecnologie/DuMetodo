@@ -117,7 +117,8 @@ def test_codici_personali(impianto, capo):
 def test_regole_alle_postazioni(impianto):
     ing, pls = impianto["ingresso"], impianto["pls"]
     r = servizi.identifica(pls, "1234")
-    assert r["azioni"] == [] and "postazione di ingresso" in r["messaggio"]  # prima si entra in azienda
+    # prima timbratura in reparto senza entrata: si accetta, con l'entrata aggiunta in automatico
+    assert [a["tipo"] for a in r["azioni"]] == ["IRP"] and r["azioni"][0]["etichetta"].startswith("Entrata e inizio")
     pul, cab = impianto["pulsanti"], impianto["cablaggi"]
     assert [a["tipo"] for a in servizi.identifica(ing, "1234")["azioni"]] == [
         "ENT",
@@ -399,3 +400,19 @@ def test_messaggio_della_postazione_col_reparto_scelto(client, impianto):
     ing, pul = impianto["ingresso"], impianto["pulsanti"]
     r = client.post(f"/timbrature/p/{ing.token}/timbra/", {"codice": "1234", "tipo": f"IRP:{pul.pk}"}).json()
     assert r["ok"] and f"inizio lavoro – {pul.nome}" in r["messaggio"]
+
+
+def test_prima_timbratura_in_reparto_aggiunge_l_entrata(impianto):
+    pls, ing = impianto["pls"], impianto["ingresso"]
+    assert ing.attiva  # c'è una postazione di ingresso, ma il lavoratore va diretto in reparto
+    adesso = timezone.now() - dt.timedelta(hours=2)
+    t = servizi.timbra(pls, "1234", "IRP", adesso)
+    entrata = Timbratura.objects.get(tipo="ENT")
+    assert (entrata.momento, entrata.postazione, entrata.nota) == (adesso, pls, "entrata automatica")
+    assert t.reparto == impianto["pulsanti"]
+    s = servizi.stato(impianto["mario"])
+    assert s.presente and s.reparto_id == impianto["pulsanti"].pk
+    # da qui in poi tutto come sempre: dall'ingresso si esce
+    servizi.timbra(ing, "1234", "USC", adesso + dt.timedelta(hours=1))
+    [turno] = servizi.turni(timezone.localdate(adesso), timezone.localdate())[impianto["mario"].pk]
+    assert round(turno.per_reparto[impianto["pulsanti"].pk]) == 3600 and not turno.anomalie

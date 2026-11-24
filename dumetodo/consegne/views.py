@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
 from dumetodo.core.permessi import F, ha_permesso, richiede_permesso
-from dumetodo.ordini.models import Ordine, StatoOrdine
+from dumetodo.ordini.models import StatoOrdine
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
 from . import servizi
@@ -33,9 +33,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
     serie = _serie_scelte(request)
     qs = servizi.ordini_da_consegnare(serie)
     # Le serie proposte sono quelle realmente presenti tra gli ordini da consegnare (in Metodo erano fisse).
-    disponibili = sorted(
-        {s[-2:] for s in Ordine.objects.filter(stato__in=servizi.DA_CONSEGNARE).values_list("serie", flat=True)}
-    )
+    disponibili = sorted({s[-2:] for s in servizi.ordini_da_consegnare().values_list("serie", flat=True)})
     ordini = []
     for o in qs:
         righe = servizi.righe_consegnabili(o)

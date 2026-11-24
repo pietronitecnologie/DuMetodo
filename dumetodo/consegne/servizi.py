@@ -8,7 +8,7 @@ from typing import Any
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, QuerySet
+from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.utils import timezone
 
 from dumetodo.comunicazioni import email
@@ -39,8 +39,23 @@ def righe_consegnabili(ordine: Ordine) -> QuerySet[RigaOrdine]:
     return qs.none()
 
 
+def _con_righe_da_consegnare() -> Q:
+    """Ordini con almeno una riga consegnabile (stesse regole di ``righe_consegnabili``).
+
+    Dopo una consegna parziale l'ordine resta in evasione parziale ma, finché non si mettono in evasione altre
+    righe, non ha niente da consegnare: non deve più comparire nell'area Consegna."""
+    return Q(stato=StatoOrdine.IN_SPEDIZIONE, _ha_righe=True) | Q(
+        stato=StatoOrdine.EVASIONE_PARZIALE, _ha_righe_in_evasione=True
+    )
+
+
 def ordini_da_consegnare(serie: Sequence[str] = (), ordini_ids: Sequence[int] = ()) -> QuerySet[Ordine]:
-    qs = Ordine.objects.filter(stato__in=DA_CONSEGNARE)
+    righe = RigaOrdine.objects.attive().filter(ordine=OuterRef("pk"), bloccata=False, bolla_emessa=False)
+    qs = (
+        Ordine.objects.filter(stato__in=DA_CONSEGNARE)
+        .annotate(_ha_righe=Exists(righe), _ha_righe_in_evasione=Exists(righe.filter(in_evasione=True)))
+        .filter(_con_righe_da_consegnare())
+    )
     if serie:
         filtro = Q()
         for s in serie:
