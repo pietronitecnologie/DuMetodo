@@ -1,5 +1,7 @@
 from django.urls import path
 
+from dumetodo.gestionale import views as gestionale
+
 from . import views
 
 app_name = "configurazione"
@@ -10,4 +12,6 @@ urlpatterns = [
     path("casella/prova/", views.prova_casella, name="prova_casella"),
     path("tracciati/anteprima/", views.anteprima_tracciato, name="anteprima_tracciato"),
     path("tracciati/guida/", views.guida_tracciati, name="guida_tracciati"),
+    # Numerazione di legge dei DDT (la stessa pagina del Gestionale, ridotta ai soli DDT senza quei permessi)
+    path("numerazione-ddt/", gestionale.numerazioni, name="numerazione_ddt"),
 ]

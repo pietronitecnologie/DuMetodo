@@ -7,7 +7,7 @@ from dumetodo.core.permessi import PROFILI, applica_profilo
 
 
 class Command(BaseCommand):
-    help = "Assegna a un utente i permessi di un profilo (Operatore, Caporeparto, Amministratore, Cliente)."
+    help = "Assegna a un utente i permessi di un profilo (es. Operatore, Amministratore, Amministrazione)."
 
     def add_arguments(self, parser: Any) -> None:
         parser.add_argument("utente")

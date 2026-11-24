@@ -1,28 +1,36 @@
 {% extends "base.html" %}
 {% block titolo %}DDT{% endblock %}
 {% block contenuto %}
-<div class="d-flex align-items-center mb-3"><h1 class="h4 me-auto mb-0">Registra DDT e invia il file tecnico</h1>
+<div class="d-flex align-items-center mb-2"><h1 class="h4 me-auto mb-0">DDT: crea il documento di trasporto e invia il file tecnico</h1>
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'consegne:ddt_storico' %}">DDT registrati</a></div>
-{% if puo_gestionale_ddt %}<div class="alert alert-info py-2 small">Il DDT si può anche <b>emettere da DuMetodo</b>, con numerazione automatica e stampa di legge:
-<a href="{% url 'gestionale:ddt_emetti' %}">Gestionale → DDT da emettere</a>. Il file tecnico viene inviato allo stesso modo.</div>{% endif %}
+<p class="small text-muted">Righe segnate come consegnate e non ancora in un DDT. <b>Crea DDT</b> assegna il numero dalla numerazione di legge
+(progressivo dell'anno, Amministrazione → Numerazione DDT), prepara la stampa e invia il <b>file tecnico</b>.
+Se il DDT l'ha già emesso il gestionale esterno, registra solo il suo numero (in fondo).</p>
+{% if problemi %}<div class="alert alert-warning py-2 small">Per creare un DDT di legge mancano dei dati di mittente o destinatario: {{ problemi|join:" " }}
+  Si completano in Gestionale → Dati fiscali e impostazioni (profilo Amministrazione).</div>{% endif %}
 <form method="post" class="row g-3">{% csrf_token %}
-<div class="col-lg-9">
-  <table class="table table-sm bg-white align-middle"><thead><tr>
-    <th><input type="checkbox" class="form-check-input" checked onclick="document.querySelectorAll('input[name=riga]').forEach(c => c.checked = this.checked)"></th>
+<div class="col-xl-8">
+  <table class="table table-sm align-middle"><thead><tr>
+    <th><input type="checkbox" class="form-check-input" checked onclick="document.querySelectorAll('input[name=riga]').forEach(c => c.checked = this.checked)" title="Tutte"></th>
     <th>Ordine</th><th>Riga</th><th>Articolo</th><th>Var.</th><th class="text-end">Qtà</th><th>Consegnata il</th></tr></thead><tbody>
   {% for rc in righe %}<tr><td><input type="checkbox" class="form-check-input" name="riga" value="{{ rc.pk }}" checked></td>
-    <td>{{ rc.riga.ordine.codice_breve }}</td><td>{{ rc.riga.n_riga }}</td><td>{{ rc.riga.articolo }}</td><td>{{ rc.riga.variante }}</td>
+    <td><a href="{% url 'ordini:dettaglio' rc.riga.ordine_id %}">{{ rc.riga.ordine.codice_breve }}</a></td><td>{{ rc.riga.n_riga }}</td><td>{{ rc.riga.articolo }}</td><td>{{ rc.riga.variante }}</td>
     <td class="text-end">{{ rc.qta|floatformat:"-3" }}</td><td>{{ rc.consegna.creata_il|date:"d/m/Y" }}</td></tr>
   {% empty %}<tr><td colspan="7" class="text-muted text-center py-4">Nessuna riga consegnata in attesa di DDT.</td></tr>{% endfor %}
   </tbody></table>
 </div>
-<div class="col-lg-3"><div class="card"><div class="card-body">
-  <label class="form-label" for="numero">Numero DDT (dal gestionale)</label>
-  <input class="form-control mb-2" id="numero" name="numero" value="{{ numero }}" required maxlength="20" pattern="[A-Za-z0-9/_\-]+">
-  <label class="form-label" for="data">Data DDT</label>
-  <input class="form-control mb-3" id="data" name="data" type="date" value="{{ data }}" required>
-  <button class="btn btn-primary w-100" {% if not righe %}disabled{% endif %} onclick="return confirm('Registrare il DDT e inviare il file tecnico?')">Registra e invia</button>
-  <div class="form-text">Numero + anno devono essere unici. Il file è generato con il tracciato in Configurazione.</div>
-</div></div></div>
+<div class="col-xl-4">
+  {% include "gestionale/_dati_trasporto.html" %}
+  <details class="card mt-3"{% if manuale %} open{% endif %}><summary class="card-header">DDT già emesso dal gestionale esterno</summary>
+    <div class="card-body">
+      <label class="form-label" for="numero">Numero del DDT</label>
+      <input class="form-control form-control-sm mb-2" id="numero" name="numero" value="{{ numero }}" maxlength="20" pattern="[A-Za-z0-9/_\-]+">
+      <label class="form-label" for="data_manuale">Data del DDT</label>
+      <input class="form-control form-control-sm mb-2" id="data_manuale" name="data_manuale" type="date" value="{{ data_manuale }}">
+      <button class="btn btn-sm btn-outline-primary w-100" name="azione" value="registra" {% if not righe %}disabled{% endif %}
+        onclick="if (!document.getElementById('numero').value.trim()) { alert('Scrivi il numero del DDT del gestionale.'); return false; } return confirm('Registrare il DDT del gestionale e inviare il file tecnico?')">Registra e invia il file tecnico</button>
+      <div class="form-text">Numero + anno devono essere unici.</div>
+    </div></details>
+</div>
 </form>
 {% endblock %}

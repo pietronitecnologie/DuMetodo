@@ -30,11 +30,11 @@ class Sezione:
 
 
 MENU: tuple[Sezione, ...] = (
-    Sezione("Ordini", "ordini", (Voce("Elenco ordini", "ordini:lista", (F.ORDINI_VEDERE,)),)),
     Sezione(
         "Produzione",
         "produzione",
         (
+            Voce("Elenco ordini", "ordini:lista", (F.ORDINI_VEDERE,)),
             Voce("Agenda ordini", "pianificazione:agenda", (F.AGENDA,)),
             Voce("Agenda pulsanti", "pianificazione:agenda_pulsanti", (F.AGENDA,)),
             Voce("Pianificazione", "pianificazione:pagina", (F.PIANIFICAZIONE,)),
@@ -66,15 +66,30 @@ MENU: tuple[Sezione, ...] = (
         ),
     ),
     Sezione(
-        "Qualità",
-        "qualita",
+        "Tracciature",
+        "tracciatura",
         (
-            Voce("Nuovo controllo", "tracciabilita:qualita_nuovo", (F.TRACCIABILITA_REGISTRA,)),
+            # Tracciatura configurabile e la tracciabilità/qualità ereditata da Metodo: una sola sezione.
+            Voce("Nuova tracciatura", "tracciatura:nuova", (F.TRACCIATURA_REGISTRA,)),
+            Voce("Tracciature", "tracciatura:elenco", (F.TRACCIATURA_VEDERE,)),
+            Voce("Nuovo controllo qualità", "tracciabilita:qualita_nuovo", (F.TRACCIABILITA_REGISTRA,)),
             Voce("Controlli qualità", "tracciabilita:qualita", (F.TRACCIABILITA_CONSULTA, F.TRACCIABILITA_REGISTRA)),
             Voce("Nuova traccia", "tracciabilita:traccia_nuova", (F.TRACCIABILITA_REGISTRA,)),
             Voce("Tracce", "tracciabilita:tracce", (F.TRACCIABILITA_REGISTRA,)),
             Voce("Carica foto", "tracciabilita:file_carica", (F.TRACCIABILITA_REGISTRA,)),
             Voce("Foto e file", "tracciabilita:file_lista", (F.TRACCIABILITA_REGISTRA,)),
+            Voce("Modelli di tracciatura", "tracciatura:modelli", (F.TRACCIATURA_CONFIGURA,)),
+        ),
+    ),
+    Sezione(
+        "Timbrature",
+        "timbrature",
+        (
+            Voce("Presenze", "timbrature:presenze", (F.TIMBRATURE_VEDERE,)),
+            Voce("Timbrature e correzioni", "timbrature:timbrature", (F.TIMBRATURE_VEDERE,)),
+            Voce("Costi per reparto", "timbrature:costi", (F.TIMBRATURE_COSTI,)),
+            Voce("Lavoratori", "timbrature:lavoratori", (F.TIMBRATURE_VEDERE,)),
+            Voce("Postazioni", "timbrature:postazioni", (F.TIMBRATURE_GESTIRE,)),
         ),
     ),
     Sezione(
@@ -109,26 +124,6 @@ MENU: tuple[Sezione, ...] = (
         ),
     ),
     Sezione(
-        "Tracciatura",
-        "tracciatura",
-        (
-            Voce("Nuova tracciatura", "tracciatura:nuova", (F.TRACCIATURA_REGISTRA,)),
-            Voce("Tracciature", "tracciatura:elenco", (F.TRACCIATURA_VEDERE,)),
-            Voce("Modelli di tracciatura", "tracciatura:modelli", (F.TRACCIATURA_CONFIGURA,)),
-        ),
-    ),
-    Sezione(
-        "Timbrature",
-        "timbrature",
-        (
-            Voce("Presenze", "timbrature:presenze", (F.TIMBRATURE_VEDERE,)),
-            Voce("Timbrature e correzioni", "timbrature:timbrature", (F.TIMBRATURE_VEDERE,)),
-            Voce("Costi per reparto", "timbrature:costi", (F.TIMBRATURE_COSTI,)),
-            Voce("Lavoratori", "timbrature:lavoratori", (F.TIMBRATURE_VEDERE,)),
-            Voce("Postazioni", "timbrature:postazioni", (F.TIMBRATURE_GESTIRE,)),
-        ),
-    ),
-    Sezione(
         "Gestionale",
         "gestionale",
         (
@@ -146,6 +141,7 @@ MENU: tuple[Sezione, ...] = (
         "impostazioni",
         (
             Voce("Configurazione", "configurazione:pagina", (F.CONFIGURAZIONE,)),
+            Voce("Numerazione DDT", "configurazione:numerazione_ddt", (F.CONFIGURAZIONE,)),
             Voce("Aggiornamenti del client", "client:versioni", (F.CONFIGURAZIONE,)),
             Voce("Utenti e permessi", "utenti:lista", (F.UTENTI_VEDERE, F.UTENTI_GESTIRE, F.UTENTI_PERMESSI)),
             Voce("Reparti", "reparti:lista", (F.REPARTI,)),

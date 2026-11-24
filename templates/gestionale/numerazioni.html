@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titolo %}Numerazioni{% endblock %}
 {% block contenuto %}
-<h1 class="h4 mb-1">Numerazioni di DDT e fatture</h1>
+<h1 class="h4 mb-1">{% if solo_ddt %}Numerazione dei DDT{% else %}Numerazioni di DDT e fatture{% endif %}</h1>
 <p class="small text-muted mb-3">Ogni numerazione (sezionale) ha il suo progressivo, che riparte ogni anno. Qui scegli <b>da che numero partire</b>
 (es. 10, se fino al 9 hai emesso con un altro programma) e crei altre numerazioni; quando emetti un DDT o una fattura scegli quale usare.
 Non si può tornare su un numero già assegnato da DuMetodo.</p>

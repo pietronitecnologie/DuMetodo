@@ -176,7 +176,13 @@ def test_viste_consegna(client, in_spedizione, operatore, cliente):
     assert r["Location"] == f"/consegne/{c.pk}/"
     assert client.get(f"/consegne/{c.pk}/file/").content == bytes(c.file_contenuto)
     r = client.post(
-        "/consegne/ddt/", {"numero": "55", "data": "2026-04-02", "riga": list(c.righe.values_list("pk", flat=True))}
+        "/consegne/ddt/",
+        {
+            "azione": "registra",
+            "numero": "55",
+            "data_manuale": "2026-04-02",
+            "riga": list(c.righe.values_list("pk", flat=True)),
+        },
     )
     assert r.status_code == 302 and DDT.objects.get().numero == "55"
     assert b"55/2026" in client.get("/consegne/ddt/storico/").content

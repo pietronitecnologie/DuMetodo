@@ -13,7 +13,7 @@ from dumetodo.consegne import servizi as consegne
 from dumetodo.consegne.models import DDT
 from dumetodo.core.permessi import F, applica_profilo, codici_profilo, ha_permesso, sincronizza_permessi
 from dumetodo.gestionale import fatturapa, servizi
-from dumetodo.gestionale.models import Fattura, StatoFattura
+from dumetodo.gestionale.models import Fattura, Numerazione, StatoFattura
 from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 
@@ -325,7 +325,7 @@ def test_ddt_richiede_dati_fiscali_e_permesso(db, ufficio, operatore):
     with pytest.raises(OperazioneNonConsentita, match="dati fiscali"):
         servizi.emetti_ddt(ufficio, a, OGGI, _campi_ddt())
     with pytest.raises(OperazioneNonConsentita, match="permessi"):
-        servizi.emetti_ddt(operatore, a, OGGI, _campi_ddt())
+        servizi.emetti_ddt(User.objects.create_user("senza-permessi"), a, OGGI, _campi_ddt())
 
 
 def test_fattura_differita_emissione_e_nota_di_credito(db, ufficio, dati_fiscali):
@@ -435,10 +435,10 @@ def test_pagine_del_gestionale(client, db, ufficio, dati_fiscali):
     f.refresh_from_db()
     assert f.stato_sdi == "CON"
     assert "1 DDT emessi" in client.get("/gestionale/").content.decode()
-    # collegamento da Spedizioni → Consegna e DDT solo per chi ha il permesso
-    assert "Gestionale → DDT da emettere" in client.get("/consegne/ddt/").content.decode()
+    # il DDT di legge si crea anche da Spedizioni → DDT (con il solo permesso dei DDT)
+    assert "Emetti DDT" in client.get("/consegne/ddt/").content.decode()
     client.force_login(_utente("op", "Operatore"))
-    assert "Gestionale → DDT da emettere" not in client.get("/consegne/ddt/").content.decode()
+    assert "Emetti DDT" in client.get("/consegne/ddt/").content.decode()
     assert client.get(f"/gestionale/fatture/{f.pk}/xml/").status_code == 403
 
 
@@ -615,5 +615,35 @@ def test_pagina_numerazioni(client, db, ufficio):
     assert "il prossimo numero sarà 10" in r.content.decode()
     r = client.post("/gestionale/numerazioni/", {"tipo": "FAT", "nome": "Estero", "formato": "{numero}/E"}, follow=True)
     assert "Numerazione «Estero» salvata" in r.content.decode()
+    # Senza i permessi del Gestionale ma con la Configurazione: solo la numerazione dei DDT
     client.force_login(_utente("it", "Amministratore"))
-    assert client.get("/gestionale/numerazioni/").status_code == 403
+    pagina = client.get("/configurazione/numerazione-ddt/").content.decode()
+    assert "Numerazione dei DDT" in pagina and "Estero" not in pagina
+    r = client.post(
+        "/configurazione/numerazione-ddt/", {"tipo": "FAT", "nome": "Altra", "formato": "{numero}/X"}, follow=True
+    )
+    assert "solo le numerazioni dei DDT" in r.content.decode()
+    r = client.post(
+        "/configurazione/numerazione-ddt/", {"tipo": "DDT", "nome": "Reso", "formato": "R{numero}"}, follow=True
+    )
+    assert "Numerazione «Reso» salvata" in r.content.decode()
+
+
+def test_ddt_creato_da_spedizioni_con_numerazione_e_stampa(client, db, ufficio, dati_fiscali, operatore):
+    from dumetodo.consegne.models import DDT, OrigineDDT
+
+    righe = _consegna(ufficio, **{"ART-A": (3, Decimal("2"))})
+    ddt_num = Numerazione.objects.get(tipo="DDT", predefinita=True)
+    servizi.imposta_prossimo(ufficio, ddt_num.pk, OGGI.year, 41)  # si riparte dal 41 (prima un altro programma)
+    client.force_login(operatore)  # nessun permesso del Gestionale: solo Spedizioni → DDT
+    pagina = client.get("/consegne/ddt/").content.decode()
+    assert ddt_num.numero(41, OGGI.year) in pagina  # il prossimo numero è mostrato prima di emettere
+    r = client.post(
+        "/consegne/ddt/", {"azione": "crea", "riga": righe, "data": OGGI.isoformat(), **_campi_ddt(colli=1)}
+    )
+    d = DDT.objects.get()
+    assert r.status_code == 302 and r["Location"].endswith(f"?creato={d.pk}")
+    assert (d.origine, d.progressivo, d.numero) == (OrigineDDT.DUMETODO, 41, ddt_num.numero(41, OGGI.year))
+    assert "Stampa il DDT" in client.get(r["Location"]).content.decode()
+    assert client.get(f"/gestionale/ddt/{d.pk}/stampa/").status_code == 200
+    assert client.get("/gestionale/").status_code == 403  # il resto del Gestionale resta riservato

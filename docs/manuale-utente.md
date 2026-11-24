@@ -143,7 +143,7 @@ Nel client desktop il pulsante **💬 Chat** nella barra delle schede apre il pa
 
 ### Elenco ordini
 
-La pagina **Ordini → Elenco ordini** parte vuota, perché gli ordini sono migliaia: imposta almeno un filtro e
+La pagina **Produzione → Elenco ordini** parte vuota, perché gli ordini sono migliaia: imposta almeno un filtro e
 premi **Cerca** (o Invio).
 
 - Filtri: ordine (numero, serie, appendice), articolo, anno, categoria, scadenza dal/al, *Solo aperti*.
@@ -257,17 +257,28 @@ riscaricabile.
 
 ### DDT
 
-**Spedizioni → DDT** collega le righe consegnate al DDT emesso dal gestionale.
+**Spedizioni → DDT** crea il documento di trasporto per le righe consegnate e invia il file tecnico.
 
 1. Seleziona le righe consegnate in attesa di DDT.
-2. Scrivi **numero** e **data** del DDT (numero + anno devono essere unici).
-3. **Registra e invia**: DuMetodo crea il file tecnico del DDT e lo invia.
+2. Controlla i **dati del trasporto**: causale, aspetto dei beni, colli, peso, trasporto a cura, porto ed
+   eventuale vettore. I valori proposti si impostano una volta per tutte nei dati fiscali.
+3. **Emetti DDT**: DuMetodo assegna il **numero di legge** dalla numerazione dei DDT (progressivo dell'anno,
+   mostrato prima di emettere), crea il DDT, genera e invia il **file tecnico**.
+4. Nella pagina **DDT registrati** compare **Stampa il DDT**: il documento da accompagnare alla merce.
 
-**DDT registrati** elenca i DDT con il file tecnico e lo stato dell'invio; **Reinvia** ripete l'invio non
-riuscito.
+- **Numerazione**: in **Amministrazione → Numerazione DDT** (permesso *Configurazione*) definisci la
+  numerazione, cioè il formato (per esempio `{numero}/{anno}`) e da che numero partire, per esempio 41 se fino
+  al 40 hai emesso con un altro programma.
+  - Il numero riparte ogni anno, non salta e non si ripete.
+  - Le date devono seguire i numeri: un DDT non può avere data precedente all'ultimo emesso.
+  - Si possono avere più numerazioni (es. una per i resi, `R{numero}`) e scegliere quale usare.
+- **Dati di mittente e destinatario**: per legge il DDT li deve riportare. Se mancano, la pagina lo segnala;
+  si completano in **Gestionale → Dati fiscali e impostazioni** (profilo Amministrazione).
+- **DDT emesso dal gestionale esterno**: apri il riquadro in fondo, scrivi numero e data del DDT e premi
+  **Registra e invia il file tecnico**.
 
-Se il DDT lo emette DuMetodo, con numerazione automatica e stampa di legge, si usa invece
-[Gestionale → DDT da emettere](#ddt-di-legge). Il file tecnico parte allo stesso modo.
+**DDT registrati** elenca i DDT con il file tecnico e lo stato dell'invio; **Stampa** riapre la stampa dei DDT
+emessi da DuMetodo; **Reinvia** ripete l'invio non riuscito.
 
 ### Importazione ordini
 
@@ -339,7 +350,7 @@ Registra il materiale che arriva dai fornitori.
 
 ### Controlli qualità
 
-**Qualità → Nuovo controllo**: scegli l'ordine (o lo stock), il codice prodotto e il **test**. DuMetodo mostra i
+**Tracciature → Nuovo controllo qualità**: scegli l'ordine (o lo stock), il codice prodotto e il **test**. DuMetodo mostra i
 controlli da eseguire:
 
 - per i controlli a numeri, scrivi il **campione** controllato e quanti pezzi sono **KO**;
@@ -421,7 +432,7 @@ lotto, un'operazione su un ordine, un documento, una fotografia. Che cosa si reg
 
 ### Registrare una tracciatura
 
-**Tracciatura → Nuova tracciatura** (permesso *Registrare tracciature*), oppure **Nuova** nel riquadro
+**Tracciature → Nuova tracciatura** (permesso *Registrare tracciature*), oppure **Nuova** nel riquadro
 «Tracciature» della pagina di un ordine o di un DDT.
 
 1. **Scegli il modello**. Se parti da un ordine, in evidenza («previsto») ci sono i modelli che valgono per i
@@ -450,13 +461,13 @@ Se il modello non ha controlli, la tracciatura è solo «registrata».
 Le tracciature non si cancellano: si **annullano** con il motivo. Le proprie le annulla chi le ha registrate, tutte
 le annulla chi configura i modelli.
 
-**Tracciatura → Tracciature** le elenca, con filtri per modello, categoria, codice, lotto, riferimento, esito e
+**Tracciature → Tracciature** le elenca, con filtri per modello, categoria, codice, lotto, riferimento, esito e
 periodo. **Excel** scarica i dati; scegliendo un modello si ha una colonna per ogni campo, utile per statistiche e
 carte di controllo.
 
 ### Modelli di tracciatura
 
-**Tracciatura → Modelli di tracciatura** (permesso *Configurare i modelli di tracciatura*).
+**Tracciature → Modelli di tracciatura** (permesso *Configurare i modelli di tracciatura*).
 
 Ogni modello ha:
 
@@ -825,7 +836,10 @@ Crea prima i controlli, poi i test che li usano.
 
 **Ho dimenticato la password.** Chiedi a un amministratore una password temporanea.
 
-**Non vedo la sezione Gestionale.** È riservata: serve il profilo Amministrazione, che assegna un superuser.
+**Non vedo la sezione Gestionale.** È riservata: serve il profilo **Amministrazione**, che nemmeno il superuser
+ha in automatico. Un superuser apre **Amministrazione → Utenti e permessi**, sceglie l'utente e fa **Applica
+profilo → Amministrazione**. In alternativa, sul server: `python manage.py assegna_profilo <utente> Amministrazione`.
+Per creare i DDT non serve: bastano **Spedizioni → DDT** e la numerazione in **Amministrazione → Numerazione DDT**.
 
 **Ho sbagliato una fattura già emessa.** Non si cancella: stornala con una nota di credito ed emetti quella giusta.
 

@@ -1,6 +1,7 @@
 import datetime as dt
 from decimal import Decimal, InvalidOperation
 from itertools import groupby
+from typing import Any
 
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -73,61 +74,72 @@ def indice(request: HttpRequest) -> HttpResponse:
 # ------------------------------------------------------------------------------------------------ DDT
 @richiede_permesso(F.GESTIONALE_DDT)
 def ddt_emetti(request: HttpRequest) -> HttpResponse:
-    oggi = timezone.localdate()
     valori = servizi.valori_predefiniti_ddt()
     if request.method == "POST":
-        p = request.POST
-        valori = {
-            k: p.get(k, "")
-            for k in (
-                "causale",
-                "aspetto_beni",
-                "trasporto_a_cura",
-                "porto",
-                "vettore",
-                "vettore_indirizzo",
-                "note",
-                "colli",
-                "peso_kg",
-            )
-        }
-        try:
-            data = _data(p.get("data", ""))
-            colli = int(p["colli"]) if p.get("colli", "").strip() else None
-            peso = Decimal(p["peso_kg"].replace(",", ".")) if p.get("peso_kg", "").strip() else None
-            ids = [int(i) for i in p.getlist("riga") if i.isdigit()]
-            d = servizi.emetti_ddt(
-                request.user, ids, data, {**valori, "colli": colli, "peso_kg": peso}, _numerazione(request)
-            )
-        except (ValueError, InvalidOperation):
-            messages.error(request, "Controlla data, colli e peso.")
-        except OperazioneNonConsentita as exc:
-            messages.error(request, str(exc))
-        else:
-            avviso = "" if d.email else " Il file tecnico NON è stato inviato: mancano i destinatari in Configurazione."
-            (messages.success if d.email else messages.warning)(
-                request, f"Emesso il DDT n. {d.numero}/{d.anno}.{avviso}"
-            )
+        valori, d = emetti_da_richiesta(request)
+        if d is not None:
             return redirect("gestionale:ddt", d.pk)
     righe = list(servizi.righe_da_emettere())
     gruppi = [(o, list(rr)) for o, rr in groupby(righe, key=lambda rc: rc.riga.ordine)]
     return render(
         request,
         "gestionale/ddt_emetti.html",
-        {
-            "gruppi": gruppi,
-            "n_righe": len(righe),
-            "valori": valori,
-            "oggi": oggi.isoformat(),
-            "causali": CAUSALI_TRASPORTO,
-            "trasporti": TRASPORTO_A_CURA,
-            "porti": PORTI,
-            "problemi": servizi.problemi_dati_ddt(),
-            "numerazioni": servizi.numerazioni(TipoNumerazione.DDT),
-            "destinatario": servizi.dati_cliente(),
-            "destinazione": config.leggi("gestionale.cliente_destinazione") or "",
-        },
+        {"gruppi": gruppi, "n_righe": len(righe), **contesto_trasporto(valori)},
     )
+
+
+CAMPI_TRASPORTO = (
+    "causale",
+    "aspetto_beni",
+    "trasporto_a_cura",
+    "porto",
+    "vettore",
+    "vettore_indirizzo",
+    "note",
+    "colli",
+    "peso_kg",
+)
+
+
+def emetti_da_richiesta(request: HttpRequest) -> tuple[dict[str, Any], Any]:
+    """Emette il DDT dai dati del modulo (usato da Gestionale e da Spedizioni → DDT). Ritorna valori e DDT (o None)."""
+    p = request.POST
+    valori: dict[str, Any] = {k: p.get(k, "") for k in CAMPI_TRASPORTO}
+    try:
+        data = _data(p.get("data", ""))
+        colli = int(p["colli"]) if p.get("colli", "").strip() else None
+        peso = Decimal(p["peso_kg"].replace(",", ".")) if p.get("peso_kg", "").strip() else None
+        ids = [int(i) for i in p.getlist("riga") if i.isdigit()]
+        d = servizi.emetti_ddt(
+            request.user, ids, data, {**valori, "colli": colli, "peso_kg": peso}, _numerazione(request)
+        )
+    except (ValueError, InvalidOperation):
+        messages.error(request, "Controlla data, colli e peso.")
+    except OperazioneNonConsentita as exc:
+        messages.error(request, str(exc))
+    else:
+        avviso = "" if d.email else " Il file tecnico NON è stato inviato: mancano i destinatari in Configurazione."
+        (messages.success if d.email else messages.warning)(request, f"Emesso il DDT n. {d.numero}/{d.anno}.{avviso}")
+        return valori, d
+    return valori, None
+
+
+def contesto_trasporto(valori: dict[str, Any]) -> dict[str, Any]:
+    """Dati per il riquadro «Dati del trasporto» (gestionale/_dati_trasporto.html)."""
+    oggi = timezone.localdate()
+    numerazioni = list(servizi.numerazioni(TipoNumerazione.DDT))
+    return {
+        "valori": valori,
+        "oggi": oggi.isoformat(),
+        "causali": CAUSALI_TRASPORTO,
+        "trasporti": TRASPORTO_A_CURA,
+        "porti": PORTI,
+        "problemi": servizi.problemi_dati_ddt(),
+        "numerazioni": numerazioni,
+        "prossimi": [(n, n.numero(servizi.prossimo_previsto(n, oggi.year), oggi.year)) for n in numerazioni],
+        "destinatario": servizi.dati_cliente(),
+        "destinazione": config.leggi("gestionale.cliente_destinazione") or "",
+    }
 
 
 @require_GET
@@ -183,7 +195,7 @@ def ddt(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @require_GET
-@richiede_permesso(F.GESTIONALE_VEDERE)
+@richiede_permesso(F.GESTIONALE_VEDERE, F.DDT)  # la stampa accompagna la merce: serve anche in Spedizioni
 def ddt_stampa(request: HttpRequest, pk: int) -> HttpResponse:
     d = get_object_or_404(DDT.objects.defer("file_contenuto"), pk=pk, origine=OrigineDDT.DUMETODO)
     return render(request, "gestionale/ddt_stampa.html", {"d": d, "doc": d.documento})
@@ -410,12 +422,23 @@ def impostazioni(request: HttpRequest) -> HttpResponse:
     )
 
 
-@richiede_permesso(F.GESTIONALE_IMPOSTAZIONI)
+@richiede_permesso(F.GESTIONALE_IMPOSTAZIONI, F.CONFIGURAZIONE)
 def numerazioni(request: HttpRequest) -> HttpResponse:
+    """Numerazioni di DDT e fatture. Da Configurazione (senza i permessi del Gestionale) solo quelle dei DDT."""
     anno = timezone.localdate().year
+    tutte = ha_permesso(request.user, F.GESTIONALE_IMPOSTAZIONI)
+    tipi = TipoNumerazione.choices if tutte else [(TipoNumerazione.DDT, TipoNumerazione.DDT.label)]
     if request.method == "POST":
         p = request.POST
         try:
+            if not tutte and (
+                p.get("tipo", TipoNumerazione.DDT) != TipoNumerazione.DDT
+                or (
+                    p.get("numerazione", "").isdigit()
+                    and not Numerazione.objects.filter(pk=int(p["numerazione"]), tipo=TipoNumerazione.DDT).exists()
+                )
+            ):
+                raise OperazioneNonConsentita("Da Configurazione si gestiscono solo le numerazioni dei DDT.")
             if p.get("azione") == "prossimo":
                 n = servizi.imposta_prossimo(
                     request.user, int(p["numerazione"]), int(p["anno"]), int(p.get("prossimo", "0"))
@@ -441,9 +464,9 @@ def numerazioni(request: HttpRequest) -> HttpResponse:
             messages.error(request, "Valori non validi.")
         except (OperazioneNonConsentita, Numerazione.DoesNotExist) as exc:
             messages.error(request, str(exc))
-        return redirect("gestionale:numerazioni")
+        return redirect(request.path)
     righe = []
-    for n in Numerazione.objects.all():
+    for n in Numerazione.objects.filter(tipo__in=[t for t, _ in tipi]):
         righe.append(
             {
                 "n": n,
@@ -457,5 +480,5 @@ def numerazioni(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "gestionale/numerazioni.html",
-        {"righe": righe, "tipi": TipoNumerazione.choices, "anno": anno},
+        {"righe": righe, "tipi": tipi, "anno": anno, "solo_ddt": not tutte},
     )

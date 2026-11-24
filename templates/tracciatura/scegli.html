@@ -11,6 +11,6 @@
     <div class="card-body"><div class="d-flex align-items-center gap-2"><span class="fw-semibold me-auto text-body">{{ m.nome }}</span>
       {% if m.pk in specifici %}<span class="badge text-bg-primary">previsto</span>{% endif %}<span class="badge text-bg-light border">{{ m.get_categoria_display }}</span></div>
       {% if m.descrizione %}<div class="small text-muted mt-1">{{ m.descrizione|truncatechars:140 }}</div>{% endif %}</div></a></div>
-{% empty %}<div class="col-12"><div class="alert alert-light border">Nessun modello di tracciatura: chi configura li crea in Tracciatura → Modelli.</div></div>{% endfor %}
+{% empty %}<div class="col-12"><div class="alert alert-light border">Nessun modello di tracciatura: chi configura li crea in Tracciature → Modelli.</div></div>{% endfor %}
 </div>
 {% endblock %}

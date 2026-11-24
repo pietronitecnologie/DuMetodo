@@ -5,6 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, OuterRef, Subquery, Sum
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from dumetodo.core.permessi import F, ha_permesso, richiede_permesso
@@ -118,10 +119,20 @@ def file_consegna(request: HttpRequest, pk: int) -> HttpResponse:
 # ----------------------------------------------------------------------------------------- DDT
 @richiede_permesso(F.DDT)
 def ddt(request: HttpRequest) -> HttpResponse:
+    """Righe consegnate in attesa di DDT: si crea il DDT da DuMetodo (numerazione di legge, stampa e file
+    tecnico) oppure si registra il numero di un DDT emesso dal gestionale esterno."""
+    from dumetodo.gestionale import servizi as gestionale
+    from dumetodo.gestionale.views import contesto_trasporto, emetti_da_richiesta
+
     oggi = dt.date.today()
-    if request.method == "POST":
+    valori = gestionale.valori_predefiniti_ddt()
+    if request.method == "POST" and request.POST.get("azione") == "crea":
+        valori, d = emetti_da_richiesta(request)
+        if d is not None:
+            return redirect(f"{reverse('consegne:ddt_storico')}?creato={d.pk}")
+    elif request.method == "POST":
         try:
-            data = dt.date.fromisoformat(request.POST.get("data", ""))
+            data = dt.date.fromisoformat(request.POST.get("data_manuale", ""))
             ids = [int(i) for i in request.POST.getlist("riga") if i.isdigit()]
             d = servizi.registra_ddt(request.POST.get("numero", ""), data, ids, request.user)
         except ValueError:
@@ -138,15 +149,17 @@ def ddt(request: HttpRequest) -> HttpResponse:
                     "configura i destinatari in Configurazione.",
                 )
             return redirect("consegne:ddt_storico")
+    righe = servizi.righe_senza_ddt()
     return render(
         request,
         "consegne/ddt.html",
         {
-            "righe": servizi.righe_senza_ddt(),
-            "puo_gestionale_ddt": ha_permesso(request.user, F.GESTIONALE_DDT),
-            "oggi": oggi,
+            **contesto_trasporto(valori),
+            "righe": righe,
+            "n_righe": len(righe),
+            "manuale": request.method == "POST" and request.POST.get("azione") != "crea",
+            "data_manuale": request.POST.get("data_manuale", oggi.isoformat()),
             "numero": request.POST.get("numero", ""),
-            "data": request.POST.get("data", oggi.isoformat()),
         },
     )
 
@@ -159,8 +172,14 @@ def ddt_storico(request: HttpRequest) -> HttpResponse:
         .annotate(n_righe=Count("righe"))
         .order_by("-anno", "-data", "-id")
     )
+    creato = request.GET.get("creato", "")
     return render(
-        request, "consegne/ddt_storico.html", {"pagina": Paginator(qs, 30).get_page(request.GET.get("pagina"))}
+        request,
+        "consegne/ddt_storico.html",
+        {
+            "pagina": Paginator(qs, 30).get_page(request.GET.get("pagina")),
+            "creato": DDT.objects.filter(pk=int(creato)).first() if creato.isdigit() else None,
+        },
     )
 
 

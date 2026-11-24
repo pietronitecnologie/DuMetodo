@@ -43,9 +43,9 @@
       <button class="btn btn-success w-100" {% if not totale_righe %}disabled{% endif %}>Genera bolla e consegna</button>
     </div>
   </form>
-  {% if puo_gestionale_ddt %}<div class="card mt-2"><div class="card-body small">
+  {% if perms.core.ddt %}<div class="card mt-2"><div class="card-body small">
     <strong>3. DDT</strong> — dopo la consegna, emetti il documento di trasporto con numerazione di legge in
-    <a href="{% url 'gestionale:ddt_emetti' %}">Gestionale → DDT da emettere</a> (genera anche il file tecnico).
+    <a href="{% url 'consegne:ddt' %}">Spedizioni → DDT</a> (genera anche il file tecnico).
   </div></div>{% endif %}
 </div>
 </div>

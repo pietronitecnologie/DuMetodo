@@ -145,7 +145,7 @@ def scegli_numerazione(tipo: str, numerazione_id: int | None) -> Numerazione:
     qs = numerazioni(tipo)
     n = qs.filter(pk=numerazione_id).first() if numerazione_id else qs.filter(predefinita=True).first() or qs.first()
     if n is None:
-        raise OperazioneNonConsentita("Numerazione non trovata o non attiva (Gestionale → Numerazioni).")
+        raise OperazioneNonConsentita("Numerazione non trovata o non attiva (Amministrazione → Numerazioni).")
     return n
 
 
@@ -172,13 +172,20 @@ def prossimo_previsto(numerazione: Numerazione, anno: int) -> int:
     return max(contatore.ultimo if contatore else 0, ultimo_usato(numerazione, anno)) + 1
 
 
+def _richiedi_numerazioni(utente: Any, tipo: str) -> None:
+    """Le numerazioni dei DDT si definiscono anche da Configurazione; quelle delle fatture solo dal Gestionale."""
+    if tipo == TipoNumerazione.DDT and ha_permesso(utente, F.GESTIONALE_IMPOSTAZIONI, F.CONFIGURAZIONE):
+        return
+    _richiedi(utente, F.GESTIONALE_IMPOSTAZIONI)
+
+
 @transaction.atomic
 def imposta_prossimo(utente: Any, numerazione_id: int, anno: int, prossimo: int) -> Numeratore:
     """Fa partire la numerazione di quell'anno da ``prossimo`` (es. 10 se fino al 9 si è usato un altro programma).
 
     Non si può tornare su numeri già assegnati da DuMetodo: due documenti avrebbero lo stesso numero."""
-    _richiedi(utente, F.GESTIONALE_IMPOSTAZIONI)
     numerazione = Numerazione.objects.get(pk=numerazione_id)
+    _richiedi_numerazioni(utente, numerazione.tipo)
     if not 2000 <= anno <= 2100:
         raise OperazioneNonConsentita("Anno non valido.")
     if prossimo < 1:
@@ -220,11 +227,11 @@ def salva_numerazione(
     predefinita: bool,
     attiva: bool = True,
 ) -> Numerazione:
-    _richiedi(utente, F.GESTIONALE_IMPOSTAZIONI)
     nome, formato = (nome or "").strip()[:60], (formato or "").strip()[:30]
+    n = Numerazione.objects.select_for_update().get(pk=numerazione_id) if numerazione_id else None
+    _richiedi_numerazioni(utente, n.tipo if n else tipo)
     if not nome:
         raise OperazioneNonConsentita("Indica il nome della numerazione.")
-    n = Numerazione.objects.select_for_update().get(pk=numerazione_id) if numerazione_id else None
     if n is None:
         if tipo not in TipoNumerazione.values:
             raise OperazioneNonConsentita("Tipo non valido.")
@@ -297,8 +304,11 @@ def quantita_testo(q: Decimal) -> str:
 def emetti_ddt(
     utente: Any, righe_ids: Sequence[int], data: dt.date, campi: dict[str, Any], numerazione_id: int | None = None
 ) -> DDT:
-    """DDT con numerazione progressiva dell'anno e dati di legge; genera e accoda il file tecnico."""
-    _richiedi(utente, F.GESTIONALE_DDT)
+    """DDT con numerazione progressiva dell'anno e dati di legge; genera e accoda il file tecnico.
+
+    Lo emette chi gestisce i DDT in Gestionale oppure chi registra i DDT in Spedizioni."""
+    if not ha_permesso(utente, F.GESTIONALE_DDT, F.DDT):
+        raise OperazioneNonConsentita("Non hai i permessi per questa operazione.")
     problemi = problemi_dati_ddt()
     if problemi:
         raise OperazioneNonConsentita("Completa i dati fiscali (Gestionale → Impostazioni): " + " ".join(problemi))
