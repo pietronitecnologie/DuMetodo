@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from dumetodo.configurazione import servizi as config
-from dumetodo.core.permessi import F, richiede_permesso
+from dumetodo.core.permessi import F, ha_permesso, richiede_permesso
 from dumetodo.ordini.servizi import OperazioneNonConsentita
 from dumetodo.pianificazione import calendario
 
@@ -230,3 +230,103 @@ def settimane(request: HttpRequest) -> HttpResponse:
             out.append([*riga, r["tot_scadenza"], r["tot_consegnato"]])
         return _xlsx("EvasoConsegnatoPerSettimana.xlsx", intestazione, out)
     return render(request, "report/settimane.html", {**dati, "fino_a": fino_a, "n": n})
+
+
+# ------------------------------------------------------------------ controllo della produttività (settimanale)
+def _periodo(request: HttpRequest) -> tuple[dt.date, list[dt.date]]:
+    fino_a = _data(request.GET.get("fino_a")) or timezone.localdate()
+    return fino_a, servizi.settimane_indietro(_numero_settimane(request), fino_a)
+
+
+@require_GET
+@richiede_permesso(F.REPORT_PRODUTTIVITA)
+def efficienza_reparti(request: HttpRequest) -> HttpResponse:
+    """Ore timbrate contro ore prodotte, per settimana e reparto."""
+    fino_a, settimane = _periodo(request)
+    dati = servizi.efficienza_reparti(settimane, con_costi=ha_permesso(request.user, F.TIMBRATURE_COSTI))
+    if request.GET.get("formato") == "xlsx":
+        intestazione = ["Settimana dal", "Al"]
+        for rep in dati["reparti"]:
+            intestazione += [f"{rep} – timbrate (h)", f"{rep} – prodotte (h)", f"{rep} – efficienza %"]
+        intestazione += ["Totale timbrate (h)", "di cui fuori reparto (h)", "Totale prodotte (h)", "Efficienza %"]
+        if dati["con_costi"]:
+            intestazione += ["Costo manodopera (€)", "Costo per ora prodotta (€)"]
+        out = []
+        for r in dati["righe"]:
+            riga = [r["lunedi"], r["domenica"]]
+            for c in r["celle"]:
+                riga += [c["timbrate"], c["prodotte"], c["efficienza"]]
+            riga += [r["timbrate"], r["non_assegnate"], r["prodotte"], r["efficienza"]]
+            if dati["con_costi"]:
+                riga += [r["costo"], r["costo_ora_prodotta"]]
+            out.append(riga)
+        return _xlsx("EfficienzaPerReparto.xlsx", intestazione, out)
+    return render(request, "report/efficienza_reparti.html", {**dati, "fino_a": fino_a, "n": len(settimane)})
+
+
+@require_GET
+@richiede_permesso(F.REPORT_PRODUTTIVITA)
+def puntualita(request: HttpRequest) -> HttpResponse:
+    """Consegne puntuali o in ritardo e arretrato a fine settimana."""
+    fino_a, settimane = _periodo(request)
+    righe = servizi.puntualita_arretrato(settimane)
+    if request.GET.get("formato") == "xlsx":
+        return _xlsx(
+            "PuntualitaArretrato.xlsx",
+            [
+                "Settimana dal",
+                "Al",
+                "Righe consegnate",
+                "Puntuali",
+                "In ritardo",
+                "Puntualità %",
+                "Ritardo medio (giorni)",
+                "Arretrato a fine settimana (righe)",
+                "Arretrato (h)",
+            ],
+            [
+                [
+                    r["lunedi"],
+                    r["domenica"],
+                    r["consegnate"],
+                    r["puntuali"],
+                    r["in_ritardo"],
+                    r["puntualita"],
+                    r["ritardo_medio"],
+                    r["arretrato_righe"],
+                    r["arretrato_ore"],
+                ]
+                for r in righe
+            ],
+        )
+    return render(
+        request,
+        "report/puntualita.html",
+        {
+            "righe": righe,
+            "fino_a": fino_a,
+            "n": len(settimane),
+            "resa_configurata": bool(config.leggi("produzione.prezzo_resa_oraria")),
+        },
+    )
+
+
+@require_GET
+@richiede_permesso(F.TIMBRATURE_VEDERE)
+def ore_lavoratori(request: HttpRequest) -> HttpResponse:
+    """Ore lavorate per lavoratore e settimana, con la quota passata in un reparto."""
+    fino_a, settimane = _periodo(request)
+    dati = servizi.ore_per_lavoratore(settimane)
+    if request.GET.get("formato") == "xlsx":
+        intestazione = ["Matricola", "Lavoratore"]
+        for s in dati["settimane"]:
+            intestazione += [f"{s:%d/%m/%Y} – ore", f"{s:%d/%m/%Y} – in reparto %"]
+        intestazione += ["Totale ore", "Media settimanale", "In reparto %", "Anomalie"]
+        out = []
+        for r in dati["righe"]:
+            riga = [r["lavoratore"].matricola, f"{r['lavoratore'].cognome} {r['lavoratore'].nome}"]
+            for c in r["celle"]:
+                riga += [c["ore"], c["in_reparto"]]
+            out.append([*riga, r["totale"], r["media"], r["in_reparto"], r["anomalie"]])
+        return _xlsx("OrePerLavoratore.xlsx", intestazione, out)
+    return render(request, "report/ore_lavoratori.html", {**dati, "fino_a": fino_a, "n": len(settimane)})

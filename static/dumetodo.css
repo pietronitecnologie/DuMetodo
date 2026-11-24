@@ -408,3 +408,10 @@ html.dm-modo-reparto .dm-contenuto .table .btn.btn-sm.dm-az { --bs-btn-font-size
 .dm-contenuto .btn-primary, .dm-contenuto .btn-success, .dm-contenuto .btn-danger, .dm-contenuto .btn-secondary { --bs-btn-font-weight: 600; }
 /* Nelle tabelle i pulsanti piccoli non vanno rimpiccioliti troppo: stessa misura dei pulsanti delle righe */
 html:not(.dm-modo-reparto) .dm-contenuto .table .btn-sm { --bs-btn-padding-y: .22rem; --bs-btn-padding-x: .42rem; --bs-btn-font-size: .78rem; }
+
+/* ---- Report: percentuali colorate (verde buono, ambra discreto, rosso basso) ------------------------ */
+.dm-perc { display: inline-block; min-width: 3.2em; padding: .05rem .4rem; border-radius: 999px; font-weight: 600; text-align: center; }
+.dm-perc-ok { background: #dff3e7; color: #12693b; }
+.dm-perc-medio { background: #fff0d1; color: #8a4f00; }
+.dm-perc-basso { background: #fde3e5; color: #b01f28; }
+.dm-perc-na { background: #eceff3; color: #3f4a5a; }

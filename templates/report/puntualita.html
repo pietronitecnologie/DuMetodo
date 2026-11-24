@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titolo %}Puntualità e arretrato{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Puntualità e arretrato</h1>
+<p class="small text-muted">Per ogni settimana, dalla più recente: righe consegnate (messe in bolla) <strong>entro la scadenza</strong> o
+<strong>in ritardo</strong>, con il ritardo medio, e l'<strong>arretrato a fine settimana</strong>: righe già scadute e non ancora consegnate
+a quella data. Puntualità: verde da 95%, giallo da 85%, rosso sotto.</p>
+{% if not resa_configurata %}<div class="alert alert-warning py-2 small">La resa oraria non è configurata (Configurazione → Produzione): l'arretrato si vede solo in righe.</div>{% endif %}
+{% include "report/_periodo.html" %}
+<div class="table-responsive"><table class="table table-sm table-bordered align-middle text-end small">
+  <thead><tr><th rowspan="2" class="text-start align-middle">Settimana</th><th colspan="5" class="text-center">Consegne della settimana (righe)</th><th colspan="2" class="text-center">Arretrato a fine settimana</th></tr>
+    <tr><th class="fw-normal">consegnate</th><th class="fw-normal">puntuali</th><th class="fw-normal">in ritardo</th><th class="fw-normal">puntualità</th><th class="fw-normal">ritardo medio</th>
+      <th class="fw-normal">righe</th><th class="fw-normal">ore</th></tr></thead>
+  <tbody>{% for r in righe %}<tr{% if forloop.first %} class="table-active"{% endif %}>
+    <td class="text-start text-nowrap">{{ r.lunedi|date:"d/m" }} – {{ r.domenica|date:"d/m/Y" }}{% if forloop.first %} <span class="badge text-bg-primary">corrente</span>{% endif %}</td>
+    <td>{{ r.consegnate }}</td><td>{{ r.puntuali }}</td><td class="{% if r.in_ritardo %}text-danger{% endif %}">{{ r.in_ritardo }}</td>
+    <td>{% include "report/_perc.html" with valore=r.puntualita classe=r.classe %}</td>
+    <td>{% if r.ritardo_medio is not None %}{{ r.ritardo_medio }} gg{% else %}—{% endif %}</td>
+    <td>{{ r.arretrato_righe }}</td><td>{{ r.arretrato_ore|default_if_none:"—" }}</td></tr>
+  {% empty %}<tr><td colspan="99" class="text-muted text-center">Nessun dato nel periodo.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

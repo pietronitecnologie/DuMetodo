@@ -10,4 +10,7 @@ urlpatterns = [
     path("materiale/", views.materiale, name="materiale"),
     path("settimane/", views.settimane, name="settimane"),
     path("prezzi/", views.prezzi, name="prezzi"),
+    path("efficienza-reparti/", views.efficienza_reparti, name="efficienza_reparti"),
+    path("puntualita/", views.puntualita, name="puntualita"),
+    path("ore-lavoratori/", views.ore_lavoratori, name="ore_lavoratori"),
 ]

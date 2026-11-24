@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titolo %}Efficienza per reparto{% endblock %}
+{% block contenuto %}
+<h1 class="h4">Efficienza per reparto</h1>
+<p class="small text-muted">Per ogni settimana, dalla più recente: <strong>ore timbrate</strong> nel reparto (Timbrature) e <strong>ore prodotte</strong>,
+cioè il valore delle righe consegnate di articoli del reparto diviso la resa oraria. <strong>Efficienza</strong> = ore prodotte / ore timbrate:
+verde da 95%, giallo da 80%, rosso sotto. Le ore timbrate fuori da ogni reparto e le consegne di articoli senza reparto contano solo nel totale.</p>
+{% if not resa_configurata %}<div class="alert alert-warning py-2 small">La resa oraria non è configurata (Configurazione → Produzione): le ore prodotte non si possono calcolare.</div>{% endif %}
+{% if not con_timbrature %}<div class="alert alert-light border py-2 small">Nel periodo non ci sono timbrature: le ore timbrate arrivano dal modulo Timbrature (postazioni e lavoratori).</div>{% endif %}
+{% if con_costi and senza_costo %}<div class="alert alert-warning py-2 small">Alcuni lavoratori non hanno il costo orario: il costo della manodopera è sottostimato (Timbrature → Lavoratori).</div>{% endif %}
+{% include "report/_periodo.html" %}
+<div class="table-responsive"><table class="table table-sm table-bordered align-middle text-end small">
+  <thead><tr><th rowspan="2" class="text-start align-middle">Settimana</th>{% for rep in reparti %}<th colspan="3" class="text-center">{{ rep }}</th>{% endfor %}
+    <th colspan="{% if con_costi %}5{% else %}3{% endif %}" class="text-center">Totale</th></tr>
+    <tr>{% for rep in reparti %}<th class="fw-normal">timbr.</th><th class="fw-normal">prod.</th><th class="fw-normal">eff.</th>{% endfor %}
+      <th class="fw-normal" title="ore timbrate, di cui fuori reparto">timbr.</th><th class="fw-normal">prod.</th><th class="fw-normal">eff.</th>
+      {% if con_costi %}<th class="fw-normal">costo €</th><th class="fw-normal" title="costo della manodopera per ora prodotta">€/h prod.</th>{% endif %}</tr></thead>
+  <tbody>{% for r in righe %}<tr{% if forloop.first %} class="table-active"{% endif %}>
+    <td class="text-start text-nowrap">{{ r.lunedi|date:"d/m" }} – {{ r.domenica|date:"d/m/Y" }}{% if forloop.first %} <span class="badge text-bg-primary">corrente</span>{% endif %}</td>
+    {% for c in r.celle %}<td>{{ c.timbrate|default_if_none:"—" }}</td><td>{{ c.prodotte|default_if_none:"—" }}</td><td>{% include "report/_perc.html" with valore=c.efficienza classe=c.classe %}</td>{% endfor %}
+    <td><strong>{{ r.timbrate|default_if_none:"—" }}</strong>{% if r.non_assegnate %}<div class="text-muted" title="ore fuori da ogni reparto">di cui {{ r.non_assegnate }} fuori</div>{% endif %}</td>
+    <td><strong>{{ r.prodotte|default_if_none:"—" }}</strong></td><td>{% include "report/_perc.html" with valore=r.efficienza classe=r.classe %}</td>
+    {% if con_costi %}<td>{{ r.costo|default_if_none:"—" }}</td><td>{{ r.costo_ora_prodotta|default_if_none:"—" }}</td>{% endif %}</tr>
+  {% empty %}<tr><td colspan="99" class="text-muted text-center">Nessun dato nel periodo.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

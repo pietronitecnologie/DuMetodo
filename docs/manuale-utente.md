@@ -371,6 +371,24 @@ Una traccia registra la storia di un elemento (scheda, lotto, componente) con un
 - **Controllo prezzi**: confronta il prezzo delle righe con il prezzo di riferimento dell'articolo, sulle righe
   in lavorazione (da correggere prima di consegnare) o su quelle già consegnate.
 
+### Controllo della produttività (per settimana)
+
+- **Efficienza per reparto**: per ogni settimana e reparto confronta le **ore timbrate** nel reparto (modulo
+  Timbrature) con le **ore prodotte**, cioè il valore delle righe consegnate di articoli del reparto diviso la
+  resa oraria.
+  - **Efficienza** = ore prodotte / ore timbrate: verde da 95%, giallo da 80%, rosso sotto.
+  - Nel totale ci sono anche le ore timbrate fuori da ogni reparto e le consegne di articoli senza reparto.
+  - Chi ha il permesso dei costi vede anche il **costo della manodopera** e il **costo per ora prodotta**.
+- **Puntualità e arretrato**: per ogni settimana, le righe consegnate **entro la scadenza** e **in ritardo**, la
+  percentuale di puntualità (verde da 95%, giallo da 85%) e il ritardo medio in giorni.
+  - Mostra anche l'**arretrato a fine settimana**: righe già scadute e non ancora consegnate a quella data, in
+    righe e in ore. Per la settimana in corso l'arretrato è calcolato ad oggi.
+- **Ore per lavoratore** (permesso di vedere le timbrature): ore lavorate per settimana e quota passata in un
+  **reparto** (verde da 90%, giallo da 75%).
+  - Una quota bassa vuol dire ore di presenza non attribuite a nessun reparto, oppure timbrature di reparto
+    dimenticate.
+  - Ci sono anche la media settimanale e le anomalie (timbrature mancanti o incoerenti).
+
 Nei report scegli il periodo (*Fino alla settimana del*, numero di settimane) e premi **Aggiorna**; **Excel**
 scarica i dati.
 

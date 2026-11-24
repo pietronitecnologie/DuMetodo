@@ -304,3 +304,194 @@ def controllo_prezzi(f: FiltriPrezzi) -> QuerySet[RigaOrdine]:
 
 def totale_differenze(qs: QuerySet[RigaOrdine]) -> Decimal:
     return qs.aggregate(t=Sum("differenza_totale"))["t"] or ZERO
+
+
+# ================================================================== controllo della produttività (settimanale)
+def _soglia(valore: Decimal | None, buono: int, discreto: int) -> str:
+    """Classe di colore per percentuali: verde sopra «buono», giallo sopra «discreto», altrimenti rosso."""
+    if valore is None:
+        return ""
+    return "ok" if valore >= buono else "medio" if valore >= discreto else "basso"
+
+
+def _percentuale(parte: Decimal | None, totale: Decimal | None) -> Decimal | None:
+    if parte is None or not totale:
+        return None
+    return (parte / totale * 100).quantize(Decimal("1"))
+
+
+def _turni_per_settimana(settimane: list[dt.date]) -> tuple[list[Any], dict[int, dict[dt.date, list[Any]]]]:
+    """Turni delle timbrature nel periodo, raggruppati per lavoratore e settimana (lunedì del giorno del turno)."""
+    from dumetodo.timbrature import servizi as timbrature
+    from dumetodo.timbrature.models import Lavoratore
+
+    lavoratori = list(Lavoratore.objects.order_by("cognome", "nome"))
+    per_lav: dict[int, dict[dt.date, list[Any]]] = defaultdict(lambda: defaultdict(list))
+    for lav_id, tt in timbrature.turni(settimane[0], settimane[-1] + dt.timedelta(days=6), lavoratori).items():
+        for t in tt:
+            per_lav[lav_id][calendario.lunedi(t.giorno)].append(t)
+    return lavoratori, per_lav
+
+
+def _ore_da_secondi(secondi: float) -> Decimal:
+    return (Decimal(str(secondi)) / 3600).quantize(Decimal("0.01"))
+
+
+def efficienza_reparti(settimane: list[dt.date], con_costi: bool = False) -> dict[str, Any]:
+    """Per settimana e reparto: ore timbrate (Timbrature) contro ore prodotte (valore consegnato / resa oraria).
+
+    Efficienza = ore prodotte / ore timbrate. Le ore timbrate fuori da ogni reparto e le righe consegnate di
+    articoli senza reparto contano solo nei totali. Con ``con_costi`` anche costo della manodopera e costo per
+    ora prodotta (dal costo orario dei lavoratori)."""
+    from dumetodo.core.models import Reparto
+
+    nomi = dict(Reparto.objects.values_list("pk", "nome"))
+    lavoratori, per_lav = _turni_per_settimana(settimane)
+    costo = {lav.pk: lav.costo_orario for lav in lavoratori}
+    sec: dict[dt.date, dict[str | None, float]] = {s: defaultdict(float) for s in settimane}
+    euro: dict[dt.date, Decimal] = defaultdict(lambda: ZERO)
+    senza_costo = False
+    for lav_id, settimane_lav in per_lav.items():
+        for lun, tt in settimane_lav.items():
+            for t in tt:
+                for rep_id, s in [*t.per_reparto.items(), (None, t.non_assegnato)]:
+                    sec[lun][nomi.get(rep_id) if rep_id else None] += s
+                    if costo[lav_id] is None:
+                        senza_costo = senza_costo or s > 0
+                    else:
+                        euro[lun] += Decimal(str(s)) / 3600 * costo[lav_id]
+    prodotte_reparto, _ = materiale_per_reparto(settimane)
+    prodotte: dict[dt.date, dict[str, Decimal | None]] = {s: {} for s in settimane}
+    for r in prodotte_reparto:
+        for i, s in enumerate(settimane):
+            prodotte[s][r["reparto"]] = r["celle"][i]["consegnato"]
+    reparti = sorted(
+        {n for s in settimane for n in sec[s] if n} | {r["reparto"] for r in prodotte_reparto} - {"Senza reparto"}
+    )
+    righe = []
+    for lun in reversed(settimane):
+        celle = []
+        for nome in reparti:
+            h = _ore_da_secondi(sec[lun].get(nome, 0))
+            p = prodotte[lun].get(nome)
+            e = _percentuale(p, h)
+            celle.append({"timbrate": h or None, "prodotte": p, "efficienza": e, "classe": _soglia(e, 95, 80)})
+        tot_h = _ore_da_secondi(sum(sec[lun].values()))
+        tot_p = _somma(prodotte[lun].values())
+        e = _percentuale(tot_p, tot_h)
+        riga = {
+            "lunedi": lun,
+            "domenica": lun + dt.timedelta(days=6),
+            "celle": celle,
+            "timbrate": tot_h or None,
+            "non_assegnate": _ore_da_secondi(sec[lun].get(None, 0)) or None,
+            "prodotte": tot_p,
+            "efficienza": e,
+            "classe": _soglia(e, 95, 80),
+        }
+        if con_costi:
+            c = euro[lun].quantize(Decimal("0.01"))
+            riga["costo"] = c or None
+            riga["costo_ora_prodotta"] = (c / tot_p).quantize(Decimal("0.01")) if c and tot_p else None
+        righe.append(riga)
+    return {
+        "reparti": reparti,
+        "righe": righe,
+        "con_costi": con_costi,
+        "senza_costo": senza_costo,
+        "resa_configurata": bool(config.leggi("produzione.prezzo_resa_oraria")),
+        "con_timbrature": any(r["timbrate"] for r in righe),
+    }
+
+
+def puntualita_arretrato(settimane: list[dt.date]) -> list[dict[str, Any]]:
+    """Per settimana: righe consegnate entro la scadenza o in ritardo (con il ritardo medio in giorni) e
+    arretrato a fine settimana (righe già scadute e non ancora consegnate a quella data)."""
+    from django.db.models import DecimalField, ExpressionWrapper
+
+    valore = ExpressionWrapper(
+        F("qta") * F("prezzo_unitario"), output_field=DecimalField(max_digits=20, decimal_places=7)
+    )
+    resa = config.leggi("produzione.prezzo_resa_oraria")
+    oggi = timezone.localdate()
+    righe = []
+    for lun in reversed(settimane):
+        dom = lun + dt.timedelta(days=6)
+        puntuali = ritardo = 0
+        giorni_ritardo = 0
+        for consegna, scadenza in (
+            RigaOrdine.objects.filter(bolla_emessa=True, data_consegna__range=(lun, dom))
+            .exclude(stato=StatoRiga.ANNULLATA)
+            .values_list("data_consegna", "data_scadenza")
+        ):
+            if scadenza is None or consegna <= scadenza:
+                puntuali += 1
+            else:
+                ritardo += 1
+                giorni_ritardo += (consegna - scadenza).days
+        consegnate = puntuali + ritardo
+        # Arretrato «a fine settimana»: per la settimana in corso, ad oggi (ciò che scade oggi non è ancora in ritardo).
+        riferimento = min(dom + dt.timedelta(days=1), oggi)
+        fine = (
+            timezone.now() if riferimento >= oggi else timezone.make_aware(dt.datetime.combine(riferimento, dt.time()))
+        )
+        arretrato = (
+            RigaOrdine.objects.filter(stato=StatoRiga.ATTIVA, data_scadenza__lt=riferimento, creato_il__lt=fine)
+            .filter(Q(bolla_emessa=False) | Q(data_consegna__gte=riferimento))
+            .aggregate(n=Count("pk"), valore=Sum(valore))
+        )
+        perc = _percentuale(Decimal(puntuali), Decimal(consegnate)) if consegnate else None
+        righe.append(
+            {
+                "lunedi": lun,
+                "domenica": dom,
+                "consegnate": consegnate,
+                "puntuali": puntuali,
+                "in_ritardo": ritardo,
+                "puntualita": perc,
+                "classe": _soglia(perc, 95, 85),
+                "ritardo_medio": (Decimal(giorni_ritardo) / ritardo).quantize(Decimal("0.1")) if ritardo else None,
+                "arretrato_righe": arretrato["n"],
+                "arretrato_ore": (
+                    (arretrato["valore"] / resa).quantize(Decimal("0.01")) if resa and arretrato["valore"] else None
+                ),
+            }
+        )
+    return righe
+
+
+def ore_per_lavoratore(settimane: list[dt.date]) -> dict[str, Any]:
+    """Per lavoratore e settimana: ore lavorate (presenza meno mensa e pausa) e quota passata in un reparto.
+
+    «In reparto» basso significa ore di presenza non attribuite a nessun reparto: tempo che non si sa dove
+    sia andato (o timbrature di reparto dimenticate)."""
+    lavoratori, per_lav = _turni_per_settimana(settimane)
+    righe = []
+    for lav in lavoratori:
+        celle = []
+        tot_lav = tot_rep = ZERO
+        anomalie = 0
+        for lun in reversed(settimane):
+            tt = per_lav.get(lav.pk, {}).get(lun, [])
+            lavorato = _ore_da_secondi(sum(t.lavorato for t in tt))
+            in_reparto = _ore_da_secondi(sum(sum(t.per_reparto.values()) for t in tt))
+            anomalie += sum(len(t.anomalie) for t in tt)
+            tot_lav += lavorato
+            tot_rep += in_reparto
+            q = _percentuale(in_reparto, lavorato)
+            celle.append({"ore": lavorato or None, "in_reparto": q, "classe": _soglia(q, 90, 75), "turni": len(tt)})
+        if not tot_lav and not lav.attivo:
+            continue
+        q = _percentuale(tot_rep, tot_lav)
+        righe.append(
+            {
+                "lavoratore": lav,
+                "celle": celle,
+                "totale": tot_lav or None,
+                "in_reparto": q,
+                "classe": _soglia(q, 90, 75),
+                "media": (tot_lav / len(settimane)).quantize(Decimal("0.1")) if tot_lav else None,
+                "anomalie": anomalie,
+            }
+        )
+    return {"settimane": list(reversed(settimane)), "righe": righe}
