@@ -68,16 +68,11 @@ MENU: tuple[Sezione, ...] = (
         "Tracciature",
         "tracciatura",
         (
-            # Tracciatura configurabile e la tracciabilità/qualità ereditata da Metodo: una sola sezione.
+            # Tracciatura configurabile (controlli qualità, lotti, foto…) e l'archivio delle tracce di Metodo.
             Voce("Nuova tracciatura", "tracciatura:nuova", (F.TRACCIATURA_REGISTRA,)),
             Voce("Tracciature", "tracciatura:elenco", (F.TRACCIATURA_VEDERE,)),
-            Voce("Nuovo controllo qualità", "tracciabilita:qualita_nuovo", (F.TRACCIABILITA_REGISTRA,)),
-            Voce("Controlli qualità", "tracciabilita:qualita", (F.TRACCIABILITA_CONSULTA, F.TRACCIABILITA_REGISTRA)),
-            Voce("Nuova traccia", "tracciabilita:traccia_nuova", (F.TRACCIABILITA_REGISTRA,)),
-            Voce("Tracce", "tracciabilita:tracce", (F.TRACCIABILITA_REGISTRA,)),
-            Voce("Carica foto", "tracciabilita:file_carica", (F.TRACCIABILITA_REGISTRA,)),
-            Voce("Foto e file", "tracciabilita:file_lista", (F.TRACCIABILITA_REGISTRA,)),
             Voce("Modelli di tracciatura", "tracciatura:modelli", (F.TRACCIATURA_CONFIGURA,)),
+            Voce("Tracce (archivio)", "tracciabilita:tracce", (F.TRACCIABILITA_CONSULTA,)),
         ),
     ),
     Sezione(
@@ -144,7 +139,6 @@ MENU: tuple[Sezione, ...] = (
             Voce("Aggiornamenti del client", "client:versioni", (F.CONFIGURAZIONE,)),
             Voce("Utenti e permessi", "utenti:lista", (F.UTENTI_VEDERE, F.UTENTI_GESTIRE, F.UTENTI_PERMESSI)),
             Voce("Reparti", "reparti:lista", (F.REPARTI,)),
-            Voce("Test e controlli qualità", "tracciabilita:test_lista", (F.QUALITA_TEST,)),
             Voce("Admin tecnico (Django)", "admin:index", solo_staff=True),
         ),
     ),

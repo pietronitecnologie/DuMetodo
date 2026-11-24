@@ -23,7 +23,7 @@ Tutte le funzioni dell'app `Prod` di Metodo sono state riscritte.
 | **Consegna** con bolla, **DDT** con file tecnico, **etichette** | ✅ |
 | **Anagrafica articoli**, **agenda** ordini e pulsanti, **pianificazione** con report email, **tabulati** | ✅ |
 | **Magazzino**: componenti, inventario, richieste materiali, distinte base, DDT in ingresso | ✅ |
-| **Tracciabilità e qualità**: tracce, lotti/buste, controllo qualità, foto | ✅ |
+| **Tracciature**: controlli qualità, lotti, operazioni, foto e documenti (modelli configurabili); archivio delle tracce | ✅ |
 | **Report**: dashboard, analisi produttività, materiale per reparto/settimana, controllo prezzi | ✅ |
 | **Utilità**: errori di importazione, ristampa etichette da DDT, annunci, scorporazione di massa, cambia ordine | ✅ |
 | **Permessi granulari** per funzione, pagina Utenti e permessi | ✅ |
@@ -148,33 +148,31 @@ d'inventario. Quando un materiale arriva con un DDT in ingresso (inserito a mano
 richieste materiali aperte per lo stesso codice e variante, di qualsiasi reparto, vengono **chiuse
 automaticamente**; sulla richiesta resta la riga del DDT che l'ha chiusa. La giacenza non cambia.
 
-## Tracciabilità e qualità
+## Tracciature e archivio delle tracce
 
-Menu **Tracciabilità e qualità** (app `dumetodo.tracciabilita`). La pagina di ogni ordine mostra
-tracce, lotto/busta, controlli qualità, foto e file dell'ordine.
+Tutto ciò che si registra (controlli qualità, lotti, operazioni, foto e documenti) passa dal modulo
+**Tracciatura** (`dumetodo.tracciatura`): modelli configurabili con campi tipizzati ed esito automatico.
 
-* **Elementi tracciati:** ogni elemento fisico ha un codice UNICO; in Metodo ogni evento creava un nuovo item.
-* **Tracce generiche:** chiave = valore su un codice; a un codice esistente si aggiungono eventi.
-* **Lotto/busta** dalla pagina dell'ordine; un doppio invio non crea doppioni.
-* **Etichette:** Code128 generato nel browser (JsBarcode, in `static/vendor`), pagina di stampa.
-* **Controllo qualità:** i **test** (con i loro **controlli**) si definiscono in Amministrazione → Test e controlli qualità. Un
-  controllo è "campione/KO" (numeri interi, KO ≤ campione) oppure "presente/assente". Distinta e
-  disegno sono controlli di presenza con codice `distinta` e `disegno` (in Metodo: id 8 e 9 nel codice).
-* **Foto e file per ordine:** dal telefono le foto vengono ridotte a 1024 px prima dell'invio. Sono
-  ammessi JPEG, PNG, GIF, WebP e PDF (tipo verificato dal contenuto) fino alla dimensione configurata.
-  I file stanno in `MEDIA_ROOT` (mai servito pubblicamente) e si scaricano solo da una vista che
-  controlla i permessi.
-* **Liste:** filtri in GET, paginazione ed **esportazione xlsx degli stessi dati filtrati**; gli
-  intervalli di date comprendono il giorno finale.
-* **Permessi:** il Fornitore registra; il Cliente consulta i controlli qualità e quanto è collegato
-  ai suoi ordini.
+* **Conversione delle vecchie funzioni** (migrazione `tracciatura 0002`, poi eliminazione in
+  `tracciabilita 0005`):
+  * i test qualità diventano modelli di categoria *Controllo qualità*;
+  * i controlli a campione diventano i campi «campione» e «KO» (KO > 0 = non conforme), quelli di presenza
+    campi Sì/No;
+  * i controlli registrati diventano tracciature;
+  * i file degli ordini diventano tracciature del modello *Foto e file dell'ordine*, senza spostare i file;
+  * se lotto/busta era in uso, viene creato il modello *Lotto e busta*.
+
+  La logica è in `dumetodo/tracciatura/da_qualita.py`, usata anche dall'importazione da Metodo.
+* **Archivio delle tracce** (`dumetodo.tracciabilita`, in sola lettura): le tracce registrate in passato e
+  quelle importate da Metodo (anche milioni di righe), con ricerca, esportazione xlsx, storia dell'elemento ed
+  etichetta Code128. Il Cliente vede solo le tracce dei suoi ordini.
 * Non riportati da Metodo perché non più usati: reclami, test display, batterie (con i work order di
   ricarica), cavi e postazioni dei banchi di prova (API `insertTracciaCavi`), *Attiva produzione*.
 
 ## Permessi
 
 Ogni funzione del sito è un permesso assegnabile al singolo utente dalla pagina **Amministrazione → Utenti e
-permessi**, raggruppato per sezione (Produzione, Magazzino, Tracciabilità e qualità, Report, Utilità,
+permessi**, raggruppato per sezione (Produzione, Magazzino, Archivio tracce, Report, Utilità,
 Amministrazione). I **profili** (Operatore, Caporeparto, Amministratore, Cliente) sono punti di partenza:
 applicati a un utente, gli assegnano un insieme di permessi che poi si personalizza funzione per funzione.
 Il catalogo delle funzioni è in `dumetodo/core/permessi.py`; un test controlla che ogni pagina richieda
@@ -187,7 +185,7 @@ i permessi dell'area; il ruolo superuser lo cambia solo un superuser. Le passwor
 mostrate una volta) e quelle dei nuovi utenti vanno cambiate al primo accesso; ognuno cambia la propria da
 *Cambia password* nel menu utente. Ogni modifica finisce nello storico dell'utente.
 
-Tutto si gestisce da DuMetodo: utenti, reparti, test e controlli qualità, articoli. L'admin di Django
+Tutto si gestisce da DuMetodo: utenti, reparti, modelli di tracciatura, articoli. L'admin di Django
 (menu *Admin tecnico*, solo superuser) serve solo per interventi tecnici.
 
 Da riga di comando: `python manage.py assegna_profilo <utente> Amministratore`.
@@ -212,9 +210,9 @@ python manage.py importa_configurazione_metodo configuration.csv --applica
   * note, segnate come già lette;
   * storico scadenze;
   * righe consegnate con i relativi DDT.
-  * tracciabilità e qualità: postazioni (senza token), elementi e tracce, test e controlli, controlli
-    qualità, file per ordine (reclami e test display non vengono importati). I file non vengono
-    copiati: copia la cartella `file/` della cartella media di Metodo in `MEDIA_ROOT`.
+  * tracce (nell'archivio), controlli qualità e file per ordine (come tracciature); reclami e test display
+    non vengono importati. I file non vengono copiati: copia la cartella `file/` della cartella media di
+    Metodo in `MEDIA_ROOT`.
 * **Ordini duplicati in Metodo:** quelli con la stessa chiave vengono fusi in uno solo e segnalati nel report.
 
 ### Prelievo dal Metodo in produzione (grandi volumi)

@@ -1,8 +1,2 @@
-{# Incluso nella pagina dell'ordine: tracciabilità, qualità e file, caricati a parte (HTMX). #}
-{% load static %}
-<div id="pannello-tracciabilita" hx-get="{% url 'tracciabilita:pannello_ordine' ordine.pk %}" hx-trigger="load" hx-swap="outerHTML">
-  <div class="card mb-3"><div class="card-body small text-muted">
-    Caricamento di tracciabilità, qualità e file… <noscript><a href="{% url 'tracciabilita:pannello_ordine' ordine.pk %}">apri</a></noscript>
-  </div></div>
-</div>
-<script src="{% static 'tracciabilita/foto.js' %}" defer></script>
+{# Incluso nella pagina dell'ordine: le tracce dell'archivio, caricate a parte (HTMX); niente se non ce ne sono. #}
+<div id="pannello-tracciabilita" hx-get="{% url 'tracciabilita:pannello_ordine' ordine.pk %}" hx-trigger="load" hx-swap="outerHTML"></div>

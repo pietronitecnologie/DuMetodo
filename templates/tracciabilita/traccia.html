@@ -4,10 +4,7 @@
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center mb-2 gap-2">
   <h1 class="h4 me-auto mb-0">{% if traccia.elemento %}Elemento {{ traccia.elemento }}{% else %}Traccia dell'ordine {{ traccia.ordine.codice_breve }}{% endif %}</h1>
-  {% if perms.core.tracciabilita_registra %}
-    {% if traccia.elemento %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tracciabilita:traccia_nuova' %}?codice={{ traccia.elemento.codice|urlencode }}">Aggiungi evento</a>{% endif %}
-    <a class="btn btn-sm btn-outline-dark" target="_blank" rel="noopener" href="{% url 'tracciabilita:stampa' %}?barcode={{ traccia.testo_barcode|urlencode }}">Stampa etichetta</a>
-  {% endif %}
+  <a class="btn btn-sm btn-outline-dark" target="_blank" rel="noopener" href="{% url 'tracciabilita:stampa' %}?barcode={{ traccia.testo_barcode|urlencode }}">Stampa etichetta</a>
 </div>
 
 <div class="card mb-3"><div class="card-body">

@@ -4,12 +4,14 @@
 - ``Tracciabilita`` -> ``Traccia`` con l'ordine come ForeignKey (era già una FK in Metodo);
 - batterie (eventi IN/RC), cavi (eventi dei banchi o codici col prefisso ``ITEM_CODE_CAVI``) e
   ``Plan.Asset`` (postazioni) NON vengono importati: funzioni eliminate da DuMetodo;
-- ``Check``/``Test`` -> ``Controllo``/``Test``. I Check 8 e 9, che il codice di Metodo usava come
-  "distinta" e "disegno", diventano i controlli di presenza con quei codici;
-- ``ControlloQlta`` (una riga per check, senza test) -> ``ControlloQualita`` raggruppando le righe della
-  stessa registrazione; il test è quello che contiene tutti i controlli registrati;
-- ``FileOrdini``: gli ordini scritti come testo vengono cercati per chiave; i file restano dove sono:
-  va copiata la cartella ``file/`` della cartella media di Metodo in MEDIA_ROOT.
+- ``Test`` (con i suoi ``Check``) -> **modello di tracciatura** di categoria Controllo qualità: ogni check
+  a campione diventa i campi «campione» e «KO», i Check 8 e 9 (distinta e disegno, usati dal codice di
+  Metodo) campi Sì/No; vedi ``dumetodo.tracciatura.da_qualita``;
+- ``ControlloQlta`` (una riga per check, senza test) -> **tracciatura**, raggruppando le righe della stessa
+  registrazione; il modello è quello del test che contiene tutti i controlli registrati;
+- ``FileOrdini`` -> tracciature del modello «Foto e file dell'ordine». Gli ordini scritti come testo vengono
+  cercati per chiave; i file restano dove sono: va copiata la cartella ``file/`` della cartella media di
+  Metodo in MEDIA_ROOT.
 - ``Reclami`` e ``DisplayTest`` non vengono importati: funzioni non più usate.
 - ``WorkOrderTraccia`` non viene importato (work order delle batterie).
 """
@@ -23,34 +25,25 @@ from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any
 
+from django.contrib.auth.models import User
 from django.utils import timezone
-from django.utils.text import slugify
 
 from dumetodo.ordini.models import Ordine
 from dumetodo.tracciabilita import servizi
-from dumetodo.tracciabilita.models import (
-    Controllo,
-    ControlloQualita,
-    Elemento,
-    EsitoControllo,
-    FileOrdine,
-    Test,
-    TipoControllo,
-    TipoTest,
-    Traccia,
-)
+from dumetodo.tracciabilita.models import Elemento, Traccia
+from dumetodo.tracciatura import da_qualita as dq
+from dumetodo.tracciatura.models import Campo, Modello, Tracciatura, Valore
 
 if TYPE_CHECKING:
     from .importatore import Importatore
 
 # Chiavi primarie dei Check che il codice di Metodo usava per distinta e disegno (traccia.py:104,111).
-CHECK_METODO_PRESENZA = {8: "distinta", 9: "disegno"}
+CHECK_METODO_PRESENZA = {8: "Distinta", 9: "Disegno"}
+MODELLI = dq.Modelli(Modello=Modello, Campo=Campo, Tracciatura=Tracciatura, Valore=Valore, User=User)
 
 CAMPI_DATA_ORIGINALE = (
     (Elemento, "creato_il"),
     (Traccia, "inserita_il"),
-    (ControlloQualita, "creato_il"),
-    (FileOrdine, "caricato_il"),
 )
 
 
@@ -87,7 +80,10 @@ def _decimale(v: Any) -> Decimal | None:
 class ImportaTracciabilita:
     def __init__(self, imp: Importatore) -> None:
         self.imp, self.m, self.r = imp, imp.m, imp.r
-        self.controlli: dict[int, Controllo] = {}
+        self.controlli: dict[int, dq.Controllo] = {}  # id Check di Metodo -> controllo
+        self.test: list[tuple[set[int], dq.ModelloQualita]] = []  # (check del test, modello di tracciatura)
+        self.generico: dq.ModelloQualita | None = None
+        self.sistema: Any = None
 
     def esegui(self) -> None:
         from .importatore import _date_originali
@@ -183,79 +179,68 @@ class ImportaTracciabilita:
 
     # ------------------------------------------------------------------ qualità
     def _test(self) -> None:
-        presenza = {c.codice: c for c in Controllo.objects.filter(codice__in=CHECK_METODO_PRESENZA.values())}
         for c in self.m.righe("Prod_check"):
-            if c["id"] in CHECK_METODO_PRESENZA and CHECK_METODO_PRESENZA[c["id"]] in presenza:
-                self.controlli[c["id"]] = presenza[CHECK_METODO_PRESENZA[c["id"]]]
-                continue
-            nome = _t(c["nome"])[:100] or f"Controllo {c['id']}"
-            codice = slugify(nome)[:40] or "controllo"
-            if Controllo.objects.filter(codice=codice).exists():
-                codice = f"{codice}-{c['id']}"
-            self.controlli[c["id"]] = Controllo.objects.create(
-                codice=codice, nome=nome, descrizione=_t(c.get("descrizione"))[:200], tipo=TipoControllo.QUANTITA
-            )
-            self.r.conteggi["controlli qualità"] += 1
+            if c["id"] in CHECK_METODO_PRESENZA:
+                self.controlli[c["id"]] = dq.Controllo(c["id"], CHECK_METODO_PRESENZA[c["id"]], presenza=True)
+            else:
+                nome = _t(c["nome"])[:60] or f"Controllo {c['id']}"
+                self.controlli[c["id"]] = dq.Controllo(c["id"], nome)
         legami: dict[int, set[int]] = defaultdict(set)
         for tc in self.m.righe("Prod_test_checks"):
             legami[tc["test_id"]].add(tc["check_id"])
         for t in self.m.righe("Prod_test"):
-            nome = _t(t["nome"])[:100] or f"Test {t['id']}"
-            codice = slugify(nome)[:40] or "test"
-            if Test.objects.filter(codice=codice).exists():
-                codice = f"{codice}-{t['id']}"
-            test = Test.objects.create(
-                codice=codice,
-                nome=nome,
-                descrizione=_t(t.get("descrizione"))[:200],
-                tipo=t.get("tipo") if t.get("tipo") in TipoTest.values else TipoTest.CAMPIONE,
+            check = {c for c in legami.get(t["id"], set()) if c in self.controlli}
+            for flag, id_presenza in (("checkDistinta", 8), ("checkDisegno", 9)):
+                if t.get(flag) and id_presenza in self.controlli:
+                    check.add(id_presenza)
+            ordinati = sorted((self.controlli[c] for c in check), key=lambda c: (c.presenza, c.nome))
+            mq = dq.crea_modello(
+                MODELLI, _t(t["nome"]) or f"Test {t['id']}", ordinati, descrizione=_t(t.get("descrizione"))
             )
-            controlli = [self.controlli[c] for c in legami.get(t["id"], set()) if c in self.controlli]
-            for flag, codice_presenza in (("checkDistinta", "distinta"), ("checkDisegno", "disegno")):
-                if t.get(flag) and codice_presenza in presenza:
-                    controlli.append(presenza[codice_presenza])
-            test.controlli.set(controlli)
-            self.r.conteggi["test qualità"] += 1
+            self.test.append((check, mq))
+            self.r.conteggi["modelli di controllo qualità"] += 1
 
-    def _test_per(self, controlli: set[int], cache: dict[str, Any]) -> Test:
-        if "test" not in cache:
-            cache["test"] = [(t, {c.pk for c in t.controlli.all()}) for t in Test.objects.prefetch_related("controlli")]
-        adatti = [(len(c), t.pk, t) for t, c in cache["test"] if controlli <= c]
+    def _modello_per(self, check: set[int]) -> dq.ModelloQualita:
+        """Il test più piccolo che contiene tutti i controlli registrati; altrimenti un modello generico."""
+        adatti = [(len(c), mq.modello.pk, mq) for c, mq in self.test if check <= c]
         if adatti:
             return min(adatti, key=lambda x: (x[0], x[1]))[2]
-        if "generico" not in cache:
-            cache["generico"] = Test.objects.create(
-                codice="importato-da-metodo",
-                nome="Importato da Metodo",
+        if self.generico is None:
+            self.generico = dq.crea_modello(
+                MODELLI,
+                "Controllo qualità importato da Metodo",
+                [],
                 descrizione="Controlli di Metodo che non corrispondono a nessun test.",
                 attivo=False,
             )
             self.r.avviso(
-                "controlli qualità", "alcune registrazioni non corrispondono a un test: test 'importato-da-metodo'"
+                "controlli qualità", "alcune registrazioni non corrispondono a un test: modello generico (non attivo)"
             )
-        cache["generico"].controlli.add(*controlli)
-        return cache["generico"]
+        for c in sorted(check):
+            dq.aggiungi_controllo(MODELLI, self.generico, self.controlli[c])
+        return self.generico
+
+    def _operatore(self) -> Any:
+        self.sistema = self.sistema or dq.utente_sistema(MODELLI)
+        return self.sistema
 
     def _controlli_qualita(self) -> None:
         # In Metodo ogni check era una riga a sé, senza riferimento al test: si raggruppano le righe
         # della stessa registrazione (stesso ordine, prodotto e data).
         gruppi: dict[tuple[str, str, Any], list[dict[str, Any]]] = defaultdict(list)
         for r in self.m.righe("Prod_controlloqlta"):
-            gruppi[(_t(r.get("ordine"))[:50], _t(r["codiceProdotto"])[:50], r["data_inserimento"])].append(r)
-        cache: dict[str, Any] = {}
+            gruppi[(_t(r.get("ordine"))[:50], _t(r["codiceProdotto"])[:80], r["data_inserimento"])].append(r)
         for (testo_ordine, articolo, quando), righe in gruppi.items():
             data = _aware(quando)
             giorno = timezone.localtime(data).date() if data else dt.date(2000, 1, 1)
-            esiti: dict[int, EsitoControllo] = {}
+            esiti: dict[int, tuple[int, int] | bool] = {}
             for r in righe:
                 controllo = self.controlli.get(r.get("check_rif_id"))
-                if controllo is None or controllo.pk in esiti:
+                if controllo is None or controllo.chiave in esiti:
                     self.r.avviso("controlli qualità", f"riga id {r['id']}: controllo mancante o ripetuto, saltata")
                     continue
-                if controllo.tipo == TipoControllo.PRESENZA:
-                    esiti[controllo.pk] = EsitoControllo(
-                        controllo=controllo, presente=_t(r["ko"]).lower() == "presente"
-                    )
+                if controllo.presenza:
+                    esiti[controllo.chiave] = _t(r["ko"]).lower() == "presente"
                     continue
                 campione, ko = _intero(r["campione"]), _intero(r["ko"])
                 if campione is None or ko is None or ko > campione:
@@ -264,29 +249,30 @@ class ImportaTracciabilita:
                         f"riga id {r['id']}: campione {r['campione']!r} / KO {r['ko']!r} non validi",
                     )
                     continue
-                esiti[controllo.pk] = EsitoControllo(controllo=controllo, campione=campione, ko=ko)
+                esiti[controllo.chiave] = (campione, ko)
             if not esiti:
                 continue
             ordine = self._ordine_da_testo(testo_ordine, giorno)
             qta = next((_decimale(r.get("qtaInOrdine")) for r in righe if _t(r.get("qtaInOrdine"))), None)
-            cq = ControlloQualita.objects.create(
+            dq.registra(
+                MODELLI,
+                self._modello_per(set(esiti)),
+                esiti,
+                operatore=self._operatore(),
+                momento=data or timezone.now(),
                 ordine=ordine,
-                riferimento="" if ordine else (testo_ordine or "?"),
                 articolo=articolo or "?",
-                qta_in_ordine=qta,
-                test=self._test_per(set(esiti), cache),
-                data=giorno,
-                creato_il=data or timezone.now(),
+                riferimento="" if ordine else (testo_ordine or "?"),
+                qta=qta,
+                note="Importato da Metodo",
             )
-            for e in esiti.values():
-                e.controllo_qualita = cq
-            EsitoControllo.objects.bulk_create(esiti.values())
             self.r.conteggi["controlli qualità registrati"] += 1
             if testo_ordine and ordine is None:
                 self.r.conteggi["controlli qualità con ordine non trovato (tenuto come riferimento)"] += 1
 
     # ------------------------------------------------------------------ file
     def _file(self) -> None:
+        modello = campo = None
         for f in self.m.righe("Prod_fileordini"):
             anno = _intero(f.get("anno"))
             ordine = None
@@ -296,12 +282,17 @@ class ImportaTracciabilita:
             if ordine is None or not nome:
                 self.r.avviso("file ordini", f"file id {f['id']} ({nome}): ordine non trovato, saltato")
                 continue
-            FileOrdine.objects.create(
+            if modello is None:
+                modello, campo = dq.modello_file(MODELLI)
+            dq.registra_file(
+                MODELLI,
+                modello,
+                campo,
                 ordine=ordine,
-                file=nome,
-                nome_originale=nome.rsplit("/", 1)[-1],
-                tipo_contenuto=mimetypes.guess_type(nome)[0] or "application/octet-stream",
-                dimensione=0,
-                caricato_il=_aware(f.get("data_inserimento")) or timezone.now(),
+                percorso=nome,
+                nome=nome.rsplit("/", 1)[-1],
+                tipo=mimetypes.guess_type(nome)[0] or "application/octet-stream",
+                momento=_aware(f.get("data_inserimento")) or timezone.now(),
+                operatore=self._operatore(),
             )
             self.r.conteggi["file ordini (da copiare dalla cartella media di Metodo)"] += 1

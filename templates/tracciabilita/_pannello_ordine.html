@@ -1,20 +1,8 @@
 <div id="pannello-tracciabilita">
+{% if tracce %}
 <div class="card mb-3">
-  <div class="card-header d-flex align-items-center gap-2"><strong class="me-auto">Tracciabilità</strong>
-    {% if perms.core.tracciabilita_registra %}<a class="small" href="{% url 'tracciabilita:traccia_nuova' %}?ordine={{ ordine.codice_breve|urlencode }}">Nuova traccia</a>{% endif %}</div>
-  {% if perms.core.tracciabilita_registra %}
-  <div class="card-body border-bottom py-2">
-    <form method="post" action="{% url 'tracciabilita:lotto_busta' ordine.pk %}" class="row g-2 align-items-end"
-          hx-post="{% url 'tracciabilita:lotto_busta' ordine.pk %}" hx-target="#pannello-tracciabilita" hx-swap="outerHTML">{% csrf_token %}
-      <div class="col-5"><label class="form-label small mb-0" for="lotto-{{ ordine.pk }}">Lotto produzione</label>
-        <input type="text" class="form-control form-control-sm" id="lotto-{{ ordine.pk }}" name="lotto" maxlength="100"></div>
-      <div class="col-4"><label class="form-label small mb-0" for="busta-{{ ordine.pk }}">Busta</label>
-        <input type="text" class="form-control form-control-sm" id="busta-{{ ordine.pk }}" name="busta" maxlength="100"></div>
-      <div class="col-3"><button class="btn btn-sm btn-outline-primary w-100">Salva lotto</button></div>
-    </form>
-    {% if esito_lotto %}<div class="small mt-1 {% if ok %}text-success{% else %}text-danger{% endif %}">{{ esito_lotto }}</div>{% endif %}
-  </div>
-  {% endif %}
+  <div class="card-header d-flex align-items-center gap-2"><strong class="me-auto">Tracce (archivio)</strong>
+    <a class="small" href="{% url 'tracciabilita:tracce' %}?ordine={{ ordine.pk }}&dal=2000-01-01">tutte</a></div>
   <div class="table-responsive">
   <table class="table table-sm mb-0 small">
     <thead><tr><th>Data</th><th>Elemento</th><th>Chiave</th><th>Valore</th><th>Reparto</th></tr></thead>
@@ -22,51 +10,10 @@
     {% for t in tracce %}
     <tr><td><a href="{{ t.get_absolute_url }}">{{ t.data|date:"d/m/Y H:i" }}</a></td><td>{{ t.elemento.codice|default:"" }}</td>
       <td>{{ t.chiave_leggibile }}</td><td>{{ t.valore }}</td><td>{{ t.reparto|default:"" }}</td></tr>
-    {% empty %}<tr><td colspan="5" class="text-muted">Nessuna traccia.</td></tr>
     {% endfor %}
     </tbody>
   </table>
   </div>
 </div>
-
-<div class="card mb-3">
-  <div class="card-header d-flex align-items-center gap-2"><strong class="me-auto">Controlli qualità</strong>
-    {% if perms.core.tracciabilita_registra %}<a class="small" href="{% url 'tracciabilita:qualita_nuovo' %}?ordine={{ ordine.pk }}">Nuovo controllo</a>{% endif %}</div>
-  <ul class="list-group list-group-flush small">
-    {% for cq in controlli %}
-    <li class="list-group-item"><strong>{{ cq.test }}</strong> del {{ cq.data|date:"d/m/Y" }} · {{ cq.articolo }}{% if cq.eseguito_da %} · {{ cq.eseguito_da }}{% endif %}
-      <div>{% for e in cq.esiti.all %}<span class="badge {% if e.ko or e.presente is False %}text-bg-danger{% else %}text-bg-light{% endif %} me-1">{{ e }}</span>{% endfor %}</div></li>
-    {% empty %}<li class="list-group-item text-muted">Nessun controllo.</li>
-    {% endfor %}
-  </ul>
-</div>
-
-<div class="card mb-3">
-  <div class="card-header"><strong>Foto e file</strong></div>
-  <div class="card-body py-2">
-    <div class="d-flex flex-wrap gap-2">
-    {% for f in file %}
-      <div class="text-center small" style="width: 8rem">
-        <a href="{{ f.get_absolute_url }}" target="_blank" rel="noopener">
-          {% if f.is_immagine %}<img src="{{ f.get_absolute_url }}" alt="{{ f.nome_originale }}" class="img-thumbnail" style="max-height: 6rem" loading="lazy">
-          {% else %}<span class="d-block border rounded p-3">PDF</span>{% endif %}</a>
-        <div class="text-truncate" title="{{ f.nome_originale }}">{{ f.caricato_il|date:"d/m/Y" }}</div>
-        {% if perms.core.tracciabilita_file_elimina_tutti or f.caricato_da_id == user.pk and perms.core.tracciabilita_registra %}
-        <form method="post" action="{% url 'tracciabilita:file_elimina' f.pk %}" onsubmit="return confirm('Eliminare il file?')">{% csrf_token %}
-          <button class="btn btn-link btn-sm text-danger p-0">elimina</button></form>{% endif %}
-      </div>
-    {% empty %}<div class="text-muted small">Nessun file.</div>
-    {% endfor %}
-    </div>
-    {% if perms.core.tracciabilita_registra %}
-    <form method="post" enctype="multipart/form-data" action="{% url 'tracciabilita:file_ordine_carica' ordine.pk %}" class="row g-2 align-items-end mt-2" data-ridimensiona>{% csrf_token %}
-      <div class="col-md-5"><label class="form-label small mb-0">Scatta una foto</label>
-        <input type="file" class="form-control form-control-sm" name="file" accept="image/*" capture="environment"></div>
-      <div class="col-md-5"><label class="form-label small mb-0">oppure foto o PDF (max {{ dimensione_massima_mb }} MB)</label>
-        <input type="file" class="form-control form-control-sm" name="file" accept="image/*,application/pdf" multiple></div>
-      <div class="col-md-2"><button class="btn btn-sm btn-outline-primary w-100">Carica</button></div>
-    </form>
-    {% endif %}
-  </div>
-</div>
+{% endif %}
 </div>

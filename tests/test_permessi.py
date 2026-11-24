@@ -247,25 +247,6 @@ def test_reparti_dall_app(client, db):
     assert client.get("/reparti/").status_code == 403
 
 
-def test_test_e_controlli_qualita_dall_app(client, db):
-    from dumetodo.tracciabilita.models import Controllo, Test
-
-    client.force_login(_utente("q", F.QUALITA_TEST))
-    assert client.get("/tracciabilita/qualita/test/").status_code == 200
-    client.post("/tracciabilita/qualita/controlli/nuovo/", {"nome": "Prova funzionale", "tipo": "QTA"})
-    c = Controllo.objects.get(nome="Prova funzionale")
-    assert c.codice == "prova-funzionale"
-    dati = {"nome": "Pulsantiere", "tipo": "CMP", "attivo": "on", "controlli": [c.pk]}
-    client.post("/tracciabilita/qualita/test/nuovo/", dati)
-    t = Test.objects.get(nome="Pulsantiere")
-    assert list(t.controlli.all()) == [c] and t.attivo
-    # il codice dei controlli usati dal programma non cambia
-    distinta = Controllo.objects.get(codice="distinta")
-    url = f"/tracciabilita/qualita/controlli/{distinta.pk}/"
-    client.post(url, {"nome": "Distinta", "codice": "altro", "tipo": "PRE"})
-    assert Controllo.objects.get(pk=distinta.pk).codice == "distinta"
-
-
 def test_nuovo_articolo_dall_app(client, db):
     from dumetodo.anagrafica.models import Articolo
 

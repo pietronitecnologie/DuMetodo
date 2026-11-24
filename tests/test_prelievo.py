@@ -17,7 +17,8 @@ from dumetodo.migrazione import prelievo as modulo
 from dumetodo.migrazione.models import Avanzamento
 from dumetodo.migrazione.prelievo import Limitatore
 from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StoricoScadenza
-from dumetodo.tracciabilita.models import ControlloQualita, Elemento, FileOrdine, Traccia
+from dumetodo.tracciabilita.models import Elemento, Traccia
+from dumetodo.tracciatura.models import Tracciatura, Valore
 
 from .test_migrazione_tracciabilita import metodo_db  # noqa: F401  (fixture)
 
@@ -29,7 +30,10 @@ def _k(o):
 def _fotografia():
     """Tutto ciò che la migrazione produce, in forma confrontabile (senza le chiavi primarie)."""
     return {
-        "utenti": sorted(User.objects.values_list("username", "password", "is_active")),
+        "utenti": sorted(  # la password dell'utente di sistema è casuale (e inutilizzabile)
+            (u, "!" if p.startswith("!") else p, a)
+            for u, p, a in User.objects.values_list("username", "password", "is_active")
+        ),
         "reparti": sorted(Reparto.objects.values_list("codice", "nome")),
         "articoli": sorted(Articolo.objects.values_list("codice", "descrizione", "tabulato", "nuovo")),
         "ordini": sorted(
@@ -79,8 +83,14 @@ def _fotografia():
             (t.chiave, t.valore, t.ordine and _k(t.ordine), t.elemento and t.elemento.codice, t.data, t.inserita_il)
             for t in Traccia.objects.all()
         ),
-        "qualita": ControlloQualita.objects.count(),
-        "file": sorted(FileOrdine.objects.values_list("file", flat=True)),
+        "tracciature": sorted(
+            (t.modello.nome, t.ordine and _k(t.ordine), t.articolo, t.riferimento, t.esito, t.momento)
+            for t in Tracciatura.objects.select_related("modello", "ordine")
+        ),
+        "valori": sorted(
+            (v.campo.etichetta, v.intero, v.booleano, v.decimale, v.file.name)
+            for v in Valore.objects.select_related("campo")
+        ),
     }
 
 

@@ -89,7 +89,8 @@ def test_dati_demo_si_caricano_e_le_pagine_rispondono(client):
     assert Lavoratore.objects.count() == 6 and Timbratura.objects.exists()
     from dumetodo.tracciatura.models import Modello, Tracciatura
 
-    assert Modello.objects.count() == 3 and Tracciatura.objects.exists()
+    # 3 modelli di esempio + «Lotto e busta» + il controllo qualità «Pulsantiere»
+    assert Modello.objects.count() == 5 and Tracciatura.objects.exists()
     client.force_login(User.objects.get(username="admin"))
     for nome in [
         "ordini:lista",

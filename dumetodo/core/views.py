@@ -12,7 +12,6 @@ PAGINE_INIZIALI = (
     (F.PIANIFICAZIONE, "pianificazione:pagina"),
     (F.CONSEGNA, "consegne:pagina"),
     (F.MAGAZZINO_RICHIESTE, "magazzino:richieste"),
-    (F.TRACCIABILITA_CONSULTA, "tracciabilita:qualita"),
     (F.UTILITA_ANNUNCI, "utilita:indice"),
     (F.CONFIGURAZIONE, "configurazione:pagina"),
     (F.UTENTI_VEDERE, "utenti:lista"),

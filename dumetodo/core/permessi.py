@@ -35,7 +35,7 @@ GRUPPO_CLIENTE = "Cliente"
 class Sezione(StrEnum):
     PRODUZIONE = "Produzione"
     MAGAZZINO = "Magazzino"
-    QUALITA = "Tracciabilità e qualità"
+    QUALITA = "Archivio tracce"
     REPORT = "Report"
     UTILITA = "Utilità"
     AMMINISTRAZIONE = "Amministrazione"
@@ -84,8 +84,6 @@ class F:
     MAGAZZINO_DDT = "magazzino_ddt"
     MAGAZZINO_DDT_ELIMINA = "magazzino_ddt_elimina"
     TRACCIABILITA_CONSULTA = "tracciabilita_consulta"
-    TRACCIABILITA_REGISTRA = "tracciabilita_registra"
-    TRACCIABILITA_FILE_ELIMINA_TUTTI = "tracciabilita_file_elimina_tutti"
     REPORT_DASHBOARD = "report_dashboard"
     REPORT_PRODUTTIVITA = "report_produttivita"
     REPORT_MATERIALE = "report_materiale"
@@ -102,7 +100,6 @@ class F:
     UTENTI_PERMESSI = "utenti_permessi"
     REPARTI = "reparti"
     CHAT = "chat"
-    QUALITA_TEST = "qualita_test"
     TRACCIATURA_VEDERE = "tracciatura_vedere"
     TRACCIATURA_REGISTRA = "tracciatura_registra"
     TRACCIATURA_CONFIGURA = "tracciatura_configura"
@@ -158,16 +155,9 @@ FUNZIONI: list[Funzione] = [
     Funzione(
         F.TRACCIABILITA_CONSULTA,
         Sezione.QUALITA,
-        "Consultare tracciabilità e qualità",
-        "Tracce dell'ordine, controlli qualità, foto.",
+        "Consultare l'archivio delle tracce",
+        "Tracce registrate in passato (anche importate da Metodo), in sola lettura.",
     ),
-    Funzione(
-        F.TRACCIABILITA_REGISTRA,
-        Sezione.QUALITA,
-        "Registrare tracce e controlli",
-        "Tracce, lotti/buste, controlli qualità, foto.",
-    ),
-    Funzione(F.TRACCIABILITA_FILE_ELIMINA_TUTTI, Sezione.QUALITA, "Eliminare foto e file caricati da altri"),
     Funzione(F.REPORT_DASHBOARD, Sezione.REPORT, "Dashboard"),
     Funzione(F.REPORT_PRODUTTIVITA, Sezione.REPORT, "Analisi produttività"),
     Funzione(F.REPORT_MATERIALE, Sezione.REPORT, "Materiale per reparto e settimana"),
@@ -249,12 +239,6 @@ FUNZIONI: list[Funzione] = [
         riservata=True,
     ),
     Funzione(F.REPARTI, Sezione.AMMINISTRAZIONE, "Gestire i reparti", "Codice, nome, capacità settimanale, gruppo."),
-    Funzione(
-        F.QUALITA_TEST,
-        Sezione.QUALITA,
-        "Definire test e controlli qualità",
-        "Crea e modifica i test e i loro controlli (campione/KO o presente/assente).",
-    ),
     Funzione(F.UTENTI_VEDERE, Sezione.UTENTI, "Vedere utenti e permessi", "Elenco utenti, permessi e storico."),
     Funzione(
         F.UTENTI_GESTIRE,
@@ -295,7 +279,6 @@ _OPERATORE = {
     F.MAGAZZINO_DISTINTE,
     F.MAGAZZINO_DDT,
     F.TRACCIABILITA_CONSULTA,
-    F.TRACCIABILITA_REGISTRA,
     F.CHAT,
     F.TRACCIATURA_VEDERE,
     F.TRACCIATURA_REGISTRA,
@@ -475,6 +458,9 @@ def sincronizza_permessi(**kwargs: Any) -> None:
 # Vecchio codice -> codici che lo sostituiscono.
 RINOMINATI: dict[str, tuple[str, ...]] = {
     "utenti": (F.UTENTI_VEDERE, F.UTENTI_GESTIRE, F.UTENTI_PASSWORD, F.UTENTI_PERMESSI),
+    # Tracce, controlli qualità e foto ora si registrano con il modulo Tracciatura.
+    "tracciabilita_registra": (F.TRACCIABILITA_CONSULTA, F.TRACCIATURA_VEDERE, F.TRACCIATURA_REGISTRA),
+    "qualita_test": (F.TRACCIATURA_CONFIGURA,),
 }
 
 

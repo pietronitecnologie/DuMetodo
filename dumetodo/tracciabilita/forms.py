@@ -17,10 +17,6 @@ from django.utils import timezone
 from dumetodo.core.models import Reparto
 from dumetodo.ordini.selezione import CampoOrdine
 
-from .models import (
-    Test,
-)
-
 DATA = {"type": "date"}
 
 
@@ -56,48 +52,6 @@ class FormConStile(forms.Form):
 
 
 # =========================================================================== inserimento
-class TracciaForm(FormConStile):
-    codice = forms.CharField(label="Codice elemento", max_length=50)
-    chiave = forms.CharField(label="Chiave", max_length=50)
-    valore = forms.CharField(label="Valore", max_length=100, required=False)
-    data = _campo_data("Data", required=True)
-    reparto = forms.ModelChoiceField(label="Reparto", queryset=Reparto.objects.none())
-    ordine = CampoOrdine(required=False)
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.fields["reparto"].queryset = _reparti()
-
-    def clean_data(self) -> dt.date | None:
-        return _non_futura(self.cleaned_data.get("data"))
-
-
-class ControlloQualitaForm(FormConStile):
-    ordine = CampoOrdine(required=False)
-    riferimento = forms.CharField(
-        label="oppure Stock / riferimento", max_length=50, required=False, help_text="Se non è un ordine."
-    )
-    articolo = forms.CharField(label="Codice prodotto", max_length=50)
-    qta_in_ordine = forms.DecimalField(
-        label="Quantità in ordine", min_value=0, max_digits=14, decimal_places=3, required=False
-    )
-    data = _campo_data("Data", required=True)
-    test = forms.ModelChoiceField(label="Test", queryset=Test.objects.none(), to_field_name="codice")
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.fields["test"].queryset = Test.objects.filter(attivo=True)
-
-    def clean_data(self) -> dt.date | None:
-        return _non_futura(self.cleaned_data.get("data"))
-
-    def clean(self) -> dict[str, Any]:
-        d = super().clean()
-        if not self.errors and not d.get("ordine") and not d.get("riferimento"):
-            raise forms.ValidationError("Indica l'ordine oppure il riferimento di stock.")
-        return d
-
-
 class Filtri(FormConStile):
     dal = _campo_data("Data dal")
     al = _campo_data("al")
@@ -145,44 +99,3 @@ class FiltriTracce(Filtri):
         if d.get("reparto"):
             qs = qs.filter(reparto=d["reparto"])
         return self.filtra_date(qs, "inserita_il__date", d.get("inserita_dal"), d.get("inserita_al"))
-
-
-class FiltriQualita(Filtri):
-    campo_data = "controllo_qualita__data"
-    ordine = CampoOrdine(required=False, help_text="")
-    riferimento = forms.CharField(label="Stock / riferimento", max_length=50, required=False)
-    articolo = forms.CharField(label="Codice prodotto", max_length=50, required=False)
-    test = forms.ModelChoiceField(label="Test", queryset=Test.objects.none(), required=False)
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.fields["test"].queryset = Test.objects.all()
-
-    def filtra(self, qs: QuerySet[Any]) -> QuerySet[Any]:
-        qs = super().filtra(qs)
-        d = self.cleaned_data
-        if d.get("ordine"):
-            qs = qs.filter(controllo_qualita__ordine=d["ordine"])
-        if d.get("riferimento"):
-            qs = qs.filter(controllo_qualita__riferimento__icontains=d["riferimento"].strip())
-        if d.get("articolo"):
-            qs = qs.filter(controllo_qualita__articolo__icontains=d["articolo"].strip())
-        if d.get("test"):
-            qs = qs.filter(controllo_qualita__test=d["test"])
-        return qs
-
-
-class FiltriFile(Filtri):
-    campo_data = "caricato_il__date"
-    ordine = CampoOrdine(required=False, help_text="")
-
-    def filtra(self, qs: QuerySet[Any]) -> QuerySet[Any]:
-        qs = super().filtra(qs)
-        d = self.cleaned_data
-        if d.get("ordine"):
-            qs = qs.filter(ordine=d["ordine"])
-        return qs
-
-
-class CaricaFileForm(forms.Form):
-    ordine = CampoOrdine(required=True)

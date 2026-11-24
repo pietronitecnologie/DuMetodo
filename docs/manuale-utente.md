@@ -61,8 +61,8 @@ pagina all'accesso. **Chiudi** li nasconde.
 ### Uso da telefono e tablet
 
 DuMetodo funziona anche da telefono: il menu si apre con il pulsante ☰, e le tabelle larghe diventano schede
-una sotto l'altra. Dal telefono si possono anche scattare foto e caricarle su un ordine (vedi
-[Foto e file](#foto-e-file)).
+una sotto l'altra. Dal telefono si possono anche scattare foto e allegarle a un ordine, con una tracciatura che
+ha un campo *Fotografia* (vedi [Tracciatura](#tracciatura)).
 
 ## Il client desktop
 
@@ -346,34 +346,6 @@ Registra il materiale che arriva dai fornitori.
   Controllo prezzi), tutti modificabili direttamente nell'elenco: cambia i valori della riga e premi **Salva**.
   Quando cambi il prezzo, *Prezzo dal* diventa la data di oggi; lasciandolo vuoto l'articolo resta senza prezzo.
 
-## Qualità e tracciabilità
-
-### Controlli qualità
-
-**Tracciature → Nuovo controllo qualità**: scegli l'ordine (o lo stock), il codice prodotto e il **test**. DuMetodo mostra i
-controlli da eseguire:
-
-- per i controlli a numeri, scrivi il **campione** controllato e quanti pezzi sono **KO**;
-- per i controlli di presenza, indica **Presente** o **Assente**.
-
-**Registra controllo** salva. **Controlli qualità** elenca i controlli per periodo, esportabili in Excel.
-
-### Tracce
-
-Una traccia registra la storia di un elemento (scheda, lotto, componente) con un codice.
-
-- **Nuova traccia**: codice, data, chiave e valore dell'evento, ordine e reparto. Se il codice esiste già,
-  l'evento si aggiunge alla sua storia.
-- Dalla traccia: **Aggiungi evento** e **Stampa etichetta**.
-- Nel dettaglio dell'ordine si registrano anche **lotto di produzione** e **busta**.
-
-### Foto e file
-
-- **Carica foto**: scegli l'ordine e scatta una foto (da telefono o tablet) o scegli una foto o un PDF. Le foto
-  vengono ridotte prima dell'invio.
-- **Foto e file**: tutti i file caricati, per ordine e periodo. I file si vedono e si caricano anche dal
-  dettaglio dell'ordine.
-
 ## Report
 
 - **Dashboard**: ordini in ritardo, carico della settimana, ordini da consegnare, righe consegnate senza DDT,
@@ -429,6 +401,26 @@ scarica i dati.
 Il modulo **Tracciatura** registra qualsiasi tipo di controllo o evento: un controllo qualità, il controllo di un
 lotto, un'operazione su un ordine, un documento, una fotografia. Che cosa si registra lo decidi tu con i
 **modelli**; gli operatori compilano il modulo che ne risulta.
+
+È l'unico modo per registrare controlli e tracce. Le vecchie funzioni **Controlli qualità**, **Nuova traccia**,
+**Lotto e busta** e **Foto e file** sono state sostituite dalle tracciature, e i loro dati sono stati convertiti:
+
+- ogni **test qualità** è diventato un modello di categoria *Controllo qualità*:
+  - un controllo a campione diventa due campi numerici, **campione** e **KO**; un KO maggiore di zero rende la
+    tracciatura non conforme;
+  - un controllo di presenza (distinta, disegno) diventa un campo **Sì/No** che deve essere Sì;
+  - ogni controllo già registrato è diventato una tracciatura dello stesso ordine;
+- **foto e file** degli ordini sono tracciature del modello *Foto e file dell'ordine*; i file sono gli stessi;
+- **lotto e busta** si registrano con il modello *Lotto e busta*, se lo usavate; altrimenti crea un modello
+  con quei due campi.
+
+Per un nuovo controllo qualità crea un modello con i campi che servono, per esempio *campione* e *KO* con un
+massimo di 0, oppure un campo *Esito OK/KO*. Indica a quali codici si applica: verrà proposto sugli ordini con
+quei codici.
+
+Le **tracce** registrate in passato, anche quelle importate da Metodo, restano consultabili in sola lettura in
+**Tracciature → Tracce (archivio)** e nella pagina dell'ordine, nel riquadro *Tracce (archivio)*. Da lì si può
+ancora stampare l'etichetta col codice a barre.
 
 ### Registrare una tracciatura
 
@@ -817,16 +809,6 @@ chi «ha tutto». Li assegna un superuser.
 
 **Amministrazione → Reparti**: codice, nome, **capacità settimanale in ore** (usata dalla Pianificazione), gruppo
 per i report e stato attivo/disattivato.
-
-### Test e controlli qualità
-
-**Amministrazione → Test e controlli qualità** definisce cosa si verifica nei controlli qualità.
-
-- Un **controllo** è una singola verifica: a numeri (campione / KO) oppure di presenza (presente / assente).
-- Un **test** è l'insieme dei controlli da eseguire su un tipo di prodotto (es. *Pulsantiere*: visivo,
-  funzionale, distinta, disegno).
-
-Crea prima i controlli, poi i test che li usano.
 
 ## Domande frequenti
 

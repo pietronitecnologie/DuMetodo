@@ -9,15 +9,11 @@ from io import StringIO
 import psycopg
 import pytest
 from django.core.management import call_command
+from django.utils import timezone
 
 from dumetodo.ordini.models import Ordine
-from dumetodo.tracciabilita.models import (
-    ControlloQualita,
-    Elemento,
-    FileOrdine,
-    Traccia,
-)
-from dumetodo.tracciabilita.models import Test as ModelloTest
+from dumetodo.tracciabilita.models import Elemento, Traccia
+from dumetodo.tracciatura.models import Modello, Tracciatura
 
 from .test_migrazione import DATI, SCHEMA
 
@@ -103,15 +99,24 @@ def test_migrazione_tracciabilita_e_qualita(metodo_db):
     assert Traccia.objects.get(chiave="LOTTO").ordine == o4300
     assert "batterie e cavi (non importati)" in out
 
-    # qualità: test con distinta, righe raggruppate, ordine "SERIE.NUMERO" risolto con l'anno
-    test = ModelloTest.objects.get(codice="pulsanti")
-    assert set(test.controlli.values_list("codice", flat=True)) == {"visivo", "distinta"}
-    cq = ControlloQualita.objects.get()
-    assert (cq.ordine, cq.test, cq.qta_in_ordine, cq.data) == (o4300, test, Decimal("100.000"), dt.date(2024, 3, 10))
-    risultati = {e.controllo.codice: (e.campione, e.ko, e.presente) for e in cq.esiti.all()}
-    assert risultati == {"visivo": (20, 2, None), "distinta": (None, None, True)}
+    # qualità: il test diventa un modello di tracciatura, le righe della stessa registrazione una tracciatura
+    pulsanti = Modello.objects.get(nome="Pulsanti")
+    assert pulsanti.categoria == "QUA"
+    assert [c.etichetta for c in pulsanti.campi.order_by("ordine")] == [
+        "Visivo · campione",
+        "Visivo · KO",
+        "Distinta",
+        "Quantità in ordine",
+    ]
+    t = Tracciatura.objects.get(modello=pulsanti)
+    assert (t.ordine, t.articolo, timezone.localtime(t.momento).date()) == (o4300, "ART-A", dt.date(2024, 3, 10))
+    valori = {v.campo.etichetta: (v.intero, v.booleano, v.decimale) for v in t.valori.all()}
+    assert valori["Visivo · campione"][0] == 20 and valori["Visivo · KO"][0] == 2 and valori["Distinta"][1] is True
+    assert valori["Quantità in ordine"][2] == Decimal("100")
+    assert t.esito == "KO"  # 2 pezzi KO
     assert "non validi" in out  # KO > campione
 
     # reclami e test display (presenti in Metodo) non vengono importati: funzioni non più usate
-    f = FileOrdine.objects.get()
-    assert (f.ordine, f.file.name, f.tipo_contenuto) == (o4300, "file/foto1.jpg", "image/jpeg")
+    [f] = Tracciatura.objects.filter(modello__nome="Foto e file dell'ordine")
+    v = f.valori.get()
+    assert (f.ordine, v.file.name, v.tipo_file, v.nome_file) == (o4300, "file/foto1.jpg", "image/jpeg", "foto1.jpg")

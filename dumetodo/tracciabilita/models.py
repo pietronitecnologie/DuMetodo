@@ -1,14 +1,12 @@
-"""Tracciabilità (tracce generiche, lotto/busta, file per ordine) e qualità (controlli).
+"""Archivio delle tracce (in sola lettura): eventi registrati in passato o importati da Metodo.
 
-Differenze principali rispetto a Metodo:
+Le nuove registrazioni (controlli qualità, lotti, foto e file, operazioni) si fanno con il modulo
+Tracciatura; i vecchi controlli qualità e i file degli ordini sono stati convertiti in tracciature.
+
+Differenze rispetto a Metodo:
 - ``Elemento`` sostituisce la coppia ``Plan.Coding`` + ``Stored_Item`` (un record per elemento fisico,
   non uno per evento); il codice è UNICO a livello di database;
-- ogni dato legato a un ordine ha una ForeignKey verso ``Ordine`` (in Metodo: stringhe, regex e
-  ``contains`` sul solo numero, che mescolavano ordini di serie o anni diversi);
-- i controlli qualità hanno campi numerici veri e un risultato di presenza separato; i controlli
-  "distinta" e "disegno" sono controlli come gli altri, riconosciuti dal ``codice`` e mai dalla chiave
-  primaria;
-- le date inserite dall'utente non vengono più sovrascritte (``auto_now`` sulle tracce);
+- ogni traccia legata a un ordine ha una ForeignKey verso ``Ordine`` (in Metodo: stringhe e ``contains``);
 - batterie, cavi, postazioni (banchi) e work order batterie sono stati eliminati: non più usati.
 """
 
@@ -19,9 +17,8 @@ from pathlib import PurePath
 
 from django.conf import settings
 from django.db import models
-from django.db.models import F, Q
+from django.db.models import Q
 from django.urls import reverse
-from simple_history.models import HistoricalRecords
 
 from dumetodo.core.models import ModelloTemporale
 
@@ -111,165 +108,9 @@ class Traccia(models.Model):
 
 
 # =========================================================================== file per ordine
-def percorso_file_ordine(instance: FileOrdine, nome: str) -> str:
+def percorso_file_ordine(instance: object, nome: str) -> str:
+    """Conservata perché citata dalle migrazioni: foto e file ora sono campi delle Tracciature."""
     return _percorso(f"ordini/{instance.ordine_id}", nome)
-
-
-class FileOrdine(models.Model):
-    """Foto o documento allegato a un ordine. Si scarica solo dalla vista con controllo dei permessi."""
-
-    ordine = models.ForeignKey("ordini.Ordine", on_delete=models.PROTECT, related_name="file_allegati")
-    file = models.FileField("file", upload_to=percorso_file_ordine, max_length=255)
-    nome_originale = models.CharField("nome originale", max_length=255)
-    tipo_contenuto = models.CharField("tipo", max_length=100)
-    dimensione = models.PositiveIntegerField("dimensione (byte)")
-    caricato_il = models.DateTimeField("caricato il", auto_now_add=True)
-    caricato_da = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-
-    class Meta:
-        verbose_name = "file dell'ordine"
-        verbose_name_plural = "file degli ordini"
-        ordering = ["-caricato_il", "-id"]
-
-    def __str__(self) -> str:
-        return f"{self.ordine}: {self.nome_originale}"
-
-    def get_absolute_url(self) -> str:
-        return reverse("tracciabilita:file", args=[self.pk])
-
-    @property
-    def is_immagine(self) -> bool:
-        return self.tipo_contenuto.startswith("image/")
-
-
-# =========================================================================== controllo qualità
-class TipoControllo(models.TextChoices):
-    QUANTITA = "QTA", "Campione / KO"
-    PRESENZA = "PRE", "Presente / assente"
-
-
-class Controllo(ModelloTemporale):
-    """Singola verifica (ex ``Check``). Es. "visivo" (campione/KO) o "distinta" (presente/assente)."""
-
-    codice = models.SlugField("codice", max_length=50, unique=True)
-    nome = models.CharField("nome", max_length=100)
-    descrizione = models.CharField("descrizione", max_length=200, blank=True, default="")
-    tipo = models.CharField("tipo", max_length=3, choices=TipoControllo.choices, default=TipoControllo.QUANTITA)
-    presente_predefinito = models.BooleanField(
-        "spuntato di default", default=False, help_text="Solo per i controlli di presenza."
-    )
-
-    history = HistoricalRecords()
-
-    class Meta:
-        verbose_name = "controllo"
-        verbose_name_plural = "controlli"
-        ordering = ["tipo", "nome"]
-
-    def __str__(self) -> str:
-        return self.nome
-
-
-class TipoTest(models.TextChoices):
-    CAMPIONE = "CMP", "A campione"
-    TOTALE = "100", "100%"
-    MISURA = "MIS", "Misura"
-
-
-class Test(ModelloTemporale):
-    """Modello di controllo qualità: l'insieme dei controlli da eseguire."""
-
-    codice = models.SlugField("codice", max_length=50, unique=True)
-    nome = models.CharField("nome", max_length=100)
-    descrizione = models.CharField("descrizione", max_length=200, blank=True, default="")
-    tipo = models.CharField("tipo", max_length=3, choices=TipoTest.choices, default=TipoTest.CAMPIONE)
-    controlli = models.ManyToManyField(Controllo, related_name="test", verbose_name="controlli")
-    attivo = models.BooleanField("attivo", default=True)
-
-    history = HistoricalRecords(m2m_fields=[controlli])
-
-    class Meta:
-        verbose_name = "test qualità"
-        verbose_name_plural = "test qualità"
-        ordering = ["nome"]
-
-    def __str__(self) -> str:
-        return self.nome
-
-
-class ControlloQualita(models.Model):
-    """Esecuzione di un test su un ordine (o su materiale a stock)."""
-
-    ordine = models.ForeignKey(
-        "ordini.Ordine", on_delete=models.PROTECT, null=True, blank=True, related_name="controlli_qualita"
-    )
-    riferimento = models.CharField(
-        "stock / riferimento", max_length=50, blank=True, default="", help_text="Quando non si tratta di un ordine."
-    )
-    articolo = models.CharField("codice prodotto", max_length=50)
-    qta_in_ordine = models.DecimalField("quantità in ordine", max_digits=14, decimal_places=3, null=True, blank=True)
-    test = models.ForeignKey(Test, on_delete=models.PROTECT, related_name="esecuzioni")
-    data = models.DateField("data")
-    eseguito_da = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-    creato_il = models.DateTimeField("inserito il", auto_now_add=True)
-
-    class Meta:
-        verbose_name = "controllo qualità"
-        verbose_name_plural = "controlli qualità"
-        ordering = ["-data", "-id"]
-        indexes = [models.Index(fields=["data"], name="cq_data_idx")]
-        constraints = [
-            models.CheckConstraint(
-                condition=Q(ordine__isnull=False) | ~Q(riferimento=""), name="cq_ordine_o_riferimento"
-            ),
-            models.CheckConstraint(
-                condition=Q(qta_in_ordine__isnull=True) | Q(qta_in_ordine__gte=0), name="cq_qta_non_negativa"
-            ),
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.test} su {self.ordine or self.riferimento} ({self.data:%d/%m/%Y})"
-
-    @property
-    def soggetto(self) -> str:
-        return self.ordine.codice_breve if self.ordine_id else self.riferimento
-
-
-class EsitoControllo(models.Model):
-    controllo_qualita = models.ForeignKey(ControlloQualita, on_delete=models.CASCADE, related_name="esiti")
-    controllo = models.ForeignKey(Controllo, on_delete=models.PROTECT, related_name="esiti")
-    campione = models.PositiveIntegerField("campione", null=True, blank=True)
-    ko = models.PositiveIntegerField("KO", null=True, blank=True)
-    presente = models.BooleanField("presente", null=True, blank=True)
-
-    class Meta:
-        verbose_name = "esito controllo"
-        verbose_name_plural = "esiti controllo"
-        ordering = ["controllo__tipo", "controllo__nome"]
-        constraints = [
-            models.UniqueConstraint(fields=["controllo_qualita", "controllo"], name="esito_unico_per_controllo"),
-            models.CheckConstraint(
-                condition=(Q(campione__isnull=False) & Q(ko__isnull=False) & Q(presente__isnull=True))
-                | (Q(campione__isnull=True) & Q(ko__isnull=True) & Q(presente__isnull=False)),
-                name="esito_quantita_o_presenza",
-            ),
-            models.CheckConstraint(
-                condition=Q(ko__isnull=True) | Q(ko__lte=F("campione")), name="esito_ko_non_oltre_campione"
-            ),
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.controllo}: {self.risultato}"
-
-    @property
-    def risultato(self) -> str:
-        if self.presente is not None:
-            return "Presente" if self.presente else "Assente"
-        return f"{self.ko} KO su {self.campione}"
 
 
 def percorso_file_reclamo(instance: object, nome: str) -> str:

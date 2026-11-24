@@ -34,8 +34,7 @@ from dumetodo.magazzino import servizi as magazzino
 from dumetodo.ordini import servizi as ordini
 from dumetodo.ordini.models import Ordine, StatoOrdine
 from dumetodo.report import servizi as report
-from dumetodo.tracciabilita import servizi as tracciabilita
-from dumetodo.tracciabilita.models import Controllo, Test, TipoControllo, TipoTest
+from dumetodo.tracciatura.models import Modello, Tracciatura, Valore
 from dumetodo.utilita import servizi as utilita
 
 REPARTI = [
@@ -276,60 +275,49 @@ class Command(BaseCommand):
                     note.aggiungi_nota, o, self.capo, "Verificare disponibilità del collaudo.", Visibilita.INTERNA
                 )
 
-    # ------------------------------------------------------------------ tracciabilità e qualità
+    # ------------------------------------------------------------------ lotti e controlli qualità (tracciature)
     def _tracciabilita(self) -> None:
-        reparti = {r.codice: r for r in Reparto.objects.all()}
+        from dumetodo.migrazione.tracciabilita import MODELLI
+        from dumetodo.tracciatura import da_qualita as dq
+
         ordini_lav = list(Ordine.objects.exclude(stato=StatoOrdine.ANNULLATO).order_by("-data_scadenza")[:15])
+        lotto = dq.modello_lotto(MODELLI)
+        campi = list(lotto.campi.order_by("ordine"))
         for i, o in enumerate(ordini_lav):
-            self._prova(
-                tracciabilita.registra_lotto_busta,
-                o.pk,
-                f"L{self.oggi:%y}{i + 10:03d}",
-                f"B{i + 1:04d}",
-                self.operatore,
+            t = Tracciatura.objects.create(
+                modello=lotto, momento=timezone.now() - dt.timedelta(days=i % 3), operatore=self.operatore, ordine=o
             )
-            self._prova(
-                tracciabilita.registra_traccia,
-                utente=self.operatore,
-                codice=f"SN{self.oggi:%y}{4100 + i}",
-                chiave="Collaudo",
-                valore=self.rnd.choice(["OK", "OK", "OK", "KO - ripetuto OK"]),
-                data=self.oggi - dt.timedelta(days=self.rnd.randint(0, 2)),
-                reparto=reparti["GK01-COL"],
-                ordine=o,
+            for campo, testo in zip(campi, (f"L{self.oggi:%y}{i + 10:03d}", f"B{i + 1:04d}"), strict=True):
+                Valore.objects.create(tracciatura=t, campo=campo, testo=testo)
+        if not Modello.objects.filter(nome="Pulsantiere").exists():
+            mq = dq.crea_modello(
+                MODELLI,
+                "Pulsantiere",
+                [
+                    dq.Controllo("visivo", "Controllo visivo"),
+                    dq.Controllo("funzionale", "Prova funzionale"),
+                    dq.Controllo("distinta", "Distinta", presenza=True),
+                    dq.Controllo("disegno", "Disegno", presenza=True),
+                ],
+                descrizione="Controllo a campione delle pulsantiere prima della consegna.",
             )
-        visivo, _ = Controllo.objects.get_or_create(
-            codice="visivo", defaults={"nome": "Controllo visivo", "tipo": TipoControllo.QUANTITA}
-        )
-        funzionale, _ = Controllo.objects.get_or_create(
-            codice="funzionale", defaults={"nome": "Prova funzionale", "tipo": TipoControllo.QUANTITA}
-        )
-        test, _ = Test.objects.get_or_create(
-            codice="pulsantiere", defaults={"nome": "Pulsantiere", "tipo": TipoTest.CAMPIONE}
-        )
-        test.controlli.add(visivo, funzionale, *Controllo.objects.filter(codice__in=["distinta", "disegno"]))
-        for o in ordini_lav[:6]:
-            riga = o.righe.first()
-            if riga is None:
-                continue
-            ko = self.rnd.choice([0, 0, 0, 1])
-            self._prova(
-                tracciabilita.registra_controllo_qualita,
-                utente=self.operatore,
-                test=test,
-                articolo=riga.articolo,
-                data=self.oggi - dt.timedelta(days=self.rnd.randint(0, 5)),
-                risultati={
-                    "campione_visivo": "10",
-                    "ko_visivo": str(ko),
-                    "campione_funzionale": "10",
-                    "ko_funzionale": "0",
-                    "presente_distinta": "on",
-                    "presente_disegno": "on",
-                },
-                ordine=o,
-                qta_in_ordine=riga.qta,
-            )
+            mq.modello.codici = "180*"
+            mq.modello.save(update_fields=["codici"])
+            for o in ordini_lav[:6]:
+                riga = o.righe.first()
+                if riga is None:
+                    continue
+                ko = self.rnd.choice([0, 0, 0, 1])
+                dq.registra(
+                    MODELLI,
+                    mq,
+                    {"visivo": (10, ko), "funzionale": (10, 0), "distinta": True, "disegno": True},
+                    operatore=self.operatore,
+                    momento=timezone.now() - dt.timedelta(days=self.rnd.randint(0, 5)),
+                    ordine=o,
+                    articolo=riga.articolo,
+                    qta=riga.qta,
+                )
 
     # ------------------------------------------------------------------ magazzino
     def _magazzino(self) -> None:
@@ -492,9 +480,8 @@ class Command(BaseCommand):
     def _tracciatura(self) -> None:
         """Tre modelli (collaudo pulsantiere, controllo lotto in ingresso, saldatura) e alcune tracciature."""
         from dumetodo.tracciatura import servizi as tr
-        from dumetodo.tracciatura.models import Modello
 
-        if Modello.objects.exists():
+        if Modello.objects.filter(nome="Collaudo pulsantiera").exists():
             return
         admin = User.objects.filter(is_superuser=True).first()
         if admin is None:
