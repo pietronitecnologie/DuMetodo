@@ -229,7 +229,6 @@ settimana.
 
 - **Tabulato settimanale**: articoli da produrre in una settimana per un reparto, con ore totali. Scegli reparto e
   settimana (‹ precedente / successiva ›), poi **Stampa** o **Excel**.
-- **Tabulato scorte**: come il settimanale, solo per le commesse piccole.
 
 ## Spedizioni
 
@@ -343,8 +342,9 @@ Registra il materiale che arriva dai fornitori.
 
 - **Componenti**: anagrafica di codici, varianti, descrizione, UM, prezzo medio e fornitore. Un componente non
   attivo non viene più proposto, ma resta nelle distinte e nello storico.
-- **Articoli finiti**: codice, descrizione, reparto, UM, tabulato e prezzo di riferimento (usato da Pianificazione
-  e Controllo prezzi). *Nuovo* segna gli articoli appena introdotti.
+- **Articoli finiti**: codice, descrizione, reparto, UM e **prezzo di riferimento** (usato da Pianificazione e
+  Controllo prezzi), tutti modificabili direttamente nell'elenco: cambia i valori della riga e premi **Salva**.
+  Quando cambi il prezzo, *Prezzo dal* diventa la data di oggi; lasciandolo vuoto l'articolo resta senza prezzo.
 
 ## Qualità e tracciabilità
 

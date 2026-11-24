@@ -272,10 +272,10 @@ def test_nuovo_articolo_dall_app(client, db):
     client.force_login(_utente("m", F.MAGAZZINO_ANAGRAFICHE))
     r = client.post(
         "/magazzino/articoli/crea/",
-        {"codice": "art-99", "descrizione": "Prova", "um": "EA", "tabulato": "0", "prezzo": "12,50"},
+        {"codice": "art-99", "descrizione": "Prova", "um": "EA", "prezzo": "12,50"},
         follow=True,
     )
     a = Articolo.objects.get(codice__iexact="art-99")
     assert a.descrizione == "Prova" and str(a.prezzo_riferimento) == "12.5000" and not a.nuovo
-    r = client.post("/magazzino/articoli/crea/", {"codice": "ART-99", "um": "EA", "tabulato": "0"}, follow=True)
+    r = client.post("/magazzino/articoli/crea/", {"codice": "ART-99", "um": "EA"}, follow=True)
     assert "esiste già" in r.content.decode()

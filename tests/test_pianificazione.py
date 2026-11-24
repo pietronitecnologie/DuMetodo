@@ -182,12 +182,6 @@ def test_tabulati(scenario):
     assert per_art[("P1", None)].qta == 14  # 9 + 1 (senza prezzo) + 4, sommati tra ordini
     assert per_art[("CAVO", "5")].qta == Decimal("12.5")  # metri: per ordine
     assert per_art[("P1", None)].ore == Decimal("13.00") and totale == Decimal("14.00")
-    config.scrivi("pianificazione.soglia_pezzi_scorte", 45)
-    config.invalida_cache()
-    voci, _ = servizi.tabulato_scorte(scenario["pls"], LUN)
-    per_art = {v.articolo: v for v in voci}
-    # ordini INS/LAV con appendice e al massimo 45 pezzi non in bolla: '1' (41) e '5' (16,5); '3' (50) escluso
-    assert per_art["P1"].qta == 44 and per_art["CAVO"].qta == Decimal("12.5")
 
 
 def test_viste(client, scenario, operatore, cliente):
@@ -199,7 +193,7 @@ def test_viste(client, scenario, operatore, cliente):
         "/pianificazione/",
         "/pianificazione/agenda/pulsanti/",
         f"/pianificazione/tabulati/settimanale/?reparto={scenario['pls'].pk}",
-        f"/pianificazione/tabulati/scorte/?reparto={scenario['pls'].pk}&formato=stampa",
+        f"/pianificazione/tabulati/settimanale/?reparto={scenario['pls'].pk}&formato=stampa",
     ):
         assert client.get(url).status_code == 200, url
     for url in (

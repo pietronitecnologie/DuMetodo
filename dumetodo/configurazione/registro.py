@@ -534,15 +534,6 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Invia ogni giorno lavorativo alle 6:00 il report ai destinatari configurati negli indirizzi email.",
         default=True,
     ),
-    Parametro(
-        "pianificazione.soglia_pezzi_scorte",
-        Tipo.INTERO,
-        Gruppo.PIANIFICAZIONE,
-        "Pezzi massimi tabulato scorte",
-        "Il tabulato scorte considera solo le commesse con al massimo questi pezzi (in Metodo: 60).",
-        default=60,
-        minimo=1,
-    ),
     # --- Client desktop -----------------------------------------------------------------
     Parametro(
         "client.menu",

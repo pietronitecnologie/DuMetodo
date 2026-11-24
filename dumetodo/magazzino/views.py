@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.http import require_GET, require_POST
 
-from dumetodo.anagrafica.models import Articolo, Tabulato, UnitaMisura
+from dumetodo.anagrafica.models import Articolo, UnitaMisura
 from dumetodo.core.models import Reparto
 from dumetodo.core.permessi import F, richiede_permesso
 
@@ -193,10 +193,6 @@ def articoli(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(reparto__isnull=True)
     if g.get("um") in UnitaMisura.values:
         qs = qs.filter(um=g["um"])
-    if g.get("tabulato", "").isdigit():
-        qs = qs.filter(tabulato=int(g["tabulato"]))
-    if g.get("nuovo") in ("0", "1"):
-        qs = qs.filter(nuovo=g["nuovo"] == "1")
     return render(
         request,
         "magazzino/articoli.html",
@@ -204,7 +200,6 @@ def articoli(request: HttpRequest) -> HttpResponse:
             "f": g,
             "reparti": Reparto.objects.order_by("nome"),
             "unita": UnitaMisura.choices,
-            "tabulati": Tabulato.choices,
             "totale": qs.count(),
             **_pagina(request, qs),
         },
@@ -215,7 +210,6 @@ def articoli(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.MAGAZZINO_ANAGRAFICHE)
 def articolo_modifica(request: HttpRequest, pk: int) -> HttpResponse:
     p = request.POST
-    tabulato = p.get("tabulato", "0")
     _esegui(
         request,
         servizi.modifica_articolo,
@@ -223,7 +217,7 @@ def articolo_modifica(request: HttpRequest, pk: int) -> HttpResponse:
         descrizione=p.get("descrizione", ""),
         reparto_id=int(p["reparto"]) if p.get("reparto", "").isdigit() else None,
         um=p.get("um", ""),
-        tabulato=int(tabulato) if tabulato.isdigit() else -1,
+        prezzo=p.get("prezzo"),
         ok="Articolo {r} aggiornato.",
     )
     return _torna(request, reverse("magazzino:articoli"))
@@ -233,7 +227,6 @@ def articolo_modifica(request: HttpRequest, pk: int) -> HttpResponse:
 @richiede_permesso(F.MAGAZZINO_ANAGRAFICHE)
 def articolo_crea(request: HttpRequest) -> HttpResponse:
     p = request.POST
-    tabulato = p.get("tabulato", "0")
     _esegui(
         request,
         servizi.crea_articolo,
@@ -241,23 +234,8 @@ def articolo_crea(request: HttpRequest) -> HttpResponse:
         descrizione=p.get("descrizione", ""),
         reparto_id=int(p["reparto"]) if p.get("reparto", "").isdigit() else None,
         um=p.get("um", ""),
-        tabulato=int(tabulato) if tabulato.isdigit() else -1,
         prezzo=p.get("prezzo", ""),
         ok="Articolo {r} creato.",
-    )
-    return _torna(request, reverse("magazzino:articoli"))
-
-
-@require_POST
-@richiede_permesso(F.MAGAZZINO_ANAGRAFICHE)
-def articolo_nuovo(request: HttpRequest, pk: int) -> HttpResponse:
-    nuovo = request.POST.get("nuovo") == "1"
-    _esegui(
-        request,
-        servizi.imposta_nuovo,
-        pk,
-        nuovo,
-        ok="Articolo {r} impostato come " + ("nuovo." if nuovo else "non nuovo."),
     )
     return _torna(request, reverse("magazzino:articoli"))
 

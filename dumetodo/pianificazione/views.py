@@ -131,15 +131,7 @@ def _tabulato(request: HttpRequest, tipo: str) -> HttpResponse:
         get_object_or_404(reparti, pk=request.GET["reparto"]) if request.GET.get("reparto", "").isdigit() else None
     )
     lunedi = calendario.lunedi(_data(request.GET.get("settimana"), timezone.localdate()))
-    voci, totale = (
-        ([], 0)
-        if reparto is None
-        else (
-            servizi.tabulato_settimanale(reparto, lunedi)
-            if tipo == "settimanale"
-            else servizi.tabulato_scorte(reparto, lunedi)
-        )
-    )
+    voci, totale = ([], 0) if reparto is None else servizi.tabulato_settimanale(reparto, lunedi)
     contesto = {
         "tipo": tipo,
         "reparti": reparti,
@@ -185,9 +177,3 @@ def _tabulato(request: HttpRequest, tipo: str) -> HttpResponse:
 @richiede_permesso(F.PIANIFICAZIONE)
 def tabulato_settimanale(request: HttpRequest) -> HttpResponse:
     return _tabulato(request, "settimanale")
-
-
-@require_GET
-@richiede_permesso(F.PIANIFICAZIONE)
-def tabulato_scorte(request: HttpRequest) -> HttpResponse:
-    return _tabulato(request, "scorte")

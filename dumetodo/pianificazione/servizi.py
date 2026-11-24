@@ -250,26 +250,3 @@ def tabulato_settimanale(reparto: Reparto, lunedi: dt.date) -> tuple[list[VoceTa
         articolo__in=Articolo.objects.filter(reparto=reparto).values("codice"),
     )
     return _voci(righe)
-
-
-def tabulato_scorte(reparto: Reparto, lunedi: dt.date) -> tuple[list[VoceTabulato], Decimal]:
-    """Solo commesse piccole (≤ soglia pezzi), aperte e non spedite. In Metodo il reparto era fisso (id 4) e il
-    filtro sugli stati era sbagliato (includeva anche ordini consegnati)."""
-    dal, al = calendario.settimana(lunedi)
-    soglia = config.leggi("pianificazione.soglia_pezzi_scorte")
-    pezzi = (
-        RigaOrdine.objects.filter(ordine=OuterRef("pk"), stato=StatoRiga.ATTIVA, bolla_emessa=False)
-        .order_by()
-        .values("ordine")
-        .annotate(t=Sum("qta"))
-        .values("t")
-    )
-    ordini = (
-        _ordini_tabulato(dal, al, (StatoOrdine.INSERITO, StatoOrdine.IN_LAVORAZIONE))
-        .annotate(pezzi=Subquery(pezzi))
-        .filter(pezzi__lte=soglia)
-    )
-    righe = RigaOrdine.objects.attive().filter(
-        ordine__in=ordini, bolla_emessa=False, articolo__in=Articolo.objects.filter(reparto=reparto).values("codice")
-    )
-    return _voci(righe)

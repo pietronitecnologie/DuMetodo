@@ -119,38 +119,34 @@ def test_pagine_componenti(client, operatore):
 
 
 # ----------------------------------------------------------------------------------------- articoli finiti
-def test_articoli_finiti_modifica_e_nuovo(client, operatore, pulsanti):
-    a = Articolo.objects.create(codice="ART-1", descrizione="vecchia")
-    Articolo.objects.create(codice="ART-2", nuovo=False)
+def test_articoli_finiti_modifica_con_prezzo(client, operatore, pulsanti):
+    a = Articolo.objects.create(codice="ART-1", descrizione="vecchia", prezzo_riferimento=Decimal("1.5"))
     client.force_login(operatore)
-    r = client.get("/magazzino/articoli/?nuovo=1")
-    assert b"ART-1" in r.content and b"ART-2" not in r.content
+    pagina = client.get("/magazzino/articoli/").content.decode()
+    assert 'name="prezzo"' in pagina and "segna nuovo" not in pagina
+    for colonna in ("Ricalcolato", "Tabulato", "Nuovo"):
+        assert f"<th>{colonna}</th>" not in pagina and f'<th class="text-end">{colonna}</th>' not in pagina
     r = client.post(
         f"/magazzino/articoli/{a.pk}/modifica/",
         {
             "descrizione": "Pulsante",
             "reparto": pulsanti.pk,
             "um": "EA",
-            "tabulato": "2",
+            "prezzo": "2,3456",
             "torna": "/magazzino/articoli/?q=ART",
         },
     )
     assert r["Location"] == "/magazzino/articoli/?q=ART"
     a.refresh_from_db()
-    assert (a.descrizione, a.reparto, a.tabulato) == ("Pulsante", pulsanti, 2)
-    # Valore esplicito: ripetere il POST (F5) non inverte di nuovo come in Metodo.
-    for _ in range(2):
-        client.post(f"/magazzino/articoli/{a.pk}/nuovo/", {"nuovo": "0"})
+    assert (a.descrizione, a.reparto, a.prezzo_riferimento) == ("Pulsante", pulsanti, Decimal("2.3456"))
+    assert a.data_prezzo == timezone.localdate()
+    # prezzo vuoto = nessun prezzo; prezzo non valido = errore, nulla cambia
+    servizi.modifica_articolo(operatore, a.pk, descrizione="Pulsante", reparto_id=None, um="EA", prezzo="")
     a.refresh_from_db()
-    assert a.nuovo is False
-    assert client.get(f"/magazzino/articoli/{a.pk}/nuovo/").status_code == 405
-    assert client.get(f"/magazzino/articoli/?reparto={pulsanti.pk}&um=EA&tabulato=2").status_code == 200
-
-
-def test_articolo_tabulato_non_valido(operatore):
-    a = Articolo.objects.create(codice="ART-1")
-    with pytest.raises(OperazioneNonConsentita, match="Tabulato"):
-        servizi.modifica_articolo(operatore, a.pk, descrizione="", reparto_id=None, um="EA", tabulato=9)
+    assert a.prezzo_riferimento is None and a.data_prezzo is None
+    with pytest.raises(OperazioneNonConsentita):
+        servizi.modifica_articolo(operatore, a.pk, descrizione="X", reparto_id=None, um="EA", prezzo="abc")
+    assert client.get(f"/magazzino/articoli/?reparto={pulsanti.pk}&um=EA").status_code == 200
 
 
 # ----------------------------------------------------------------------------------------- inventario

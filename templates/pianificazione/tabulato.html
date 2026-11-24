@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titolo %}Tabulato {{ tipo }}{% endblock %}
 {% block contenuto %}
-<h1 class="h4">Tabulato {% if tipo == "scorte" %}scorte <small class="text-muted">(solo commesse piccole)</small>{% else %}settimanale{% endif %}</h1>
+<h1 class="h4">Tabulato settimanale</h1>
 <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
   <div><label class="form-label small mb-0">Reparto</label><select name="reparto" class="form-select form-select-sm" onchange="this.form.submit()">
     <option value="">— scegli —</option>{% for r in reparti %}<option value="{{ r.pk }}" {% if r == reparto %}selected{% endif %}>{{ r.nome }}</option>{% endfor %}</select></div>

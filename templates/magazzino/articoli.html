@@ -10,8 +10,7 @@
     <div class="col-12 col-md-4"><label class="form-label">Descrizione</label><input class="form-control form-control-sm" name="descrizione"></div>
     <div class="col-6 col-md-2"><label class="form-label">Reparto</label><select class="form-select form-select-sm" name="reparto"><option value="">—</option>{% for r in reparti %}<option value="{{ r.pk }}">{{ r.nome }}</option>{% endfor %}</select></div>
     <div class="col-4 col-md-1"><label class="form-label">UM</label><select class="form-select form-select-sm" name="um">{% for v, l in unita %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
-    <div class="col-4 col-md-1"><label class="form-label">Tabulato</label><select class="form-select form-select-sm" name="tabulato">{% for v, l in tabulati %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
-    <div class="col-4 col-md-1"><label class="form-label">Prezzo €</label><input class="form-control form-control-sm" name="prezzo" inputmode="decimal"></div>
+    <div class="col-4 col-md-2"><label class="form-label">Prezzo €</label><input class="form-control form-control-sm" name="prezzo" inputmode="decimal"></div>
     <div class="col-12 col-md-1"><button class="btn btn-sm btn-primary w-100">Crea</button></div>
   </div>
 </form>
@@ -23,12 +22,11 @@
     <div class="col-md-2"><label class="form-label small mb-0">Reparto</label><select class="form-select form-select-sm" name="reparto"><option value="">Tutti</option><option value="nessuno" {% if f.reparto == "nessuno" %}selected{% endif %}>(nessuno)</option>
       {% for r in reparti %}<option value="{{ r.pk }}" {% if f.reparto == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.nome }} ({{ r.codice }})</option>{% endfor %}</select></div>
     <div class="col-md-1"><label class="form-label small mb-0">UM</label><select class="form-select form-select-sm" name="um"><option value="">Tutte</option>{% for v, l in unita %}<option value="{{ v }}" {% if f.um == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-    <div class="col-md-1"><label class="form-label small mb-0">Nuovo</label><select class="form-select form-select-sm" name="nuovo"><option value="">Tutti</option><option value="1" {% if f.nuovo == "1" %}selected{% endif %}>Sì</option><option value="0" {% if f.nuovo == "0" %}selected{% endif %}>No</option></select></div>
-    <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">Filtra</button></div>
+    <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Filtra</button></div>
   </div>
 </form>
 <div class="table-responsive"><table class="table table-sm bg-white align-middle">
-  <thead><tr><th>Articolo</th><th>Descrizione</th><th>Reparto</th><th>UM</th><th>Tabulato</th><th class="text-end">Prezzo</th><th class="text-end">Ricalcolato</th><th>Nuovo</th><th></th></tr></thead>
+  <thead><tr><th>Articolo</th><th>Descrizione</th><th>Reparto</th><th>UM</th><th class="text-end">Prezzo €</th><th>Prezzo dal</th><th></th></tr></thead>
   <tbody>
   {% for a in pagina %}<tr>
     <td class="fw-semibold">{{ a.codice }}
@@ -36,14 +34,11 @@
     <td><input form="art-{{ a.pk }}" class="form-control form-control-sm" name="descrizione" value="{{ a.descrizione }}"></td>
     <td><select form="art-{{ a.pk }}" class="form-select form-select-sm" name="reparto"><option value="">—</option>{% for r in reparti %}<option value="{{ r.pk }}" {% if r.pk == a.reparto_id %}selected{% endif %}>{{ r.nome }}</option>{% endfor %}</select></td>
     <td><select form="art-{{ a.pk }}" class="form-select form-select-sm" name="um">{% for v, l in unita %}<option value="{{ v }}" {% if v == a.um %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></td>
-    <td><select form="art-{{ a.pk }}" class="form-select form-select-sm" name="tabulato">{% for v, l in tabulati %}<option value="{{ v }}" {% if v == a.tabulato %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></td>
-    <td class="text-end">{% if a.prezzo_riferimento is not None %}€ {{ a.prezzo_riferimento|floatformat:4 }}{% endif %}</td>
-    <td class="text-end">{% if a.prezzo_ricalcolato is not None %}€ {{ a.prezzo_ricalcolato|floatformat:4 }}{% endif %}</td>
-    <td class="text-nowrap"><form method="post" action="{% url 'magazzino:articolo_nuovo' a.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="torna" value="{{ request.get_full_path }}">
-      {% if a.nuovo %}<span class="badge text-bg-warning">Nuovo</span> <input type="hidden" name="nuovo" value="0"><button class="btn btn-link btn-sm p-0">togli</button>
-      {% else %}<span class="badge text-bg-light">No</span> <input type="hidden" name="nuovo" value="1"><button class="btn btn-link btn-sm p-0">segna nuovo</button>{% endif %}</form></td>
-    <td class="text-end"><button form="art-{{ a.pk }}" class="btn btn-sm btn-success py-0">Salva</button></td>
-  </tr>{% empty %}<tr><td colspan="9" class="text-muted text-center py-4">Nessun articolo.</td></tr>{% endfor %}
+    <td style="width:9rem"><input form="art-{{ a.pk }}" class="form-control form-control-sm text-end" name="prezzo" inputmode="decimal"
+      value="{% if a.prezzo_riferimento is not None %}{{ a.prezzo_riferimento|floatformat:'-4' }}{% endif %}" placeholder="—" title="Prezzo di riferimento (€), fino a 4 decimali"></td>
+    <td class="small text-muted text-nowrap">{{ a.data_prezzo|date:"d/m/Y"|default:"" }}</td>
+    <td class="text-end"><button form="art-{{ a.pk }}" class="btn btn-sm btn-outline-success">Salva</button></td>
+  </tr>{% empty %}<tr><td colspan="7" class="text-muted text-center py-4">Nessun articolo.</td></tr>{% endfor %}
   </tbody></table></div>
 <div class="d-flex align-items-center"><span class="small text-muted me-auto">{{ totale }} articoli</span>{% include "magazzino/_paginazione.html" %}</div>
 {% endblock %}

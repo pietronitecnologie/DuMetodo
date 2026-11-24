@@ -23,7 +23,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from dumetodo.anagrafica import servizi as anagrafica
-from dumetodo.anagrafica.models import Articolo, Tabulato, UnitaMisura
+from dumetodo.anagrafica.models import Articolo, UnitaMisura
 from dumetodo.comunicazioni import email
 from dumetodo.configurazione import servizi as config
 from dumetodo.core.models import Reparto
@@ -209,8 +209,10 @@ def modifica_componente(utente: Any, pk: int, **dati: Any) -> Componente:
 # ----------------------------------------------------------------------------------------- articoli finiti
 @transaction.atomic
 def modifica_articolo(
-    utente: Any, pk: int, *, descrizione: str, reparto_id: int | None, um: str, tabulato: int
+    utente: Any, pk: int, *, descrizione: str, reparto_id: int | None, um: str, prezzo: Any = None
 ) -> Articolo:
+    """Modifica dall'elenco degli articoli finiti. ``prezzo``: testo del prezzo di riferimento (vuoto = nessuno,
+    ``None`` = non cambiarlo); se cambia, la data del prezzo diventa oggi (lo storico resta nelle modifiche)."""
     _richiedi(utente, Fn.MAGAZZINO_ANAGRAFICHE)
     articolo = Articolo.objects.select_for_update().get(pk=pk)
     reparto = None
@@ -218,42 +220,32 @@ def modifica_articolo(
         reparto = Reparto.objects.filter(pk=reparto_id).first()
         if reparto is None:
             raise OperazioneNonConsentita("Reparto inesistente.")
-    if tabulato not in Tabulato.values:
-        raise OperazioneNonConsentita("Tabulato non valido.")
     articolo.descrizione = (descrizione or "").strip()
     articolo.reparto = reparto
     articolo.um = _unita(um)
-    articolo.tabulato = tabulato
+    if prezzo is not None:
+        testo = str(prezzo).strip()
+        nuovo = quantita(testo, "Prezzo di riferimento", decimali=4, zero=True) if testo else None
+        if nuovo != articolo.prezzo_riferimento:
+            articolo.prezzo_riferimento = nuovo
+            articolo.data_prezzo = timezone.localdate() if nuovo is not None else None
     articolo.save()
     return articolo
 
 
 @transaction.atomic
 def crea_articolo(
-    utente: Any, *, codice: str, descrizione: str, reparto_id: int | None, um: str, tabulato: int, prezzo: Any = None
+    utente: Any, *, codice: str, descrizione: str, reparto_id: int | None, um: str, prezzo: Any = None
 ) -> Articolo:
     """Nuovo articolo finito (prima solo dall'admin di Django). Gli articoli degli ordini si creano da soli."""
     _richiedi(utente, Fn.MAGAZZINO_ANAGRAFICHE)
     codice = _codice(codice)
     if Articolo.objects.filter(codice__iexact=codice).exists():
         raise OperazioneNonConsentita(f"L'articolo {codice} esiste già: modificalo nell'elenco.")
-    prezzo_d = quantita(prezzo, "Prezzo di riferimento", decimali=4, zero=True) if str(prezzo or "").strip() else None
-    articolo = Articolo.objects.create(codice=codice, prezzo_riferimento=prezzo_d, nuovo=False)
-    articolo.data_prezzo = timezone.localdate() if prezzo_d is not None else None
-    articolo.save(update_fields=["data_prezzo"])
+    articolo = Articolo.objects.create(codice=codice, nuovo=False)
     return modifica_articolo(
-        utente, articolo.pk, descrizione=descrizione, reparto_id=reparto_id, um=um, tabulato=tabulato
+        utente, articolo.pk, descrizione=descrizione, reparto_id=reparto_id, um=um, prezzo=prezzo or ""
     )
-
-
-@transaction.atomic
-def imposta_nuovo(utente: Any, pk: int, nuovo: bool) -> Articolo:
-    """Valore esplicito invece di un "inverti": un doppio invio non annulla la modifica (in Metodo F5 la ripeteva)."""
-    _richiedi(utente, Fn.MAGAZZINO_ANAGRAFICHE)
-    articolo = Articolo.objects.select_for_update().get(pk=pk)
-    articolo.nuovo = nuovo
-    articolo.save()
-    return articolo
 
 
 # ----------------------------------------------------------------------------------------- inventario
