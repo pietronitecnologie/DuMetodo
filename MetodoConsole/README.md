@@ -212,6 +212,25 @@ metodoconsole aggiorna
 
 Se qualcosa va storto stampa i comandi esatti per tornare alla versione precedente con i dati di prima.
 
+## Disinstallazione
+
+```bash
+sudo ./MetodoConsole/disinstalla.sh
+```
+
+Rimuove il comando `metodoconsole`, i controlli automatici (backup notturno e diagnostica), l'interfaccia
+(`/opt/metodoconsole`) e lo stato interno. Chiede conferma e non parte se è in corso un backup o un ripristino.
+**Metodo v2 non viene toccato**: container, database e file caricati restano e continuano a funzionare.
+
+| Opzione | Effetto |
+|---|---|
+| `--configurazione` | Elimina anche `/etc/metodoconsole` e i log di MetodoConsole |
+| `--backup` | Elimina anche **tutti i backup** (chiede di scrivere `ELIMINA`, anche con `--si`) |
+| `--si` | Non chiede conferma (non vale per i backup) |
+
+Restano sempre la cartella del repository (si reinstalla con `installa.sh`) e i programmi di sistema installati
+dall'interfaccia (ufw, ClamAV, fail2ban, unattended-upgrades): si tolgono con `apt remove`.
+
 ## Configurazione
 
 Il file è `/etc/metodoconsole/metodoconsole.conf`; l'esempio commentato è
