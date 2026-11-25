@@ -5,12 +5,12 @@ from decimal import Decimal
 import pytest
 from django.core import mail
 
-from dumetodo.configurazione import servizi as config
-from dumetodo.consegne import servizi
-from dumetodo.consegne.models import DDT, Consegna, RigaConsegnata
-from dumetodo.ordini import servizi as ordini
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
-from dumetodo.ordini.servizi import OperazioneNonConsentita
+from metodo.configurazione import servizi as config
+from metodo.consegne import servizi
+from metodo.consegne.models import DDT, Consegna, RigaConsegnata
+from metodo.ordini import servizi as ordini
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
+from metodo.ordini.servizi import OperazioneNonConsentita
 
 
 @pytest.fixture

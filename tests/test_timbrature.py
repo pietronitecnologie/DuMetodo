@@ -8,11 +8,11 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.utils import timezone
 
-from dumetodo.core.models import Reparto
-from dumetodo.core.permessi import applica_profilo
-from dumetodo.ordini.servizi import OperazioneNonConsentita
-from dumetodo.timbrature import calcolo, servizi
-from dumetodo.timbrature.models import Lavoratore, Timbratura, TipoTimbratura
+from metodo.core.models import Reparto
+from metodo.core.permessi import applica_profilo
+from metodo.ordini.servizi import OperazioneNonConsentita
+from metodo.timbrature import calcolo, servizi
+from metodo.timbrature.models import Lavoratore, Timbratura, TipoTimbratura
 
 T = TipoTimbratura
 G = dt.date(2026, 3, 10)
@@ -189,9 +189,9 @@ def test_correzioni_manuali(impianto, capo, operatore):
 
 
 def test_costi_per_reparto(impianto, capo):
-    from dumetodo.anagrafica.models import Articolo
-    from dumetodo.configurazione import servizi as config
-    from dumetodo.ordini.models import Ordine, RigaOrdine
+    from metodo.anagrafica.models import Articolo
+    from metodo.configurazione import servizi as config
+    from metodo.ordini.models import Ordine, RigaOrdine
 
     config.scrivi("produzione.prezzo_resa_oraria", "10")
     config.invalida_cache()
@@ -272,7 +272,7 @@ def test_pagine_di_gestione_e_permessi(client, impianto, capo, caporeparto, oper
 
 # ------------------------------------------------------------------------------- badge, tessere e lettori
 def test_badge_e_tessere(impianto, capo):
-    from dumetodo.timbrature.models import Identificativo
+    from metodo.timbrature.models import Identificativo
 
     mario = impianto["mario"]
     nfc = servizi.aggiungi_identificativo(capo, mario.pk, "NFC", " 04:a2:b3 c1d2 ", "tessera blu")
@@ -342,7 +342,7 @@ def test_pagine_badge(client, impianto, capo, caporeparto):
 
 
 # ------------------------------------------------------------------ PC associato alla postazione
-def test_pc_associato_usa_dumetodo_e_timbra_dal_menu(client, impianto, operatore):
+def test_pc_associato_usa_metodo_e_timbra_dal_menu(client, impianto, operatore):
     ing = impianto["ingresso"]
     client.force_login(operatore)  # nessun permesso sulle timbrature
     assert "/timbrature/timbra/" not in client.get("/ordini/").content.decode()
@@ -350,7 +350,7 @@ def test_pc_associato_usa_dumetodo_e_timbra_dal_menu(client, impianto, operatore
     assert r.status_code == 302 and r["Location"] == "/"  # PC non associato
 
     html = client.get(f"/timbrature/p/{ing.token}/").content.decode()  # aprire il link associa il PC
-    assert "Apri DuMetodo" in html
+    assert "Apri Metodo v2" in html
     pagina = client.get("/ordini/").content.decode()
     # unica voce di Timbrature per chi non ha altri permessi: il menu «Timbrature» porta diritto alla timbratura
     assert 'href="/timbrature/timbra/"' in pagina

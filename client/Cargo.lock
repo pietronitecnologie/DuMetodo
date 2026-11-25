@@ -487,29 +487,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dumetodo-client"
-version = "0.3.0"
-dependencies = [
- "arboard",
- "base64 0.22.1",
- "directories",
- "gtk",
- "muda",
- "notify-rust",
- "open",
- "png 0.17.16",
- "serde",
- "serde_json",
- "sha2",
- "tao",
- "toml 1.2.1+spec-1.1.0",
- "url",
- "windows-sys 0.61.2",
- "winresource",
- "wry",
-]
-
-[[package]]
 name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1335,6 +1312,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "metodo-client"
+version = "0.3.0"
+dependencies = [
+ "arboard",
+ "base64 0.22.1",
+ "directories",
+ "gtk",
+ "muda",
+ "notify-rust",
+ "open",
+ "png 0.17.16",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tao",
+ "toml 1.2.1+spec-1.1.0",
+ "url",
+ "windows-sys 0.61.2",
+ "winresource",
+ "wry",
 ]
 
 [[package]]

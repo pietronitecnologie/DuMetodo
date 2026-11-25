@@ -29,7 +29,7 @@
     <td><a href="{% url 'utenti:modifica' u.pk %}">{{ u.username }}</a>
       {% if not u.is_active %} <span class="badge text-bg-secondary">disattivato</span>{% endif %}
       {% if u.is_superuser %} <span class="badge text-bg-dark">superuser</span>{% endif %}
-      {% if u.profilo_dumetodo.deve_cambiare_password %} <span class="badge text-bg-warning" title="Al prossimo accesso deve scegliere una nuova password">password da cambiare</span>{% endif %}</td>
+      {% if u.profilo_metodo.deve_cambiare_password %} <span class="badge text-bg-warning" title="Al prossimo accesso deve scegliere una nuova password">password da cambiare</span>{% endif %}</td>
     <td>{{ u.get_full_name }}</td><td>{{ u.email }}</td>
     <td>{% if u.cliente %}{{ nome_cliente }}{% else %}{{ nome_fornitore }}{% endif %}</td>
     <td>{% if u.is_superuser %}tutti{% else %}{{ u.n_permessi }} / {{ totale_funzioni }}{% endif %}</td>

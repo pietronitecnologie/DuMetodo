@@ -9,12 +9,12 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.management import CommandError, call_command
 
-from dumetodo.comunicazioni.models import Lato, LetturaNota, Nota
-from dumetodo.consegne.models import DDT, RigaConsegnata
-from dumetodo.core.models import Reparto
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StatoRiga, StoricoScadenza
+from metodo.comunicazioni.models import Lato, LetturaNota, Nota
+from metodo.consegne.models import DDT, RigaConsegnata
+from metodo.core.models import Reparto
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StatoRiga, StoricoScadenza
 
-BASE = os.environ.get("DATABASE_URL", "postgres://dumetodo:dumetodo@localhost:5432/dumetodo").rsplit("/", 1)[0]
+BASE = os.environ.get("DATABASE_URL", "postgres://metodo:metodo@localhost:5432/metodo").rsplit("/", 1)[0]
 NOME_DB = "metodo_legacy_test"
 
 SCHEMA = """
@@ -108,7 +108,7 @@ def test_migrazione_completa(metodo_db):
     # utenti con password e ruoli
     mario, dmg = User.objects.get(username="mario"), User.objects.get(username="dmg")
     assert mario.password == "pbkdf2_sha256$1$x$y"
-    from dumetodo.core.permessi import F, ha_permesso, is_cliente
+    from metodo.core.permessi import F, ha_permesso, is_cliente
 
     assert ha_permesso(mario, F.CONSEGNA) and not is_cliente(mario)  # Geko -> profilo Operatore
     assert is_cliente(dmg) and ha_permesso(dmg, F.ORDINI_VEDERE) and not ha_permesso(dmg, F.CONSEGNA)
@@ -147,7 +147,7 @@ def test_migrazione_completa(metodo_db):
     s = StoricoScadenza.objects.get()
     assert (s.ordine, s.nuova, s.motivo, s.utente) == (o4301, dt.date(2024, 4, 5), "ritardo fornitore", mario)
 
-    from dumetodo.anagrafica.models import Articolo
+    from metodo.anagrafica.models import Articolo
 
     a = Articolo.objects.get(codice="ART-A")
     assert (a.descrizione, a.reparto.codice, a.tabulato, a.nuovo) == ("Pulsante rosso", "GK01-PLS", 2, False)

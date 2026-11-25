@@ -1,7 +1,7 @@
-//! DuMetodo Client: browser desktop personalizzato per DuMetodo.
+//! Metodo v2 Client: browser desktop personalizzato per Metodo v2.
 //!
 //! La grafica, i menu del tasto destro e le azioni restano sul SERVER: il client mostra le pagine di
-//! DuMetodo, limita la navigazione al server configurato, mostra menu NATIVI composti dalla pagina e
+//! Metodo v2, limita la navigazione al server configurato, mostra menu NATIVI composti dalla pagina e
 //! salva i download nelle cartelle configurate su questo PC (es. la bolla nella cartella del gestionale).
 //! Più pagine si aprono in SCHEDE nella stessa finestra (Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+clic sui link).
 
@@ -111,7 +111,7 @@ fn errore_fatale(percorso_conf: &Path, messaggio: &str) -> ! {
     {
         use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
         let testo: Vec<u16> = messaggio.encode_utf16().chain(std::iter::once(0)).collect();
-        let titolo: Vec<u16> = "DuMetodo".encode_utf16().chain(std::iter::once(0)).collect();
+        let titolo: Vec<u16> = "Metodo v2".encode_utf16().chain(std::iter::once(0)).collect();
         unsafe {
             MessageBoxW(std::ptr::null_mut(), testo.as_ptr(), titolo.as_ptr(), MB_OK | MB_ICONERROR);
         }
@@ -120,7 +120,7 @@ fn errore_fatale(percorso_conf: &Path, messaggio: &str) -> ! {
     std::process::exit(1)
 }
 
-/// Prova a collegarsi a `url`: se raggiungibile carica DuMetodo, altrimenti mostra una pagina che lo spiega.
+/// Prova a collegarsi a `url`: se raggiungibile carica Metodo v2, altrimenti mostra una pagina che lo spiega.
 fn collega(webview: &WebView, origine: &Origine, url: &Url) {
     match avvio::raggiungibile(url) {
         Ok(()) => {
@@ -152,7 +152,7 @@ fn main() {
     let event_loop: EventLoop<Evento> = EventLoopBuilder::with_user_event().build();
     let proxy = event_loop.create_proxy();
     let window = match WindowBuilder::new()
-        .with_title("DuMetodo")
+        .with_title("Metodo v2")
         .with_inner_size(tao::dpi::LogicalSize::new(1366.0, 860.0))
         .with_maximized(true)
         .with_window_icon(icona_finestra())
@@ -174,7 +174,7 @@ fn main() {
     }));
 
     let contenitore = crea_contenitore(&window);
-    // Un solo contesto per tutte le schede: stessi cookie, quindi un solo accesso a DuMetodo.
+    // Un solo contesto per tutte le schede: stessi cookie, quindi un solo accesso a Metodo v2.
     // Cartella fissa per i dati del motore web (cookie compresi): l'accesso resta valido tra un avvio e l'altro.
     let mut contesto = WebContext::new(percorso_conf.parent().map(|c| c.join("dati-web")));
     let origine: Origine = Rc::new(RefCell::new(None));
@@ -193,7 +193,7 @@ fn main() {
     let pagina_iniziale = match (&errore_conf, &url_corrente) {
         (Some(e), _) => avvio::pagina_indirizzo(&conf.url, e, &percorso_conf),
         (None, None) => avvio::pagina_indirizzo(&conf.url, "", &percorso_conf),
-        (None, Some(_)) => "<!doctype html><meta charset=utf-8><title>DuMetodo</title><body>".to_string(),
+        (None, Some(_)) => "<!doctype html><meta charset=utf-8><title>Metodo v2</title><body>".to_string(),
     };
     let mut prossimo_id: u32 = 1;
     let prima = match costruisci_pagina(
@@ -209,7 +209,7 @@ fn main() {
         Ok(w) => w,
         Err(e) => errore_fatale(&percorso_conf, &format!("Impossibile creare la pagina: {e}")),
     };
-    let mut schede: Vec<Scheda> = vec![Scheda { id: prossimo_id, pagina: prima, titolo: "DuMetodo".into() }];
+    let mut schede: Vec<Scheda> = vec![Scheda { id: prossimo_id, pagina: prima, titolo: "Metodo v2".into() }];
     // Pannello chat: una pagina del server (id 0), sempre caricata anche se nascosta, per le notifiche.
     let chat_web = match costruisci_pagina(
         &contenitore,
@@ -259,7 +259,7 @@ fn main() {
                 Ok(pagina) => {
                     let _ = pagina.zoom(zoom);
                     let _ = pagina.set_visible(false);
-                    schede.push(Scheda { id: prossimo_id, pagina, titolo: "DuMetodo".into() });
+                    schede.push(Scheda { id: prossimo_id, pagina, titolo: "Metodo v2".into() });
                     prossimo_id += 1;
                 }
                 Err(e) => registra(&percorso_conf, &format!("Ripristino scheda non riuscito: {e}")),
@@ -310,8 +310,8 @@ fn main() {
                     if ora_visibile {
                         let _ = chat_web.focus();
                         let script = match chat::DA_APRIRE.with(|d| d.take()) {
-                            Some(con) => format!("window.DuMetodoChat && window.DuMetodoChat.apri({con})"),
-                            None => "window.DuMetodoChat && window.DuMetodoChat.apriNonLetti()".to_string(),
+                            Some(con) => format!("window.MetodoChat && window.MetodoChat.apri({con})"),
+                            None => "window.MetodoChat && window.MetodoChat.apriNonLetti()".to_string(),
                         };
                         let _ = chat_web.evaluate_script(&script);
                     } else if let Some(s) = schede.get(attiva) {
@@ -323,8 +323,8 @@ fn main() {
             },
             Event::UserEvent(Evento::Titolo { scheda, titolo }) => {
                 if let Some(s) = schede.iter_mut().find(|s| s.id == scheda) {
-                    // "Ordini · DuMetodo · Fornitore" -> "Ordini": nella scheda basta la pagina.
-                    let breve = titolo.split(" · DuMetodo").next().unwrap_or(&titolo).trim();
+                    // "Ordini · Metodo v2 · Fornitore" -> "Ordini": nella scheda basta la pagina.
+                    let breve = titolo.split(" · Metodo v2").next().unwrap_or(&titolo).trim();
                     s.titolo = breve.chars().take(120).collect();
                     salva_sessione(&percorso_sessione, &origine, &schede, attiva);
                     // Dopo l'accesso in una scheda, il pannello chat (fermo sulla pagina di accesso) si ricarica.
@@ -333,7 +333,7 @@ fn main() {
                     }
                     aggiorna_barra(&barra, &schede, attiva, &origine);
                     if schede.get(attiva).is_some_and(|s| s.id == scheda) {
-                        window.set_title(&format!("{} - DuMetodo", schede[attiva].titolo));
+                        window.set_title(&format!("{} - Metodo v2", schede[attiva].titolo));
                     }
                 }
             }
@@ -453,7 +453,7 @@ fn main() {
                         match arboard::Clipboard::new().and_then(|mut c| c.get_text()) {
                             Ok(testo) if testo.len() <= ponte::MASSIMO_APPUNTI => {
                                 let _ = webview.evaluate_script(&format!(
-                                    "window.DuMetodoClient && window.DuMetodoClient.incolla({})",
+                                    "window.MetodoClient && window.MetodoClient.incolla({})",
                                     ponte::js_stringa(&testo)
                                 ));
                             }
@@ -513,7 +513,7 @@ fn main() {
                     && let Some(s) = schede.iter().find(|s| s.id == *scheda)
                 {
                     let _ = s.pagina.evaluate_script(&format!(
-                        "window.DuMetodoClient && window.DuMetodoClient.esegui({})",
+                        "window.MetodoClient && window.MetodoClient.esegui({})",
                         ponte::js_stringa(v)
                     ));
                 }
@@ -643,14 +643,14 @@ fn main() {
                 let _ = s.pagina.set_visible(i == attiva);
             }
             let _ = schede[attiva].pagina.focus();
-            window.set_title(&format!("{} - DuMetodo", schede[attiva].titolo));
+            window.set_title(&format!("{} - Metodo v2", schede[attiva].titolo));
             aggiorna_barra(&barra, &schede, attiva, &origine);
             salva_sessione(&percorso_sessione, &origine, &schede, attiva);
         }
     });
 }
 
-/// Icona di DuMetodo (quadrante di misura), 64×64 RGBA, ricavata da static/img/dumetodo-64.png.
+/// Icona di Metodo v2 (quadrante di misura), 64×64 RGBA, ricavata da static/img/metodo-64.png.
 fn icona_finestra() -> Option<tao::window::Icon> {
     tao::window::Icon::from_rgba(include_bytes!("icona-64.rgba").to_vec(), 64, 64).ok()
 }
@@ -781,7 +781,7 @@ fn aggiorna_barra(barra_web: &WebView, schede: &[Scheda], attiva: usize, origine
 /// Piccolo avviso in basso a destra nella pagina (lo disegna lo script iniziale).
 fn avvisa(webview: &WebView, testo: &str) {
     let _ = webview
-        .evaluate_script(&format!("window.__duMetodoAvviso && window.__duMetodoAvviso({})", ponte::js_stringa(testo)));
+        .evaluate_script(&format!("window.__metodoAvviso && window.__metodoAvviso({})", ponte::js_stringa(testo)));
 }
 
 fn aggancia(builder: WebViewBuilder<'_>, window: &Window, contenitore: &Contenitore) -> wry::Result<WebView> {
@@ -837,7 +837,7 @@ fn costruisci_pagina(
     let builder = WebViewBuilder::new_with_web_context(contesto)
         .with_bounds(area)
         .with_user_agent(format!(
-            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 DuMetodoClient/{VERSIONE} DuMetodoSistema/{}",
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 MetodoClient/{VERSIONE} MetodoSistema/{}",
             std::env::consts::OS
         ))
         .with_devtools(conf.strumenti_sviluppatore && !conf.schermo_intero)

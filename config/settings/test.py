@@ -1,7 +1,7 @@
 import os
 
 os.environ.setdefault("DJANGO_SECRET_KEY", "solo-per-i-test")
-os.environ.setdefault("DATABASE_URL", "postgres://dumetodo:dumetodo@localhost:5432/dumetodo")
+os.environ.setdefault("DATABASE_URL", "postgres://metodo:metodo@localhost:5432/metodo")
 
 from .base import *
 

@@ -1,11 +1,13 @@
-# Avvio rapido: ./avvia-dumetodo.sh (Linux/macOS) o avvia-dumetodo.ps1 (Windows).
+# Avvio rapido: ./avvia-metodo.sh (Linux/macOS) o avvia-metodo.ps1 (Windows).
 # Manuale: cp .env.example .env (e compilalo), poi: docker compose up -d --build
+# Nome fisso del progetto: container e volumi si chiamano metodo-* qualunque sia il nome della cartella.
+name: metodo
 x-app: &app
   build:
     context: .
     args:
-      DUMETODO_VERSIONE: ${DUMETODO_VERSIONE:-sconosciuta}
-  image: dumetodo:locale
+      METODO_VERSIONE: ${METODO_VERSIONE:-sconosciuta}
+  image: metodo:locale
   env_file: .env
   restart: unless-stopped
   # Permette di raggiungere servizi dell'host (es. il tunnel SSH verso Metodo per preleva_da_metodo).
@@ -19,12 +21,12 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: dumetodo
-      POSTGRES_USER: dumetodo
+      POSTGRES_DB: metodo
+      POSTGRES_USER: metodo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD nel .env}
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dumetodo"]
+      test: ["CMD-SHELL", "pg_isready -U metodo"]
       interval: 5s
       retries: 10
 

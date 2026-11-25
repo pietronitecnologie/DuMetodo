@@ -1,5 +1,5 @@
 [Unit]
-Description=MetodoConsole: backup notturno di DuMetodo
+Description=MetodoConsole: backup notturno di Metodo v2
 
 [Timer]
 OnCalendar=*-*-* 02:30:00

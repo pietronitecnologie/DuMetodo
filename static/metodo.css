@@ -1,0 +1,417 @@
+/* Metodo v2 – stile dell'applicazione (sopra Bootstrap 5.3).
+ * Pensato per la produzione: contrasto alto, numeri allineati, stati riconoscibili a colpo d'occhio,
+ * "modalità reparto" con testi e pulsanti più grandi per i PC e i tablet in reparto. */
+
+:root {
+  --dm-sfondo: #eceff4;
+  --dm-superficie: #ffffff;
+  --dm-bordo: #d8dee7;
+  --dm-testo: #18212e;
+  --dm-testo-2: #5b6676;
+  /* Barra in alto chiara; il blu è quello dei pulsanti e della voce attiva */
+  --dm-barra: #ffffff;
+  --dm-barra-2: #eef3fc;
+  --dm-barra-testo: #46536a;
+  --dm-accento: #2f74f0;
+  --dm-accento-scuro: #2160d4;
+  --dm-accento-chiaro: #e6efff;
+  --dm-altezza-testata: 48px;
+  --dm-raggio: 8px;
+  /* Leggibilità: cosa si scrive, cosa si legge soltanto, cosa è un titolo */
+  --dm-campo-sfondo: #ffffff;
+  --dm-campo-bordo: #a3aebe;
+  --dm-campo-bordo-hover: #7f8ca0;
+  --dm-campo-spento-sfondo: #e9ecf1;
+  --dm-campo-spento-testo: #6f7988;
+  --dm-campo-spento-bordo: #d3d9e1;
+  --dm-etichetta: #2b3545;
+  --dm-descrizione: #6b7686;
+  --dm-intestazione-sfondo: #dfe6f1;
+  --dm-intestazione-testo: #26324a;
+
+  --bs-body-font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --bs-body-font-size: .875rem;
+  --bs-body-color: var(--dm-testo);
+  --bs-body-bg: var(--dm-sfondo);
+  --bs-border-color: var(--dm-bordo);
+  --bs-primary: var(--dm-accento);
+  --bs-primary-rgb: 47, 116, 240;
+  --bs-link-color: var(--dm-accento);
+  --bs-link-color-rgb: 47, 116, 240;
+  --bs-link-hover-color: var(--dm-accento-scuro);
+  --bs-border-radius: 6px;
+  --bs-border-radius-sm: 5px;
+  --bs-border-radius-lg: var(--dm-raggio);
+}
+
+body { background: var(--dm-sfondo); color: var(--dm-testo); -webkit-font-smoothing: antialiased; }
+a { text-decoration: none; }
+a:hover { text-decoration: underline; }
+.btn-primary { --bs-btn-bg: var(--dm-accento); --bs-btn-border-color: var(--dm-accento);
+  --bs-btn-hover-bg: var(--dm-accento-scuro); --bs-btn-hover-border-color: var(--dm-accento-scuro);
+  --bs-btn-active-bg: var(--dm-accento-scuro); --bs-btn-disabled-bg: var(--dm-accento); }
+.btn { font-weight: 500; }
+.dm-icona { width: 20px; height: 20px; flex: 0 0 20px; }
+
+/* ---- Guscio: menu in alto + contenuto ------------------------------------------------------ */
+.dm-testata { position: sticky; top: 0; z-index: 1030; height: var(--dm-altezza-testata); display: flex; align-items: center;
+  gap: 6px; padding: 0 12px; background: var(--dm-barra); color: var(--dm-barra-testo);
+  border-bottom: 1px solid var(--dm-bordo); box-shadow: 0 1px 3px rgba(16,24,40,.05); }
+.dm-marchio { display: flex; align-items: center; gap: 9px; color: var(--dm-testo); margin-right: 10px; flex: 0 0 auto; }
+.dm-marchio:hover { text-decoration: none; color: var(--dm-accento); }
+.dm-marchio-logo { width: 30px; height: 30px; flex: 0 0 30px; display: block; }
+.dm-marchio-testo { display: flex; flex-direction: column; line-height: 1.1; }
+.dm-marchio-testo b { font-size: 15px; letter-spacing: .2px; }
+.dm-logo-azienda { display: flex; align-items: center; height: 32px; padding: 3px 8px; margin-right: 10px; flex: 0 0 auto;
+  background: #fff; border-radius: 7px; }
+.dm-testata .dm-logo-azienda { padding: 0; height: 32px; }
+.dm-logo-azienda img { display: block; max-height: 26px; max-width: 120px; object-fit: contain; }
+.dm-marchio-testo small { color: var(--dm-barra-testo); font-size: 11px; white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+
+.dm-menu { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; }
+.dm-menu-voce { display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px; border: 0; border-radius: 7px;
+  background: none; color: var(--dm-barra-testo); font-size: 13.5px; font-weight: 500; white-space: nowrap; }
+.dm-menu-voce:hover, .dm-menu-voce[aria-expanded="true"] { background: var(--dm-barra-2); color: var(--dm-testo); text-decoration: none; }
+.dm-menu-voce.attiva { background: var(--dm-accento-chiaro); color: var(--dm-accento-scuro); }
+.dm-menu-voce .dm-icona { width: 18px; height: 18px; flex-basis: 18px; }
+.dm-freccia { width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px); opacity: .7; margin-left: 2px; }
+.dm-menu .dropdown-menu { --bs-dropdown-font-size: .875rem; --bs-dropdown-item-padding-y: .35rem; min-width: 210px; margin-top: 6px !important; }
+.dm-menu .dropdown-item.active { background: var(--dm-accento); }
+
+.dm-strumenti { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.dm-vai { width: 260px; }
+.dm-vai .dm-ordine-scelto { display: none !important; }
+.dm-vai .d-none[data-dm-ordine-ricerca] { display: block !important; }
+.dm-vai .input-group-text, .dm-vai .form-control { background: #f4f6f9; border-color: #dfe4eb; color: var(--dm-testo); }
+.dm-vai .form-control::placeholder { color: #8a94a3; }
+.dm-vai .form-control:focus { background: #fff; color: var(--dm-testo); }
+.dm-vai .dm-ordine-elenco { left: auto; right: 0; }
+.dm-pulsante-icona { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid #dfe4eb;
+  border-radius: 7px; background: #fff; color: var(--dm-barra-testo); }
+.dm-pulsante-icona:hover { color: var(--dm-accento); border-color: #b9cdf5; }
+html.dm-modo-reparto .dm-pulsante-icona[data-dm-reparto] { background: var(--dm-accento); border-color: var(--dm-accento); color: #fff; }
+.dm-utente { padding: 0; border: 0; background: none; border-radius: 50%; }
+.dm-avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #dde7fb; color: var(--dm-accento-scuro);
+  font-weight: 700; font-size: 13px; }
+.dm-solo-piccolo { display: none; }
+
+.dm-contenuto { padding: 12px 16px 8px; min-height: calc(100vh - var(--dm-altezza-testata) - 32px); }
+.dm-piede { padding: 6px 16px 10px; color: #8a94a3; font-size: 12px; }
+
+/* Schermi stretti: prima solo icone nel menu, poi menu a tendina */
+@media (max-width: 1499.98px) {
+  .dm-marchio-testo small { display: none; }
+  .dm-marchio, .dm-logo-azienda { margin-right: 4px; }
+  .dm-vai { width: 180px; }
+  .dm-menu-voce { padding: 0 7px; gap: 5px; font-size: 13px; }
+}
+@media (max-width: 1199.98px) {
+  .dm-menu-voce span { display: none; }
+  .dm-menu-voce { padding: 0 8px; }
+}
+/* Adattamento automatico (metodo.js → adattaMenu): voci che non ci stanno nella larghezza disponibile. */
+@media (min-width: 768px) {
+  html.dm-menu-senza-icone .dm-menu-voce .dm-icona { display: none; }
+  html.dm-menu-senza-icone .dm-menu-voce { padding: 0 7px; }
+  html.dm-menu-solo-icone .dm-menu-voce span { display: none; }
+  html.dm-menu-solo-icone .dm-menu-voce { padding: 0 8px; }
+}
+@media (max-width: 767.98px) {
+  .dm-solo-piccolo { display: grid; }
+  .dm-marchio-testo { display: none; }
+  .dm-menu { display: none; position: fixed; top: var(--dm-altezza-testata); left: 0; right: 0; bottom: 0; overflow-y: auto;
+    flex-direction: column; align-items: stretch; padding: 8px; background: var(--dm-barra); border-top: 1px solid var(--dm-bordo); }
+  body.dm-menu-aperto .dm-menu { display: flex; }
+  .dm-menu-voce span { display: inline; }
+  .dm-menu .dropdown-menu { position: static !important; transform: none !important; margin: 0 0 6px 30px !important; }
+  .dm-vai { width: auto; flex: 1; }
+  .dm-strumenti { flex: 1; }
+  .dm-contenuto { padding: 10px 10px 6px; }
+}
+
+/* ---- Contenuto: titoli, card, form ---------------------------------------------------------- */
+.dm-contenuto h1, .dm-contenuto .h4:is(h1), .dm-contenuto .h5:is(h1) { font-size: 1.15rem; font-weight: 650; letter-spacing: -.01em; margin-bottom: .5rem; }
+.dm-contenuto h2, .dm-contenuto .h5:is(h2), .dm-contenuto .h6:is(h2) { font-weight: 600; }
+.card { --bs-card-border-color: var(--dm-bordo); --bs-card-border-radius: var(--dm-raggio); --bs-card-cap-bg: #f8f9fb;
+  --bs-card-spacer-y: .6rem; --bs-card-spacer-x: .75rem; --bs-card-cap-padding-y: .35rem; --bs-card-cap-padding-x: .75rem;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+.dm-contenuto .mb-3 { margin-bottom: .75rem !important; }
+/* Titoli delle card: piccoli e discreti, non devono sembrare titoli di pagina */
+.card-header, .card-header strong, .card-header b, .card-title, .card .h6:first-child {
+  font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--dm-testo-2); }
+.card-header .small, .card-header a { text-transform: none; letter-spacing: 0; font-size: .78rem; font-weight: 500; }
+.card-header .btn { text-transform: none; letter-spacing: 0; }
+/* Dati di riepilogo: etichetta piccola sopra, valore sotto */
+.dm-dati { --bs-gutter-y: .35rem; font-size: .8125rem; }
+.dm-dati .text-muted { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; }
+.form-label, .col-form-label { font-weight: 500; color: var(--dm-testo-2); }
+.form-label.small, .dm-contenuto .form-label { font-size: .75rem; margin-bottom: .1rem; }
+.form-control, .form-select { border-color: #d5dbe3; }
+.form-control:focus, .form-select:focus { border-color: #8db4f5; box-shadow: 0 0 0 .2rem rgba(31,111,235,.15); }
+.alert { border-radius: var(--dm-raggio); }
+.dropdown-menu { --bs-dropdown-border-color: var(--dm-bordo); --bs-dropdown-link-active-bg: var(--dm-accento); border-radius: 8px; }
+.pagination { --bs-pagination-active-bg: var(--dm-accento); --bs-pagination-active-border-color: var(--dm-accento); }
+
+/* ---- Tabelle: leggibili in reparto ----------------------------------------------------------- */
+.dm-contenuto .table { --bs-table-bg: var(--dm-superficie); --bs-table-hover-bg: #f3f7ff; margin-bottom: 0;
+  font-variant-numeric: tabular-nums; }
+.dm-contenuto .table > thead th { position: sticky; top: var(--dm-altezza-testata); z-index: 2; background: #f6f8fa;
+  color: var(--dm-testo-2); font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  border-bottom: 1px solid var(--dm-bordo); white-space: nowrap; }
+.dm-contenuto .table > :not(caption) > * > * { padding: .32rem .55rem; border-bottom-color: #edf0f4; }
+.dm-contenuto .table-sm > :not(caption) > * > * { padding: .25rem .5rem; }
+.dm-contenuto .table-responsive, .dm-contenuto .dm-tabella { background: var(--dm-superficie); border: 1px solid var(--dm-bordo);
+  border-radius: var(--dm-raggio); margin-bottom: 1rem; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+.dm-contenuto .table-responsive > .table > thead th { top: 0; }
+.dm-contenuto .table-responsive > .table tr:last-child > td { border-bottom: 0; }
+.dm-contenuto .card > .table, .dm-contenuto .card .table-responsive { border: 0; box-shadow: none; margin: 0; }
+.text-end, .num { font-variant-numeric: tabular-nums; }
+
+/* Stati dell'ordine: stessi colori ovunque */
+.dm-stato { display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .5rem; border-radius: 999px; font-size: .72rem;
+  font-weight: 600; white-space: nowrap; background: #eef1f5; color: #3d4757; }
+.dm-stato::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; opacity: .85; }
+.dm-stato-INS { background: #eef1f5; color: #4a5567; }
+.dm-stato-LAV { background: #e3edff; color: #1652c4; }
+.dm-stato-SPE { background: #fff1d6; color: #9a5b00; }
+.dm-stato-SPP { background: #ffe8cc; color: #a24a00; }
+.dm-stato-CON { background: #dcf5e6; color: #13703f; }
+.dm-stato-ANN { background: #f1f1f1; color: #8a8a8a; text-decoration: line-through; }
+.dm-contenuto .dm-scaduto { --bs-table-color: #c0262d; color: #c0262d; font-weight: 600; }
+
+/* Righe d'ordine (aiuti visivi) */
+.riga-evasione { --bs-table-bg: #fff6dc; }
+.riga-bolla { --bs-table-bg: #e3f6ea; }
+.riga-bloccata { --bs-table-bg: #fde4e6; }
+.riga-scorporata td:first-child { box-shadow: inset 4px 0 0 #0dcaf0; }
+.riga-chiusa { color: #8a94a3; text-decoration: line-through; }
+.nota-fornitore { border-left: 4px solid var(--dm-accento); }
+.nota-cliente { border-left: 4px solid #f08c1a; }
+.nota-interna { background: #f4f5f7; }
+.nota-testo { white-space: pre-wrap; }
+.articolo { font-weight: 600; }
+
+/* ---- Modalità reparto: tutto più grande e facile da toccare --------------------------------- */
+html.dm-modo-reparto { font-size: 17px; }
+html.dm-modo-reparto .card-header, html.dm-modo-reparto .card-header strong { font-size: .8rem; }
+html.dm-modo-reparto body { --bs-body-font-size: 1.05rem; }
+html.dm-modo-reparto .btn-sm, html.dm-modo-reparto .form-control-sm, html.dm-modo-reparto .form-select-sm {
+  font-size: 1rem; padding: .45rem .75rem; min-height: 42px; }
+html.dm-modo-reparto .btn { min-height: 44px; }
+html.dm-modo-reparto .dm-contenuto .table > :not(caption) > * > * { padding: .7rem .75rem; }
+html.dm-modo-reparto .form-check-input { width: 1.35em; height: 1.35em; }
+html.dm-modo-reparto .dm-stato { font-size: .9rem; padding: .3rem .7rem; }
+
+/* ---- Pagina di accesso ------------------------------------------------------------------------ */
+body.dm-pubblica .dm-contenuto { min-height: calc(100vh - 44px); display: grid; place-items: center; padding: 24px; }
+.dm-accesso { width: min(900px, 100%); display: grid; grid-template-columns: 1fr 1fr; background: var(--dm-superficie);
+  border-radius: 14px; overflow: hidden; box-shadow: 0 12px 40px rgba(16,24,40,.12); }
+.dm-accesso-marchio { background: linear-gradient(150deg, #3b82f6 0%, #5aa0ff 100%); color: #fff; padding: 40px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 24px; }
+.dm-accesso-marchio h1 { font-size: 1.9rem; font-weight: 700; margin: 14px 0 6px; }
+.dm-accesso-marchio p { color: #eaf2ff; margin: 0; }
+.dm-accesso-modulo { padding: 40px; }
+@media (max-width: 767.98px) { .dm-accesso { grid-template-columns: 1fr; } .dm-accesso-marchio { padding: 28px; } .dm-accesso-modulo { padding: 28px; } }
+
+/* ---- Selezione dell'ordine ---------------------------------------------------------------- */
+.dm-ordine { position: relative; }
+.dm-ordine-elenco { position: absolute; left: 0; top: 100%; z-index: 1050; min-width: 100%; width: max-content; max-width: min(28rem, 92vw); }
+.dm-ordine-risultati { max-height: 22rem; overflow-y: auto; margin-top: 2px; border-radius: 8px; }
+.dm-ordine-risultati .list-group-item-action:focus { background: var(--bs-primary-bg-subtle); outline: none; }
+.dm-ordine-scelto { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; min-height: calc(1.5em + .5rem + 2px); padding: .25rem .5rem;
+  border: 1px solid var(--bs-success-border-subtle); background: var(--bs-success-bg-subtle); border-radius: var(--bs-border-radius); }
+.dm-ordine-scelto.d-none { display: none !important; }
+.dm-chiave-ordine { display: inline-flex; align-items: baseline; gap: .35rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dm-chiave-ordine > span[title="Serie"], .dm-chiave-ordine > span[title="Anno"] { color: var(--bs-secondary-color); font-size: .875em; }
+.dm-chiave-ordine > b { font-size: 1.05em; }
+
+/* ---- Stampa: solo il contenuto --------------------------------------------------------------- */
+@media print {
+  .dm-testata, .dm-piede, form[method=get].card { display: none !important; }
+  .dm-contenuto { padding: 0; }
+  body { background: #fff; }
+  .dm-contenuto .table > thead th { position: static; }
+}
+
+/* Pulsanti dentro le tabelle: piccoli, non devono allargare le righe (in modalità reparto tornano grandi) */
+.dm-contenuto .form-check-input { border-color: #b9c2ce; }
+
+/* Configurazione: schede comprimibili (chiuse all'apertura della pagina) */
+details.dm-config > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; user-select: none;
+  font-size: .8rem; padding-top: .55rem; padding-bottom: .55rem; }
+details.dm-config > summary::-webkit-details-marker { display: none; }
+details.dm-config > summary::before { content: ""; width: .45rem; height: .45rem; border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; margin-right: .2rem; }
+details.dm-config[open] > summary::before { transform: rotate(45deg); }
+details.dm-config:not([open]) > summary { border-bottom: 0; border-radius: var(--dm-raggio); }
+details.dm-config > summary:hover { color: var(--dm-testo); }
+
+/* ---- Telefono: tabelle come schede, niente scorrimento laterale della pagina ------------------ */
+.dm-contenuto img, .dm-contenuto video { max-width: 100%; height: auto; }
+@media (max-width: 767.98px) {
+  .dm-contenuto table.dm-schede > thead { display: none; }
+  .dm-contenuto table.dm-schede, .dm-contenuto table.dm-schede > tbody, .dm-contenuto table.dm-schede > tbody > tr,
+  .dm-contenuto table.dm-schede > tbody > tr > td { display: block; width: 100%; }
+  .dm-contenuto table.dm-schede > tbody > tr { padding: .45rem .15rem; border-bottom: 1px solid var(--dm-bordo); background: var(--bs-table-bg); }
+  .dm-contenuto table.dm-schede > tbody > tr:last-child { border-bottom: 0; }
+  .dm-contenuto table.dm-schede > tbody > tr > td { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem;
+    padding: .12rem .55rem !important; border: 0 !important; text-align: right; box-shadow: none; min-height: 1.6rem; }
+  .dm-contenuto table.dm-schede > tbody > tr > td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left;
+    color: var(--dm-testo-2); font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .dm-contenuto table.dm-schede > tbody > tr > td[data-label=""]::before { content: none; }
+  .dm-contenuto table.dm-schede > tbody > tr > td[data-label=""] { justify-content: flex-end; }
+  .dm-contenuto table.dm-schede > tbody > tr > td:empty { display: none; }
+  /* La prima cella (di solito l'ordine o il codice) fa da titolo della scheda */
+  .dm-contenuto table.dm-schede > tbody > tr > td:first-child:not(:has(input[type=checkbox])) {
+    justify-content: flex-start; text-align: left; font-weight: 600; font-size: .95rem; }
+  .dm-contenuto table.dm-schede > tbody > tr > td:first-child:not(:has(input[type=checkbox]))::before { content: none; }
+  .dm-contenuto table.dm-schede > tbody > tr > td[colspan] { justify-content: center; text-align: center; }
+  .dm-contenuto .table-responsive:has(> table.dm-schede) { overflow: visible; }
+  /* Filtri e moduli: pulsanti comodi da toccare */
+  .dm-contenuto .btn-sm { min-height: 34px; }
+  .dm-contenuto .d-flex.flex-wrap { row-gap: .4rem; }
+  .dm-contenuto h1 { font-size: 1.05rem; }
+}
+
+/* ---- Tabelle ordinabili e filtrabili dalle intestazioni ---------------------------------------- */
+.dm-contenuto table.dm-ordinabile > thead th.dm-th-ordina { cursor: pointer; user-select: none; white-space: nowrap; }
+.dm-contenuto table.dm-ordinabile > thead th.dm-th-ordina:hover { color: var(--dm-testo); background: #eef2f7; }
+.dm-contenuto table.dm-ordinabile > thead th[aria-sort] { color: var(--dm-accento-scuro); }
+.dm-contenuto table.dm-ordinabile > thead th[aria-sort="ascending"]::after { content: " ▲"; font-size: .6rem; }
+.dm-contenuto table.dm-ordinabile > thead th[aria-sort="descending"]::after { content: " ▼"; font-size: .6rem; }
+.dm-lente { border: 0; background: none; padding: 0 0 0 .3rem; color: #9aa4b2; vertical-align: baseline; line-height: 1; cursor: pointer; }
+.dm-lente:hover, table.dm-filtrata .dm-lente { color: var(--dm-accento); }
+.dm-filtro-colonna { display: none; width: 100%; min-width: 4.5rem; margin-top: .25rem; padding: .1rem .35rem; font: 400 .78rem var(--bs-body-font-family);
+  text-transform: none; letter-spacing: 0; border: 1px solid #d5dbe3; border-radius: 4px; background: #fff; color: var(--dm-testo); }
+table.dm-filtri-aperti .dm-filtro-colonna { display: block; }
+.dm-filtro-colonna:focus { outline: none; border-color: #8db4f5; box-shadow: 0 0 0 .15rem rgba(47,116,240,.15); }
+.dm-info-filtro { padding: .3rem .6rem; font-size: .75rem; color: var(--dm-testo-2); background: #f6f8fa; border-top: 1px solid var(--dm-bordo); }
+@media print { .dm-lente, .dm-filtro-colonna, .dm-info-filtro { display: none !important; } }
+
+/* ---- Manuale utente e pulsante "?" (poco appariscente) */
+.dm-aiuto { display: grid; place-items: center; width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%;
+  border: 1px solid #dfe4eb; color: #8a94a3; font-size: 12px; font-weight: 600; text-decoration: none; line-height: 1; }
+.dm-aiuto:hover { color: var(--dm-accento); border-color: #b9cdf5; background: #f4f7fd; }
+.dm-manuale { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
+.dm-manuale-indice { position: sticky; top: calc(var(--dm-altezza-testata) + 12px); max-height: calc(100vh - var(--dm-altezza-testata) - 24px); overflow: auto; font-size: 13px;
+  background: #fff; border: 1px solid #e3e8ef; border-radius: 8px; padding: 10px 12px; }
+.dm-manuale-indice .toc ul { list-style: none; padding-left: 0; margin: 0; }
+.dm-manuale-indice .toc ul ul { padding-left: 12px; margin-bottom: 4px; }
+.dm-manuale-indice .toc a { display: block; padding: 2px 0; color: inherit; text-decoration: none; }
+.dm-manuale-indice .toc > ul > li > a { font-weight: 600; margin-top: 4px; }
+.dm-manuale-indice .toc a:hover { color: var(--dm-accento); }
+.dm-manuale-testo { max-width: 52rem; background: #fff; border: 1px solid #e3e8ef; border-radius: 8px; padding: 20px 28px;
+  font-size: 14.5px; line-height: 1.6; }
+.dm-manuale-testo h2 { font-size: 1.35rem; margin-top: 2rem; padding-top: .5rem; border-top: 1px solid #e3e8ef; }
+.dm-manuale-testo h3 { font-size: 1.08rem; margin-top: 1.4rem; }
+.dm-manuale-testo h2, .dm-manuale-testo h3 { scroll-margin-top: calc(var(--dm-altezza-testata) + 12px); }
+.dm-manuale-testo :target { background: #fff6d6; border-radius: 4px; }
+.dm-manuale-testo code { color: #3a4556; background: #f1f4f8; padding: 0 3px; border-radius: 3px; }
+@media (max-width: 900px) {
+  .dm-manuale { grid-template-columns: 1fr; }
+  .dm-manuale-indice { position: static; max-height: none; }
+  .dm-manuale-testo { padding: 14px 16px; }
+}
+
+/* ==== Leggibilità: campi da compilare, campi non modificabili, intestazioni e descrizioni ===========
+   - campo da compilare: bianco, bordo deciso, leggera ombra interna;
+   - campo non modificabile (disabilitato o di sola lettura): grigio, testo attenuato, senza ombra;
+   - intestazioni (schede e tabelle): fascia azzurro-grigia con testo scuro;
+   - etichette scure e in grassetto; descrizioni e note d'aiuto più chiare e piccole. */
+.dm-contenuto .form-control, .dm-contenuto .form-select, .dm-contenuto textarea, .dm-vai .form-control,
+.dm-contenuto input[type=text], .dm-contenuto input[type=number], .dm-contenuto input[type=date],
+.dm-contenuto input[type=email], .dm-contenuto input[type=password], .dm-contenuto input[type=search] {
+  background-color: var(--dm-campo-sfondo); border-color: var(--dm-campo-bordo); color: var(--dm-testo);
+  box-shadow: inset 0 1px 2px rgba(16, 24, 40, .07); }
+.dm-contenuto .form-control:hover:not(:disabled):not([readonly]),
+.dm-contenuto .form-select:hover:not(:disabled) { border-color: var(--dm-campo-bordo-hover); }
+.dm-contenuto .form-control:focus, .dm-contenuto .form-select:focus, .dm-contenuto textarea:focus {
+  border-color: var(--dm-accento); box-shadow: 0 0 0 .2rem rgba(47, 116, 240, .2); }
+.dm-contenuto .form-control::placeholder { color: #a1aab7; font-style: italic; opacity: 1; }
+
+.dm-contenuto .form-control:disabled, .dm-contenuto .form-select:disabled, .dm-contenuto textarea:disabled,
+.dm-contenuto .form-control[readonly], .dm-contenuto textarea[readonly], .dm-contenuto input[readonly],
+.dm-contenuto fieldset:disabled .form-control, .dm-contenuto fieldset:disabled .form-select {
+  background-color: var(--dm-campo-spento-sfondo); color: var(--dm-campo-spento-testo);
+  border-color: var(--dm-campo-spento-bordo); border-style: dashed; box-shadow: none; cursor: not-allowed; opacity: 1; }
+.dm-contenuto .form-control[readonly] { cursor: default; }
+.dm-contenuto .form-check-input:disabled { background-color: var(--dm-campo-spento-sfondo); border-color: var(--dm-campo-spento-bordo); }
+.dm-contenuto .form-check-input:disabled ~ .form-check-label { color: var(--dm-campo-spento-testo); }
+.dm-contenuto .form-check-input { border-color: var(--dm-campo-bordo); }
+.dm-contenuto .form-control-plaintext { color: var(--dm-testo); font-weight: 500; }
+
+.dm-contenuto .form-label, .dm-contenuto .col-form-label, .dm-contenuto label:not(.form-check-label):not(.btn):not(:has(input)) {
+  color: var(--dm-etichetta); font-weight: 600; }
+.dm-contenuto .form-check-label { color: var(--dm-testo); }
+.dm-contenuto .form-text, .dm-contenuto small.text-muted, .dm-contenuto .small.text-muted, .dm-contenuto p.text-muted,
+.dm-contenuto .text-body-secondary { color: var(--dm-descrizione) !important; }
+.dm-contenuto .form-text { font-size: .75rem; margin-top: .15rem; }
+.dm-contenuto .text-muted, .dm-contenuto .text-secondary { color: var(--dm-descrizione) !important; }
+
+.card { --bs-card-cap-bg: var(--dm-intestazione-sfondo); box-shadow: 0 1px 3px rgba(16, 24, 40, .08); }
+.card-header { background-color: var(--dm-intestazione-sfondo); border-bottom: 1px solid #cfd7e3; }
+.card-header, .card-header strong, .card-header b, .card-title, .card .h6:first-child { color: var(--dm-intestazione-testo); font-weight: 700; }
+details.dm-config > summary { background: var(--dm-intestazione-sfondo); }
+details.dm-config > summary:hover { background: #d3dcea; }
+.dm-contenuto .table > thead th { background: #edf1f7; color: var(--dm-intestazione-testo); font-weight: 700;
+  border-bottom: 1px solid #cfd7e3; }
+.dm-contenuto table.dm-ordinabile > thead th.dm-th-ordina:hover { background: #d3dcea; }
+.dm-contenuto .dm-dati .text-muted { color: var(--dm-descrizione) !important; font-weight: 600; }
+.dm-contenuto h1 { color: #111a28; }
+.dm-contenuto h2, .dm-contenuto h3 { color: var(--dm-intestazione-testo); }
+/* Filtri in alto alle pagine: una fascia distinta dalle tabelle dei risultati */
+.dm-contenuto form[method=get].card { background: #f7f9fc; }
+
+/* ---- Pulsanti delle righe d'ordine: pieni, testo scuro e colorato, su una sola riga ---------------- */
+.dm-contenuto .table td.dm-azioni-riga { white-space: nowrap; width: 1%; padding-right: .6rem; }
+html .dm-contenuto .table .btn.btn-sm.dm-az, .btn.dm-az {
+  --bs-btn-padding-y: .22rem; --bs-btn-padding-x: .42rem; --bs-btn-font-size: .78rem; --bs-btn-font-weight: 600;
+  --bs-btn-border-radius: 6px; line-height: 1.25; letter-spacing: .01em;
+  background: var(--az-sfondo); color: var(--az-testo); border: 1px solid var(--az-bordo); }
+.btn.dm-az:hover, .btn.dm-az:focus-visible { background: var(--az-testo); color: #fff; border-color: var(--az-testo); }
+.dm-az-evadi    { --az-sfondo: #dff3e7; --az-testo: #12693b; --az-bordo: #9fd5b5; }
+.dm-az-blocca   { --az-sfondo: #fde3e5; --az-testo: #b01f28; --az-bordo: #f2a9ae; }
+.dm-az-scorpora { --az-sfondo: #dcf0f6; --az-testo: #0a5f78; --az-bordo: #95cfe0; }
+.dm-az-annulla  { --az-sfondo: #eceff3; --az-testo: #3f4a5a; --az-bordo: #c3cad4; }
+.dm-az-dividi   { --az-sfondo: #ebe7fb; --az-testo: #4a37a6; --az-bordo: #c3b8ef; }
+html.dm-modo-reparto .dm-contenuto .table .btn.btn-sm.dm-az { --bs-btn-font-size: .95rem; --bs-btn-padding-y: .45rem; --bs-btn-padding-x: .8rem; }
+@media (max-width: 767.98px) { .dm-azioni-riga { white-space: normal; width: auto; } .dm-azioni-riga > div, .dm-azioni-riga form { flex-wrap: wrap; } }
+/* Pulsanti in testa all'ordine (cambi di stato): stesso stile, un po' più grandi, colori come gli stati */
+.btn.btn-sm.dm-az.dm-az-testata { --bs-btn-padding-y: .32rem; --bs-btn-padding-x: .8rem; --bs-btn-font-size: .85rem; }
+.dm-az-a-INS { --az-sfondo: #eceff3; --az-testo: #3f4a5a; --az-bordo: #c3cad4; }
+.dm-az-a-LAV { --az-sfondo: #e1ebff; --az-testo: #1450bd; --az-bordo: #a9c3f5; }
+.dm-az-a-SPE { --az-sfondo: #fff0d1; --az-testo: #8a4f00; --az-bordo: #f0cd86; }
+.dm-az-a-SPP { --az-sfondo: #ffe6c7; --az-testo: #9a4300; --az-bordo: #f3bf86; }
+.dm-az-a-CON { --az-sfondo: #dff3e7; --az-testo: #12693b; --az-bordo: #9fd5b5; }
+.dm-az-a-ANN { --az-sfondo: #fde3e5; --az-testo: #b01f28; --az-bordo: #f2a9ae; }
+
+/* ==== Pulsanti di tutte le pagine: stesso stile leggibile dei pulsanti dell'ordine ====================
+   I pulsanti "contornati" di Bootstrap diventano pieni e tenui, con testo scuro colorato e grassetto;
+   al passaggio del mouse si riempiono del colore pieno. Restano uguali i pulsanti principali (pieni). */
+.dm-contenuto .btn[class*="btn-outline-"] { --bs-btn-font-weight: 600; --bs-btn-color: var(--az-testo);
+  --bs-btn-bg: var(--az-sfondo); --bs-btn-border-color: var(--az-bordo);
+  --bs-btn-hover-color: #fff; --bs-btn-hover-bg: var(--az-testo); --bs-btn-hover-border-color: var(--az-testo);
+  --bs-btn-active-color: #fff; --bs-btn-active-bg: var(--az-testo); --bs-btn-active-border-color: var(--az-testo);
+  --bs-btn-disabled-color: #8a94a3; --bs-btn-disabled-bg: #eef0f3; --bs-btn-disabled-border-color: #d6dbe2; }
+.dm-contenuto .btn-outline-primary   { --az-sfondo: #e1ebff; --az-testo: #1450bd; --az-bordo: #a9c3f5; }
+.dm-contenuto .btn-outline-secondary { --az-sfondo: #eceff3; --az-testo: #3f4a5a; --az-bordo: #c3cad4; }
+.dm-contenuto .btn-outline-success   { --az-sfondo: #dff3e7; --az-testo: #12693b; --az-bordo: #9fd5b5; }
+.dm-contenuto .btn-outline-danger    { --az-sfondo: #fde3e5; --az-testo: #b01f28; --az-bordo: #f2a9ae; }
+.dm-contenuto .btn-outline-warning   { --az-sfondo: #fff0d1; --az-testo: #8a4f00; --az-bordo: #f0cd86; }
+.dm-contenuto .btn-outline-info      { --az-sfondo: #dcf0f6; --az-testo: #0a5f78; --az-bordo: #95cfe0; }
+.dm-contenuto .btn-outline-dark      { --az-sfondo: #ebe7fb; --az-testo: #4a37a6; --az-bordo: #c3b8ef; }
+.dm-contenuto .btn-outline-light     { --az-sfondo: #f7f8fa; --az-testo: #3f4a5a; --az-bordo: #d6dbe2; }
+/* I pulsanti scelti (es. gruppi di filtri con btn-check) restano pieni */
+.dm-contenuto .btn-check:checked + .btn[class*="btn-outline-"] { color: #fff; background: var(--az-testo); border-color: var(--az-testo); }
+/* Pulsanti pieni: grassetto anche loro, per coerenza */
+.dm-contenuto .btn-primary, .dm-contenuto .btn-success, .dm-contenuto .btn-danger, .dm-contenuto .btn-secondary { --bs-btn-font-weight: 600; }
+/* Nelle tabelle i pulsanti piccoli non vanno rimpiccioliti troppo: stessa misura dei pulsanti delle righe */
+html:not(.dm-modo-reparto) .dm-contenuto .table .btn-sm { --bs-btn-padding-y: .22rem; --bs-btn-padding-x: .42rem; --bs-btn-font-size: .78rem; }
+
+/* ---- Report: percentuali colorate (verde buono, ambra discreto, rosso basso) ------------------------ */
+.dm-perc { display: inline-block; min-width: 3.2em; padding: .05rem .4rem; border-radius: 999px; font-weight: 600; text-align: center; }
+.dm-perc-ok { background: #dff3e7; color: #12693b; }
+.dm-perc-medio { background: #fff0d1; color: #8a4f00; }
+.dm-perc-basso { background: #fde3e5; color: #b01f28; }
+.dm-perc-na { background: #eceff3; color: #3f4a5a; }

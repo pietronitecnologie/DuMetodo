@@ -1,4 +1,4 @@
-"""Impostazioni comuni di DuMetodo.
+"""Impostazioni comuni di Metodo v2.
 
 Regola d'oro: nessun segreto nel codice. Tutto ciò che è infrastruttura o credenziale
 arriva da variabili d'ambiente (file .env in sviluppo). I parametri di business
@@ -30,36 +30,36 @@ INSTALLED_APPS = [
     "django_htmx",
     "simple_history",
     "django_celery_beat",
-    "dumetodo.core",
-    "dumetodo.configurazione",
-    "dumetodo.anagrafica",
-    "dumetodo.ordini",
-    "dumetodo.comunicazioni",
-    "dumetodo.importazione",
-    "dumetodo.consegne",
-    "dumetodo.pianificazione",
-    "dumetodo.report",
-    "dumetodo.utilita",
-    "dumetodo.client",
-    "dumetodo.gestionale",
-    "dumetodo.timbrature",
-    "dumetodo.tracciatura",
-    "dumetodo.magazzino",
-    "dumetodo.tracciabilita",
-    "dumetodo.chat",
-    "dumetodo.migrazione",
+    "metodo.core",
+    "metodo.configurazione",
+    "metodo.anagrafica",
+    "metodo.ordini",
+    "metodo.comunicazioni",
+    "metodo.importazione",
+    "metodo.consegne",
+    "metodo.pianificazione",
+    "metodo.report",
+    "metodo.utilita",
+    "metodo.client",
+    "metodo.gestionale",
+    "metodo.timbrature",
+    "metodo.tracciatura",
+    "metodo.magazzino",
+    "metodo.tracciabilita",
+    "metodo.chat",
+    "metodo.migrazione",
 ]
 
 MIDDLEWARE = [
     # Prima di tutto: /salute/ risponde senza controllo dell'host né redirect https (healthcheck).
-    "dumetodo.core.salute.SaluteMiddleware",
+    "metodo.core.salute.SaluteMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "dumetodo.core.middleware.PasswordDaCambiareMiddleware",
+    "metodo.core.middleware.PasswordDaCambiareMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
@@ -81,10 +81,10 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "dumetodo.core.context_processors.ruoli",
-                "dumetodo.core.context_processors.azienda",
-                "dumetodo.core.context_processors.navigazione",
-                "dumetodo.client.context_processors.client",
+                "metodo.core.context_processors.ruoli",
+                "metodo.core.context_processors.azienda",
+                "metodo.core.context_processors.navigazione",
+                "metodo.client.context_processors.client",
             ],
         },
     },
@@ -140,7 +140,7 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=30)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="metodo@localhost")
-# URL pubblico, usato per i link nelle email (es. https://dumetodo.esempio.it)
+# URL pubblico, usato per i link nelle email (es. https://metodo.esempio.it)
 SITE_URL = env("SITE_URL", default="http://localhost:8000").rstrip("/")
 
 # --- Casella IMAP da cui arrivano gli ordini ---

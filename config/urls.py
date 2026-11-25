@@ -4,7 +4,7 @@ from django.templatetags.static import static
 from django.urls import include, path
 from django.views.generic import RedirectView
 
-from dumetodo.core import views as core_views
+from metodo.core import views as core_views
 
 
 class FaviconView(RedirectView):
@@ -22,21 +22,21 @@ urlpatterns = [
     path("manuale/manuale-utente.md", core_views.manuale_md, name="manuale_md"),
     path("accesso/", auth_views.LoginView.as_view(), name="login"),
     path("uscita/", auth_views.LogoutView.as_view(), name="logout"),
-    path("ordini/", include("dumetodo.ordini.urls")),
-    path("consegne/", include("dumetodo.consegne.urls")),
-    path("pianificazione/", include("dumetodo.pianificazione.urls")),
-    path("report/", include("dumetodo.report.urls")),
-    path("utilita/", include("dumetodo.utilita.urls")),
-    path("note/", include("dumetodo.comunicazioni.urls")),
-    path("importazione/", include("dumetodo.importazione.urls")),
-    path("magazzino/", include("dumetodo.magazzino.urls")),
-    path("configurazione/", include("dumetodo.configurazione.urls")),
-    path("utenti/", include("dumetodo.core.urls_utenti")),
-    path("reparti/", include("dumetodo.core.urls_reparti")),
-    path("chat/", include("dumetodo.chat.urls")),
-    path("client/", include("dumetodo.client.urls")),
-    path("gestionale/", include("dumetodo.gestionale.urls")),
-    path("timbrature/", include("dumetodo.timbrature.urls")),
-    path("tracciatura/", include("dumetodo.tracciatura.urls")),
+    path("ordini/", include("metodo.ordini.urls")),
+    path("consegne/", include("metodo.consegne.urls")),
+    path("pianificazione/", include("metodo.pianificazione.urls")),
+    path("report/", include("metodo.report.urls")),
+    path("utilita/", include("metodo.utilita.urls")),
+    path("note/", include("metodo.comunicazioni.urls")),
+    path("importazione/", include("metodo.importazione.urls")),
+    path("magazzino/", include("metodo.magazzino.urls")),
+    path("configurazione/", include("metodo.configurazione.urls")),
+    path("utenti/", include("metodo.core.urls_utenti")),
+    path("reparti/", include("metodo.core.urls_reparti")),
+    path("chat/", include("metodo.chat.urls")),
+    path("client/", include("metodo.client.urls")),
+    path("gestionale/", include("metodo.gestionale.urls")),
+    path("timbrature/", include("metodo.timbrature.urls")),
+    path("tracciatura/", include("metodo.tracciatura.urls")),
     path("admin/", admin.site.urls),
 ]

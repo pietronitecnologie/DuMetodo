@@ -15,7 +15,7 @@ All citations are `file:line` relative to the repo root.
 1. **Order identity is a composite natural key, not a FK.** An *ordine/commessa* is identified by `(serie, rif_ordine, appendice, anno)`. `Linea` (order row) has **no FK to `Ordine`**; it repeats the 4 key fields and every join is done by string matching (`Prod/views.py:69-77` says so explicitly). Same for `DocumentiTrasporto`, `FileOrdini`, `Errori`. Only `Tracciabilita.rif_ordine` and `StoricoScadenza.ordine/linea` are real FKs.
 2. **Money stored as text.** `Linea.prezzo_ea` and all `sconto_*` are `CharField` holding Italian-format decimals ("12,50"); every computation does `Cast(Replace(prezzo_ea, ",", "."), FloatField())` (`Prod/models.py:221`, `Reports/produzione.py:43`) or `float(x.replace(",", "."))` (`Prod/models.py:106`, `Prod/maintenance.py:31`).
 3. **No uniqueness on order key.** `Ordine` has an index on `(rif_ordine, serie, appendice, anno)` but **no unique constraint** (`Prod/models.py:247`). The import routine (`Prod/orders.py:1390`) emulates uniqueness in Python.
-4. **Migrations are not in git.** `Prod/migrations/` (and Plan/Reports/Timbratura) are in `.gitignore` (`.gitignore:1-5`); the only committed file `Prod/migrations/0001_initial.py` (2024-03-24) is badly out of sync with `models.py` (e.g. `Ordine.rif_ordine unique=True`, `Linea.prezzo_ea FloatField`, `Ordine.linee` M2M — none of which exist now). The **live production schema is unknown from the repo**; DuMetodo must derive it via `inspectdb` / `pg_dump --schema-only` on the real DB before data migration.
+4. **Migrations are not in git.** `Prod/migrations/` (and Plan/Reports/Timbratura) are in `.gitignore` (`.gitignore:1-5`); the only committed file `Prod/migrations/0001_initial.py` (2024-03-24) is badly out of sync with `models.py` (e.g. `Ordine.rif_ordine unique=True`, `Linea.prezzo_ea FloatField`, `Ordine.linee` M2M — none of which exist now). The **live production schema is unknown from the repo**; Metodo v2 must derive it via `inspectdb` / `pg_dump --schema-only` on the real DB before data migration.
 5. **Single PostgreSQL DB, no routers** (`Metodo/settings.py:89-100`); Prod shares tables with Plan, Reports, Tickets, Timbratura, AuditTrail, auth.
 6. **Hard dependencies on Plan**: `Location` (= *reparto*), `Asset`, `Coding`, `Resource`, `Annunci`, `AllocazionePersonale`. On Reports: `gekoSAS_orders` (legacy import only). On Tickets: `Ticket` (order modal). Reverse: Reports (produzione/dashboard/report/views), AuditTrail, Tickets, Plan read Prod models.
 7. **Key/value `Configuration` table** is the system's settings store, including SMTP/IMAP **passwords in plain text** (§8).
@@ -350,7 +350,7 @@ Timbratura and AuditTrail models are **not imported by Prod**.
 | `Plan/views.py:8,24` | `WorkOrderTraccia` | open battery WOs on Plan dashboard |
 | `Reports/templates/Reports/produzione/tplLineeOrdine.html`, `Permission/templates/base.html:30` | link to `/PRODUZIONE` | navigation |
 
-### 2.3 Minimal subset DuMetodo must carry over
+### 2.3 Minimal subset Metodo v2 must carry over
 
 | Entity | Must carry? | Minimal fields | Rationale |
 |---|---|---|---|
@@ -393,7 +393,7 @@ Timbratura and AuditTrail models are **not imported by Prod**.
 | E-mail | **No Django `EMAIL_*` settings.** SMTP is done by hand in `Prod/mailing.py:22-74` (port 587 + STARTTLS) with host/user/password from `Configuration` (`EMAIL_SERVER`, `EMAIL_METODO_USER`, `EMAIL_METODO_PASSWORD`). IMAP (imapclient) for order mail uses `EMAIL_ORDINI_USER/PASSWORD` + `EMAIL_SERVER` (`Prod/orders.py:1527-1537`); tickets mailbox uses `MAIL_TICKET/MAIL_TICKET_PSW`. |
 | Settings tracked despite ignore | `Metodo/settings.py` is listed in `.gitignore` but is committed | `.gitignore:13` |
 
-Working-directory–relative paths: many modules use `'Metodo/media/...'` relative paths (`Prod/maintenance.py:48`, `Prod/orders.py:1521-1522`, `Prod/console.py:229-239,256,264`, `Prod/pianificazione.py:1203`, `readMail.py:16-17`) — they only work if the process CWD is the repo root. DuMetodo should derive everything from `MEDIA_ROOT`.
+Working-directory–relative paths: many modules use `'Metodo/media/...'` relative paths (`Prod/maintenance.py:48`, `Prod/orders.py:1521-1522`, `Prod/console.py:229-239,256,264`, `Prod/pianificazione.py:1203`, `readMail.py:16-17`) — they only work if the process CWD is the repo root. Metodo v2 should derive everything from `MEDIA_ROOT`.
 
 ### 3.1 Root URL map (`Metodo/urls.py`)
 
@@ -461,7 +461,7 @@ Template URL names referenced in Prod templates but **defined nowhere**: `carica
 - `createOrderFromGeko()` (`:83-105`): for every `gekoSAS_orders` row whose `Ord_num` is not an existing `Ordine.rif_ordine`, map `Status` (`Consegnato→CON`, `Lavorazione→'Lav'` (invalid), `Bloccato→'BLC'` (invalid), else `INS`), parse `cons_geko` `dd/mm/YYYY`, call `insertLinea(..., appendice="0")`.
 - Related `scSyncOrders()` (`Prod/orders.py:1792-1857`): round-robin 10 non-delivered orders per run (cursor `Configuration["IDX_SYNC"]`), query MySQL by **string-concatenated SQL** (`:1824,1846`), map `Status` by **column index** `row[20]` / `row[7]`, update `Ordine.stato` / `data_consegna`. Crashes if `fetchone()` is None.
 
-These GekoSAS functions should be treated as **legacy / out of scope** for DuMetodo unless the customer still exposes that MySQL DB.
+These GekoSAS functions should be treated as **legacy / out of scope** for Metodo v2 unless the customer still exposes that MySQL DB.
 
 ### 6.1 `insertLinea` — the canonical import algorithm (`Prod/orders.py:1390-1500`)
 
@@ -485,7 +485,7 @@ No `transaction.atomic`, no locking — concurrent scheduler instances can creat
 - **Gaps**: `QuerySet.update()` bypasses signals — e.g. `vwCambiaOrdine` line updates (`Prod/views.py:103`), Console bulk price update (`Prod/console.py:187`), `Errori ... .update(accettato=True)`; no audit on DocumentiTrasporto, Anagrafica, StoricoScadenza (which is itself a manual audit of due dates), Configuration, inventory/BOM. Every `save()` triggers an extra SELECT (pre_save) + INSERT.
 - **Views** (`AuditTrail/views.py`; list, per-object, per-ordine, per-linea, all `@login_required` only) — **unreachable**: `AuditTrail.urls` not included in `Metodo/urls.py`. Admin registration exists (`AuditTrail/admin.py`). Retention via `cleanup_audit_logs` (manual).
 
-DuMetodo recommendation: implement audit at the service layer (explicit `record_change(user, entity, diff)` inside the same transaction) or use a maintained library (django-simple-history / pghistory), covering Ordine, Linea, DDT, Anagrafica, Configuration; capture user from request context.
+Metodo v2 recommendation: implement audit at the service layer (explicit `record_change(user, entity, diff)` inside the same transaction) or use a maintained library (django-simple-history / pghistory), covering Ordine, Linea, DDT, Anagrafica, Configuration; capture user from request context.
 
 ---
 
@@ -511,7 +511,7 @@ DuMetodo recommendation: implement audit at the service layer (explicit `record_
 | `ID_MIGRAZIONE` | GekoSAS import cursor | `Prod/migrateDb.py:22` |
 | `IDX_SYNC` | GekoSAS sync round-robin cursor | `Prod/orders.py:1794` |
 
-`valore` max length 50 is too short for recipient lists. DuMetodo: split into typed settings (env/secret store for credentials, a typed `Setting` model or django-constance for business parameters, a `Reparto.soglia_ore` column instead of `SOGLIA_*`).
+`valore` max length 50 is too short for recipient lists. Metodo v2: split into typed settings (env/secret store for credentials, a typed `Setting` model or django-constance for business parameters, a `Reparto.soglia_ore` column instead of `SOGLIA_*`).
 
 ---
 
@@ -525,7 +525,7 @@ DuMetodo recommendation: implement audit at the service layer (explicit `record_
 | Insecure fallback `SECRET_KEY`, `DEBUG` default True | `Metodo/settings.py:16-17` |
 | Mail passwords stored in plaintext DB rows (`Configuration`) and editable/exportable via admin import-export | `Prod/models.py:118-120`, `Prod/admin.py:48-50` |
 | Hard-coded public IP and hostnames | `Metodo/settings.py:19`; production URL in `Prod/pianificazione.py:1142`, `Prod/templates/Console/tplConsole.html:15`; personal reply-to e-mail `Prod/pianificazione.py:1143` |
-→ All of these must be rotated; DuMetodo must read credentials from env/secret manager only.
+→ All of these must be rotated; Metodo v2 must read credentials from env/secret manager only.
 
 ### 9.2 Injection / unsafe I/O
 - **SQL injection** via string concatenation in raw MySQL queries: `Prod/orders.py:1824,1846` (values from DB, but still), `Reports/gekosas.py` (multiple `qry` built from input — out of Prod scope).
@@ -560,7 +560,7 @@ DuMetodo recommendation: implement audit at the service layer (explicit `record_
 
 ---
 
-## 10. Recommendations for the DuMetodo data model (derived)
+## 10. Recommendations for the Metodo v2 data model (derived)
 
 1. `Ordine` with `UniqueConstraint(serie, numero, appendice, anno)`; normalise `appendice` (`''` instead of NULL/`'0'` mix, or explicit enum), `anno` as `PositiveSmallIntegerField`.
 2. `RigaOrdine(ordine FK PROTECT, n_riga int, articolo FK Articolo nullable, codice_articolo str, variante, qta Decimal, prezzo_unitario Decimal(12,4), sconto Decimal, stato_riga enum{attiva, annullata, duplicata}, bloccata bool, evasione_parziale bool, scorporata_da FK self nullable, data_scadenza, data_consegna)`; keep `import_batch` FK for re-import diffing instead of date-based annulment.

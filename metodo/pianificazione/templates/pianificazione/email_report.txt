@@ -1,0 +1,7 @@
+{% autoescape off %}{% if messaggio %}{{ messaggio }}
+
+{% endif %}In allegato il report di pianificazione della produzione per il periodo {{ piano.settimane.0.0|date:"d/m/Y" }} - {% with ultima=piano.settimane|last %}{{ ultima.1|date:"d/m/Y" }}{% endwith %}, generato il {{ piano.generato_il|date:"d/m/Y H:i" }}.
+
+Pianificazione online: {{ url }}
+-- Metodo v2
+{% endautoescape %}

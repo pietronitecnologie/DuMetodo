@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static dumetodo %}
+{% load static metodo %}
 {% block titolo %}{{ m.nome }}{% endblock %}
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciatura:nuova' %}{% if coll.ordine %}?ordine={{ coll.ordine }}{% endif %}">← Modelli</a>

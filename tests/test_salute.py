@@ -4,8 +4,8 @@ import pytest
 from django.core import mail
 from django.core.management import call_command
 
-from dumetodo.configurazione import servizi as config
-from dumetodo.core import diagnostica
+from metodo.configurazione import servizi as config
+from metodo.core import diagnostica
 
 
 def test_salute_risponde_senza_login_e_con_qualunque_host(client, db):
@@ -16,7 +16,7 @@ def test_salute_risponde_senza_login_e_con_qualunque_host(client, db):
 
 
 def test_salute_503_se_un_componente_non_risponde(client, db, monkeypatch):
-    monkeypatch.setattr("dumetodo.core.salute.controlla", lambda: {"database": False, "cache": True})
+    monkeypatch.setattr("metodo.core.salute.controlla", lambda: {"database": False, "cache": True})
     r = client.get("/salute/")
     assert r.status_code == 503 and r.json()["stato"] == "errore"
 

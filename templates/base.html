@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block titolo %}DuMetodo{% endblock %} · DuMetodo · {{ nome_fornitore }}</title>
+  <title>{% block titolo %}Metodo v2{% endblock %} · Metodo v2 · {{ nome_fornitore }}</title>
   <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="any">
-  <link rel="icon" href="{% static 'img/dumetodo.svg' %}" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="{% static 'img/dumetodo-180.png' %}">
+  <link rel="icon" href="{% static 'img/metodo.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'img/metodo-180.png' %}">
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
-  <link rel="stylesheet" href="{% static 'dumetodo.css' %}">
+  <link rel="stylesheet" href="{% static 'metodo.css' %}">
   <script>
     // Prima del disegno: niente "salto" della modalità reparto.
     try {
@@ -18,7 +18,7 @@
   </script>
   <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
   <script src="{% static 'vendor/bootstrap.bundle.min.js' %}" defer></script>
-  <script src="{% static 'dumetodo.js' %}" defer></script>
+  <script src="{% static 'metodo.js' %}" defer></script>
   {% if is_client_desktop and user.is_authenticated %}<script src="{% static 'client/client.js' %}" defer></script>{% endif %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' class="{% block classe_body %}{% if user.is_authenticated %}dm-app{% else %}dm-pubblica{% endif %}{% endblock %}">
@@ -27,8 +27,8 @@
 <header class="dm-testata">
   {% if logo_azienda %}<a class="dm-logo-azienda" href="{% url 'home' %}" title="{{ nome_fornitore }}">
     <img src="{% url 'configurazione:logo' %}?v={{ logo_azienda }}" alt="{{ nome_fornitore }}"></a>{% endif %}
-  <a class="dm-marchio" href="{% url 'home' %}" title="DuMetodo">
-    <span class="dm-marchio-testo"><b>DuMetodo</b><small>{{ nome_fornitore }}</small></span>
+  <a class="dm-marchio" href="{% url 'home' %}" title="Metodo v2">
+    <span class="dm-marchio-testo"><b>Metodo v2</b><small>{{ nome_fornitore }}</small></span>
   </a>
   <button type="button" class="dm-pulsante-icona dm-solo-piccolo" data-dm-apri-menu aria-controls="dm-menu" title="Menu">
     <svg class="dm-icona"><use href="#i-menu"/></svg></button>
@@ -80,7 +80,7 @@
   {% endfor %}
   {% block contenuto %}{% endblock %}
 </main>
-<footer class="dm-piede">DuMetodo · {{ nome_fornitore }} · server {{ versione_dumetodo }}{% if versione_client %} · client {{ versione_client }}{% endif %}</footer>
+<footer class="dm-piede">Metodo v2 · {{ nome_fornitore }} · server {{ versione_metodo }}{% if versione_client %} · client {{ versione_client }}{% endif %}</footer>
 {% if user.is_authenticated %}<div hx-get="{% url 'utilita:annunci_attivi' %}" hx-trigger="load"></div>{% endif %}
 </body>
 </html>

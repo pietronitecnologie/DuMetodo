@@ -46,7 +46,7 @@ pub fn richiesta_valida(versione: &str, sha256: &str, url: &str) -> bool {
 }
 
 pub fn percorso_download(versione: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("dumetodo-client-{versione}.scaricato"))
+    std::env::temp_dir().join(format!("metodo-client-{versione}.scaricato"))
 }
 
 pub fn impronta(percorso: &Path) -> std::io::Result<String> {
@@ -111,7 +111,7 @@ mod test {
 
     #[test]
     fn impronta_sha256() {
-        let p = std::env::temp_dir().join(format!("dumetodo-impronta-{}", std::process::id()));
+        let p = std::env::temp_dir().join(format!("metodo-impronta-{}", std::process::id()));
         fs::write(&p, b"abc").unwrap();
         assert_eq!(impronta(&p).unwrap(), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
         let _ = fs::remove_file(&p);

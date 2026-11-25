@@ -1,9 +1,9 @@
 import pytest
 from django.contrib.auth.models import User
 
-from dumetodo.chat import servizi
-from dumetodo.chat.models import MessaggioChat
-from dumetodo.core.permessi import F, permessi_di
+from metodo.chat import servizi
+from metodo.chat.models import MessaggioChat
+from metodo.core.permessi import F, permessi_di
 
 
 def _utente(nome, chat=True):

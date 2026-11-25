@@ -1,5 +1,5 @@
 ﻿# Pubblica una nuova versione del client su GitHub (Release con l'exe allegato).
-# Uso, nella cartella di DuMetodo:  powershell -ExecutionPolicy Bypass -File .\client\pubblica-versione.ps1 0.3.0
+# Uso, nella cartella di Metodo v2:  powershell -ExecutionPolicy Bypass -File .\client\pubblica-versione.ps1 0.3.0
 # Non serve Rust: compila GitHub. Dopo qualche minuto la trovi in GitHub > Releases.
 param([Parameter(Mandatory = $true)][string]$Versione)
 $ErrorActionPreference = "Stop"
@@ -21,11 +21,11 @@ git pull --ff-only
 # Scrittura senza BOM: Cargo.toml deve restare UTF-8 semplice.
 $righe = (Get-Content $cargo) -replace '^version = ".+"$', "version = `"$Versione`""
 [System.IO.File]::WriteAllLines((Resolve-Path $cargo), $righe, (New-Object System.Text.UTF8Encoding $false))
-# Anche la versione in Cargo.lock (la riga dopo name = "dumetodo-client"), o le build --locked falliscono.
+# Anche la versione in Cargo.lock (la riga dopo name = "metodo-client"), o le build --locked falliscono.
 $lock = "client\Cargo.lock"
 $righe = Get-Content $lock
 for ($i = 0; $i -lt $righe.Count - 1; $i++) {
-    if ($righe[$i] -eq 'name = "dumetodo-client"') { $righe[$i + 1] = "version = `"$Versione`"" }
+    if ($righe[$i] -eq 'name = "metodo-client"') { $righe[$i + 1] = "version = `"$Versione`"" }
 }
 [System.IO.File]::WriteAllLines((Resolve-Path $lock), $righe, (New-Object System.Text.UTF8Encoding $false))
 git add $cargo $lock
@@ -34,5 +34,5 @@ git tag "client-v$Versione"
 git push
 git push origin "client-v$Versione"
 Write-Host ""
-Write-Host "Pubblicazione avviata: tra qualche minuto in GitHub > Releases trovi 'DuMetodo Client $Versione'" -ForegroundColor Green
-Write-Host "con dumetodo-client-$Versione.exe. Poi caricalo in DuMetodo > Amministrazione > Aggiornamenti del client."
+Write-Host "Pubblicazione avviata: tra qualche minuto in GitHub > Releases trovi 'Metodo v2 Client $Versione'" -ForegroundColor Green
+Write-Host "con metodo-client-$Versione.exe. Poi caricalo in Metodo v2 > Amministrazione > Aggiornamenti del client."

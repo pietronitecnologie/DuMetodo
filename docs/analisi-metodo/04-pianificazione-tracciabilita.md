@@ -1,6 +1,6 @@
 # 04 – Pianificazione, Tracciabilità & Qualità, Console, Annunci, File, Scheduler
 
-Functional specification for the DuMetodo rewrite of the `Prod` app (branch `Metodo`, checkout `/home/user/metodo-branch`).
+Functional specification for the Metodo v2 rewrite of the `Prod` app (branch `Metodo`, checkout `/home/user/metodo-branch`).
 Scope of this chapter:
 
 | Source file | Lines | Content |
@@ -182,7 +182,7 @@ Areas whose `area.strip().upper()` ∈ {`AREA CATENE`, `AREA CAVI FLESSIBILI`, `
 Concept (as implemented):
 * An **item** is a `Plan.Coding` (unique `internalCode`, optional `rawMaterialCode` = supplier lot) wrapped by a `Stored_Item` (`codice` FK, optional `linea` FK used as "item type", `data_in`).
 * A **traccia** (`Tracciabilita`) is an event: optional `stored_item`, optional `rif_ordine` (FK Ordine), `data` (event datetime), `chiave` (event type / product), `valore` (value), `location` (department), optional `asset` (machine), `data_inserimento` (auto_now).
-* "Item type" is expressed by linking `Stored_Item.linea` to a **pseudo-`Linea`** whose `articolo` equals `ARTICOLO_TRACCIA_BATTERIE` or `ARTICOLO_TRACCIA_CAVI` (`qta` 0/1, `prezzo_ea` 0, no order). These fake lines pollute the `Linea` table. [DECIDE] DuMetodo should model item type explicitly (enum/table) and never create order lines.
+* "Item type" is expressed by linking `Stored_Item.linea` to a **pseudo-`Linea`** whose `articolo` equals `ARTICOLO_TRACCIA_BATTERIE` or `ARTICOLO_TRACCIA_CAVI` (`qta` 0/1, `prezzo_ea` 0, no order). These fake lines pollute the `Linea` table. [DECIDE] Metodo v2 should model item type explicitly (enum/table) and never create order lines.
 * Barcodes: Code128 via JsBarcode (no QR code exists anywhere in this area). Payload is plain CSV text: batteries `"{item},{chiave},{data}"`, generic `"{item},{chiave},{valore},{data}"`.
 * Link to orders: in the order modal (`Prod/orders.py:1059`, other analyst) traces are shown with `rif_ordine__rif_ordine__iregex=r'[^1-9]{rif-without-leading-zeros}$'` + anno + serie; ControlloQlta with `ordine__iregex=r'{serie}.{rif}$'` (user input interpolated into regex unescaped); FileOrdini with `contains`. Lot/busta capture is in the order modal (§3.6).
 
@@ -240,7 +240,7 @@ Concept (as implemented):
 * GET → `context` undefined → `UnboundLocalError` 500 [BUG].
 
 ### 3.7 Cavi – machine/HTMX insert: `GET /PRODUZIONE/insertTracciaCavi` → `insertTracciaCavi` (name `InserisciCavo`)
-* **No authentication, state-changing GET** (`:605`) [SEC]. Probably intended for a cable-cutting machine integration (asset/location params). [DECIDE] provide an authenticated API (token per asset) in DuMetodo.
+* **No authentication, state-changing GET** (`:605`) [SEC]. Probably intended for a cable-cutting machine integration (asset/location params). [DECIDE] provide an authenticated API (token per asset) in Metodo v2.
 * Params: `ordine`, `lottoCavo` (default `'None'`), `prodotto` (cable product code → stored as `chiave`, default `'---'`), `misura` (length → `valore`), `data` (`%Y/%m/%d,%H:%M:%S` or `%Y/%m/%d`; missing/invalid → unhandled exception 500), `asset` (Asset.code), `location` (Location.path.code).
 * Steps:
   1. Parse date; `anno = str(data.year)`.
@@ -354,7 +354,7 @@ Page data (always computed, also for command requests – wasteful):
 * Auth: **Geko** (weaker than the console itself – any Geko user can read all logs, which contain e-mail subjects, file paths, errors) [SEC].
 * Maps `ordini` → `Metodo/media/logs/ordini.log`, `scheduler` → `schedulazioni.log`, anything else → `metodo.log` (whitelist – no traversal). Reads the **whole file** into memory (no tail/rotation awareness) [perf]; missing file → 500; file handle not closed on exception.
 * Renders `Console/uxLog.html`: each line followed by `<br>`, wrapped in a green span if it contains `INFO`, red if `ERROR` (unbalanced `<span>` tags when neither). Django auto-escapes line content.
-* [DECIDE] DuMetodo: tail N lines, newest first, level filter, admin-only.
+* [DECIDE] Metodo v2: tail N lines, newest first, level filter, admin-only.
 
 ### 5.2 Helpers in `console.py`
 * `checkOrderStucks()` – list dir (see above).
@@ -412,7 +412,7 @@ Scheduled every 10 h (`updater.py:18`) and via console `?maintenance=1`.
 * Also imported but unused: `scSyncOrders`, `scLoadOrderFromGeko` [DEAD imports].
 * Other apps' schedulers: `Plan/updater.py` (`createPM` every 20 min, `deactivateExpiredAnnunci` every 10 min), `Tickets/updater.py` (FetchTickets every 5 min, has a `scheduler.running` guard).
 * [RACE – important] No single-instance guard: `ready()` runs in **every** Django process – each gunicorn/uwsgi worker, `runserver` (twice with autoreloader), `manage.py migrate/shell/…`. Consequences: N concurrent IMAP fetches/imports of the same files (duplicate order lines), N daily planning e-mails, N maintenance runs racing on Anagrafica de-dupe. Also importing `traccia.py` at startup runs DB queries at import time (`traccia.py:22-30`), which fails on a fresh DB and freezes config values until restart.
-* [DECIDE] DuMetodo: dedicated worker (Celery beat / django-q / systemd timer / `django-apscheduler` with DB lock), explicit Europe/Rome TZ, idempotent jobs, job run log.
+* [DECIDE] Metodo v2: dedicated worker (Celery beat / django-q / systemd timer / `django-apscheduler` with DB lock), explicit Europe/Rome TZ, idempotent jobs, job run log.
 
 ---
 
@@ -471,11 +471,11 @@ Dead code
 
 ---
 
-## 10. `Reports/produzione.py` – reports on Prod data (candidates to move into DuMetodo)
+## 10. `Reports/produzione.py` – reports on Prod data (candidates to move into Metodo v2)
 
 All require **`Geko Admin`**. Mounted under `/REPORTS/` (`Reports/urls.py:19-31`). Prod models used: `Anagrafica`, `DocumentiTrasporto`, `Ordine`, `Linea`, `Configuration`; plus non-Prod `Plan.Location`, `Tickets.Ticket`, `Timbratura.Timbratura`, `Reports.ResourcePayrollSettings`.
 
-| Report (view) | URL | Routed | Prod models queried | What it computes | Move to DuMetodo? |
+| Report (view) | URL | Routed | Prod models queried | What it computes | Move to Metodo v2? |
 |---|---|---|---|---|---|
 | `vwProduzione` (`:24-99`) | – | **No** (dead) | Ordine, Linea, Configuration(PREZZO_RESA_ORARIA) | Lines with `data_scadenza` in range (default today..+14d), orders not ANN, appendice contains T or R, not annullata/duplicata; per line value Σ(qta×prezzo)/resa → hours, ISO week; XLSX `ListaProduzione.xlsx` (Serie, Ordine, Appendice, Anno, Articolo, Variante, Data Scadenza, Quantita, Tempo, Settimana). | Superseded by §1; drop. |
 | `vwControlloPrezzi` (`:102-279`) | `produzione/controlloPrezzi` | yes | Anagrafica, DocumentiTrasporto, Linea | Invoiced lines (`emessa_bolla`, not annullata/duplicata, `data_scadenza` range default −14d..today, optional article list partial match) whose `prezzo_ea` ≠ `Anagrafica.prezzo`; enriched with DDT number (`DocumentiTrasporto` keyed by serie/anno/appendice/rif/n_riga); filters on DDT/anagrafica price ranges and DDT number; export. | Yes (pure Prod data). |
@@ -493,7 +493,7 @@ All require **`Geko Admin`**. Mounted under `/REPORTS/` (`Reports/urls.py:19-31`
 | `vwAnalisiProduttivitaGiornaliero` (`:1719-1750`) | `…/analisiProduttivita/giornaliero` | yes | same as above | AJAX JSON: per-day breakdown of a week (`week_start=YYYY-MM-DD`, 400 on bad input). | With the above. |
 | `vwAnalisiMateriale` (`:2235-…`) + `_get_reparti_materiale`, `_build_materiale_week` (`:2184-2233`) | `produzione/materialeReparto` | yes | Configuration, Anagrafica, Linea | Per reparto (Anagrafica.location.area) and per week (default last 8 weeks): hours "a scadenza" (lines by data_scadenza) vs "consegnato" (lines by data_consegna), excl. annullata/duplicata, hours = Σ qta×prezzo / PREZZO_RESA_ORARIA. | Yes – natural companion of §1 planning. |
 
-Note the inconsistent definition of "hours" across reports and §1 (appendice T/R filter here vs. appendice ≠ '0' in §1; status filters differ; scorporato excluded only in productivity). [DECIDE] one shared "line workload" function in DuMetodo with explicit, documented filters.
+Note the inconsistent definition of "hours" across reports and §1 (appendice T/R filter here vs. appendice ≠ '0' in §1; status filters differ; scorporato excluded only in productivity). [DECIDE] one shared "line workload" function in Metodo v2 with explicit, documented filters.
 
 ---
 

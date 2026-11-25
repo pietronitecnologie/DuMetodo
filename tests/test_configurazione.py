@@ -5,10 +5,10 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 
-from dumetodo.configurazione import servizi as config
-from dumetodo.configurazione.models import ValoreParametro
-from dumetodo.configurazione.registro import REGISTRO
-from dumetodo.core.models import Reparto
+from metodo.configurazione import servizi as config
+from metodo.configurazione.models import ValoreParametro
+from metodo.configurazione.registro import REGISTRO
+from metodo.core.models import Reparto
 
 
 def test_decimale_accetta_formato_italiano():
@@ -108,16 +108,16 @@ def test_pagina_configurazione_solo_admin(client, operatore, amministratore):
 def test_mappatura_gruppi_metodo_coerente_con_la_migrazione():
     import importlib
 
-    from dumetodo.core.permessi import GRUPPI_METODO
+    from metodo.core.permessi import GRUPPI_METODO
 
-    migrazione = importlib.import_module("dumetodo.core.migrations.0002_rinomina_gruppi_metodo")
+    migrazione = importlib.import_module("metodo.core.migrations.0002_rinomina_gruppi_metodo")
     assert GRUPPI_METODO == migrazione.RINOMINE
 
 
 # =========================================================================== casella ordini (IMAP)
 @pytest.mark.django_db
 def test_password_casella_cifrata_mai_mostrata_ne_storicizzata(client, amministratore):
-    from dumetodo.configurazione.models import SegretoParametro, ValoreParametro
+    from metodo.configurazione.models import SegretoParametro, ValoreParametro
 
     client.force_login(amministratore)
     dati = {
@@ -147,7 +147,7 @@ def test_password_casella_cifrata_mai_mostrata_ne_storicizzata(client, amministr
 
 @pytest.mark.django_db
 def test_parametri_casella_da_configurazione_o_env(settings):
-    from dumetodo.importazione import posta
+    from metodo.importazione import posta
 
     settings.ORDINI_IMAP = {"HOST": "env.it", "PORT": 993, "USER": "u", "PASSWORD": "p", "FOLDER": "INBOX", "SSL": True}
     assert posta.parametri_casella()["HOST"] == "env.it"  # nessun server in Configurazione: vale il .env
@@ -169,7 +169,7 @@ def test_parametri_casella_da_configurazione_o_env(settings):
 
 @pytest.mark.django_db
 def test_prova_connessione(client, amministratore, operatore):
-    from dumetodo.importazione import posta
+    from metodo.importazione import posta
 
     class Finto:
         def __init__(self, c):
@@ -197,8 +197,8 @@ def test_prova_connessione(client, amministratore, operatore):
 def test_mittenti_non_ammessi_scartati(db):
     from email.message import EmailMessage
 
-    from dumetodo.importazione import posta
-    from dumetodo.importazione.models import EsitoMessaggio, MessaggioEmail
+    from metodo.importazione import posta
+    from metodo.importazione.models import EsitoMessaggio, MessaggioEmail
 
     m = EmailMessage()
     m["From"] = "Sconosciuto <spam@altro.it>"

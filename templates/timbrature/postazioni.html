@@ -2,8 +2,8 @@
 {% block titolo %}Postazioni di timbratura{% endblock %}
 {% block contenuto %}
 <h1 class="h4 mb-1">Postazioni di timbratura</h1>
-<p class="small text-muted">Ogni postazione è un PC (o un tablet) con il <b>client DuMetodo</b> <b>associato</b> alla postazione.
-Sul PC associato si usa tutto DuMetodo con il proprio utente e si apre la timbratura da <b>Timbrature → Timbra</b>
+<p class="small text-muted">Ogni postazione è un PC (o un tablet) con il <b>client Metodo v2</b> <b>associato</b> alla postazione.
+Sul PC associato si usa tutto Metodo v2 con il proprio utente e si apre la timbratura da <b>Timbrature → Timbra</b>
 (per timbrare non serve accedere). Una postazione <b>senza reparto</b> è l'ingresso/uscita dallo stabilimento; quelle di reparto
 registrano inizio e fine del lavoro nel reparto.</p>
 <div class="alert {% if questo_pc %}alert-success{% else %}alert-light border{% endif %} d-flex flex-wrap align-items-center gap-2 py-2">
@@ -28,10 +28,10 @@ registrano inizio e fine del lavoro nel reparto.</p>
         <span class="form-text ms-1">da premere sul PC della postazione</span></form>{% else %}<div class="mb-2"><span class="badge text-bg-success">questo PC</span></div>{% endif %}
       <details class="mb-2"><summary>Configurazione del client della postazione</summary>
         <div class="form-text mt-1">Due modi, nel file <code>client.toml</code> del PC della postazione (vedi il manuale del client):</div>
-        <div class="mt-1"><b>PC usato anche per lavorare</b>: il client apre DuMetodo; associa il PC con il pulsante qui sopra
+        <div class="mt-1"><b>PC usato anche per lavorare</b>: il client apre Metodo v2; associa il PC con il pulsante qui sopra
           (o aprendo una volta il link della postazione) e si timbra da Timbrature → Timbra.</div>
         <pre class="bg-light border rounded p-2 mt-1 mb-2">url = "{{ indirizzo_server }}"</pre>
-        <div><b>PC solo per timbrare</b> (chiosco): il client apre subito la timbratura, a schermo intero; «Apri DuMetodo» porta comunque al resto.</div>
+        <div><b>PC solo per timbrare</b> (chiosco): il client apre subito la timbratura, a schermo intero; «Apri Metodo v2» porta comunque al resto.</div>
         <pre class="bg-light border rounded p-2 mt-1 mb-0">url = "{{ x.link }}"
 schermo_intero = true
 ripristina_schede = false</pre></details>

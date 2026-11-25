@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chat · DuMetodo</title>
+<title>Chat · Metodo v2</title>
 <style>
   :root { --bordo:#e2e6ec; --testo:#18212e; --testo2:#5b6676; --accento:#2f74f0; --chiaro:#e6efff; }
   * { box-sizing: border-box; }
@@ -160,8 +160,8 @@
   });
   $("testo").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("modulo").requestSubmit(); } });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") aggiorna(); });
-  // Il client chiama DuMetodoChat.apri(id) quando si clicca una notifica o si apre il pannello con messaggi nuovi.
-  window.DuMetodoChat = {
+  // Il client chiama MetodoChat.apri(id) quando si clicca una notifica o si apre il pannello con messaggi nuovi.
+  window.MetodoChat = {
     apri: (con) => apri(Number(con)),
     apriNonLetti: () => { const c = dati.conversazioni.find((x) => x.non_letti); if (c) apri(c.con); },
   };

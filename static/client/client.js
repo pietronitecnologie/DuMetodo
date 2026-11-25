@@ -1,8 +1,8 @@
-/* DuMetodo – ponte con il client desktop (caricato solo se la pagina è aperta dal client).
+/* Metodo v2 – ponte con il client desktop (caricato solo se la pagina è aperta dal client).
  *
  * Clic destro: cerca l'elemento più vicino con data-dm-menu="<tipo>", compone le voci di quel tipo
  * più quelle della "pagina" (definite in Configurazione e già filtrate per i permessi dal server),
- * e chiede al client di mostrare un menu NATIVO. Alla scelta, il client chiama DuMetodoClient.esegui(id).
+ * e chiede al client di mostrare un menu NATIVO. Alla scelta, il client chiama MetodoClient.esegui(id).
  */
 (() => {
   "use strict";
@@ -76,7 +76,7 @@
     area.remove();
     return ok;
   };
-  const avviso = (testo) => { if (window.__duMetodoAvviso) window.__duMetodoAvviso(testo); };
+  const avviso = (testo) => { if (window.__metodoAvviso) window.__metodoAvviso(testo); };
   const copiaTesto = (t) => {
     if (!t) { avviso("Niente da copiare"); return; }
     const righe = t.split("\r\n").length;
@@ -112,11 +112,11 @@
     nuova_scheda: () => invia({ tipo: "nuova_scheda" }),
     apri_in_nuova_scheda: () => { if (contesto.link) invia({ tipo: "nuova_scheda", url: contesto.link }); },
     incolla: () => {
-      // Il client nuovo legge gli appunti e chiama DuMetodoClient.incolla; in alternativa il browser.
+      // Il client nuovo legge gli appunti e chiama MetodoClient.incolla; in alternativa il browser.
       if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) {
         const campo = campoIncolla;
         navigator.clipboard.readText().then(
-          (t) => { campoIncolla = campo; window.DuMetodoClient.incolla(t); },
+          (t) => { campoIncolla = campo; window.MetodoClient.incolla(t); },
           () => invia({ tipo: "incolla" }));
       } else {
         invia({ tipo: "incolla" });
@@ -217,7 +217,7 @@
     box.style.cssText = "background:#fff;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:18px 22px;" +
       "width:min(460px,92vw);max-height:85vh;overflow:auto;font:14px 'Segoe UI',system-ui,sans-serif;color:#18212e";
     const titolo = document.createElement("div");
-    titolo.textContent = "Scorciatoie da tastiera" + (versioneInUso ? ` · DuMetodo Client ${versioneInUso}` : "");
+    titolo.textContent = "Scorciatoie da tastiera" + (versioneInUso ? ` · Metodo v2 Client ${versioneInUso}` : "");
     titolo.style.cssText = "font-weight:650;font-size:16px;margin-bottom:10px";
     box.append(titolo);
     const riga = (tasto, testo) => {
@@ -270,7 +270,7 @@
   }, true);
 
   // ---- Aggiornamento del client: il server propone l'ultima versione caricata in Amministrazione.
-  const versioneInUso = (navigator.userAgent.match(/DuMetodoClient\/([\d.]+)/) || [])[1] || "";
+  const versioneInUso = (navigator.userAgent.match(/MetodoClient\/([\d.]+)/) || [])[1] || "";
   const numeri = (v) => String(v || "").split(".").map((x) => parseInt(x, 10) || 0);
   const piuRecente = (a, b) => {
     const x = numeri(a), y = numeri(b);
@@ -282,7 +282,7 @@
   const controllaAggiornamento = () => {
     if (!versioneInUso) return;
     // Il server distribuisce solo l'eseguibile Windows (i client più vecchi non indicano il sistema: sono Windows).
-    const sistema = (navigator.userAgent.match(/DuMetodoSistema\/(\w+)/) || [])[1] || "windows";
+    const sistema = (navigator.userAgent.match(/MetodoSistema\/(\w+)/) || [])[1] || "windows";
     if (sistema !== "windows") return;
     fetch("/client/aggiornamento.json", { credentials: "same-origin", headers: { Accept: "application/json" } })
       .then((r) => (r.ok ? r.json() : {}))
@@ -297,7 +297,7 @@
           "padding:12px 14px;font:14px 'Segoe UI',system-ui,sans-serif";
         const titolo = document.createElement("div");
         titolo.style.cssText = "font-weight:650;margin-bottom:4px";
-        titolo.textContent = `È disponibile DuMetodo Client ${a.versione}`;
+        titolo.textContent = `È disponibile Metodo v2 Client ${a.versione}`;
         const testo = document.createElement("div");
         testo.style.cssText = "font-size:13px;color:#46536a;white-space:pre-line";
         testo.textContent = `Versione in uso: ${versioneInUso}.` + (a.note ? `\n${a.note}` : "");
@@ -325,7 +325,7 @@
       .catch(() => {});
   };
 
-  window.DuMetodoClient = {
+  window.MetodoClient = {
     esegui(id) {
       const scelta = inAttesa[id];
       inAttesa = {};

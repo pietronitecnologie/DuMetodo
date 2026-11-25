@@ -9,10 +9,10 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from openpyxl import load_workbook
 
-from dumetodo.core.permessi import applica_profilo
-from dumetodo.ordini.models import RigaOrdine
-from dumetodo.report import servizi
-from dumetodo.timbrature.models import Lavoratore, Timbratura
+from metodo.core.permessi import applica_profilo
+from metodo.ordini.models import RigaOrdine
+from metodo.report import servizi
+from metodo.timbrature.models import Lavoratore, Timbratura
 
 from .test_report import LUN, analista, dati  # noqa: F401  (fixture)
 

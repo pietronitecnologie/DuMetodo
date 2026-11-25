@@ -1,12 +1,12 @@
 # MetodoConsole
 
-Console di controllo del server di produzione di DuMetodo: Docker Compose su Debian, con PostgreSQL nello stesso
+Console di controllo del server di produzione di Metodo v2: Docker Compose su Debian, con PostgreSQL nello stesso
 compose. Un solo comando, `metodoconsole`, per:
 
 - vedere lo **stato** dei servizi;
 - fare una **diagnostica** completa del server, di Docker e dell'applicazione;
 - fare **backup**, verificarli e **ripristinarli** (database PostgreSQL, file caricati, `.env`);
-- **aggiornare** DuMetodo in sicurezza (backup prima, controllo dopo);
+- **aggiornare** Metodo v2 in sicurezza (backup prima, controllo dopo);
 - ricevere **avvisi via email** quando qualcosa non va.
 
 Usa solo Python 3.11 o più recente (quello di Debian 12) e i comandi `docker compose`, `git`, `tar` e,
@@ -14,7 +14,7 @@ facoltativamente, `rsync`. Non serve installare altro.
 
 ## Installazione
 
-Sul server, dalla cartella di DuMetodo (es. `/opt/dumetodo`, quella con `compose.yaml` e `.env`):
+Sul server, dalla cartella di Metodo v2 (es. `/opt/metodo`, quella con `compose.yaml` e `.env`):
 
 ```bash
 sudo ./MetodoConsole/installa.sh
@@ -24,7 +24,7 @@ Lo script:
 
 - crea il comando `/usr/local/bin/metodoconsole`;
 - scrive la configurazione `/etc/metodoconsole/metodoconsole.conf` (solo se non c'è già);
-- crea la cartella dei backup `/var/backups/dumetodo` (accessibile solo a root);
+- crea la cartella dei backup `/var/backups/metodo` (accessibile solo a root);
 - mette i permessi `600` al file `.env`, che contiene le password;
 - attiva due timer di systemd:
 
@@ -33,7 +33,7 @@ Lo script:
 | `metodoconsole-backup.timer` | ogni notte alle 02:30 | backup, verifica, rotazione, copia remota; email se non riesce |
 | `metodoconsole-controllo.timer` | ogni 15 minuti | diagnostica completa; email se trova problemi |
 
-Poi controlla la configurazione e, in DuMetodo, imposta chi riceve gli avvisi:
+Poi controlla la configurazione e, in Metodo v2, imposta chi riceve gli avvisi:
 **Configurazione → Indirizzi email → Destinatari avvisi del server**.
 
 ## Comandi
@@ -43,11 +43,11 @@ Poi controlla la configurazione e, in DuMetodo, imposta chi riceve gli avvisi:
 | `metodoconsole stato` | Servizi in esecuzione e ultimo backup |
 | `metodoconsole diagnostica` | Controllo completo (vedi sotto). Uscita: 0 tutto ok, 1 attenzione, 2 errore. `--json` per altri strumenti di monitoraggio |
 | `metodoconsole backup` | Backup completo, verificato. `--nota testo` per un backup da conservare (es. prima di una modifica importante), `--solo-database` |
-| `metodoconsole backup-elenco` | Elenco dei backup con dimensione, versione di DuMetodo e nota |
+| `metodoconsole backup-elenco` | Elenco dei backup con dimensione, versione di Metodo v2 e nota |
 | `metodoconsole backup-verifica NOME` | Controlla che un backup sia integro e leggibile |
 | `metodoconsole ripristina NOME` | Ripristina database e file da un backup (chiede di scrivere RIPRISTINA). `--solo-database` lascia i file caricati come sono |
 | `metodoconsole aggiorna` | Scarica il codice nuovo, fa un backup, ricostruisce e riavvia, poi la diagnostica |
-| `metodoconsole avvia` / `ferma` / `riavvia [servizio]` | Avvia, ferma o riavvia DuMetodo o un solo servizio (`db`, `redis`, `web`, `worker`, `beat`). `avvia --ricostruisci` ricostruisce l'immagine |
+| `metodoconsole avvia` / `ferma` / `riavvia [servizio]` | Avvia, ferma o riavvia Metodo v2 o un solo servizio (`db`, `redis`, `web`, `worker`, `beat`). `avvia --ricostruisci` ricostruisce l'immagine |
 | `metodoconsole log [servizio] [-f]` | Log dei servizi; `--errori` mostra solo gli errori delle ultime 24 ore; `--da 2h` |
 | `metodoconsole manage COMANDO` | Comando di Django, es. `metodoconsole manage changepassword admin` |
 | `metodoconsole psql` | Console SQL del database |
@@ -59,9 +59,9 @@ Dove serve un `NOME` di backup basta l'inizio (`20261120`), una parte della nota
 ## Prelievo dei dati da Metodo
 
 Importa anni di produzione direttamente dal database di Metodo: lo fa a blocchi, con un limite di banda, e si
-può interrompere e riprendere (dettagli nel README di DuMetodo, «Prelievo dal Metodo in produzione»).
+può interrompere e riprendere (dettagli nel README di Metodo v2, «Prelievo dal Metodo in produzione»).
 
-1. Metti l'indirizzo del database di Metodo nel `.env` di DuMetodo e riavvia (`metodoconsole riavvia`):
+1. Metti l'indirizzo del database di Metodo nel `.env` di Metodo v2 e riavvia (`metodoconsole riavvia`):
    `METODO_DB_URL=postgres://utente-sola-lettura:password@host:5432/metodo`.
    * Se non lo vuoi nel `.env`, MetodoConsole lo chiede senza mostrarlo a schermo, oppure lo legge dalla
      variabile `METODO_DB_URL`.
@@ -119,14 +119,14 @@ email avvisa quando tutto è tornato a posto.
 
 ## Backup
 
-Ogni backup è una cartella in `/var/backups/dumetodo/AAAAMMGG-HHMMSS[-nota]/` con:
+Ogni backup è una cartella in `/var/backups/metodo/AAAAMMGG-HHMMSS[-nota]/` con:
 
 | File | Contenuto |
 |---|---|
 | `database.dump` | il database (`pg_dump` in formato custom, compresso) |
 | `file.tar.gz` | i file caricati: foto, allegati, bolle |
 | `env` | copia del `.env` (permessi 600): contiene la chiave che cifra la password della casella ordini |
-| `manifesto.json` | data, versione di DuMetodo e di PostgreSQL, numero di tabelle e file, impronte SHA-256 |
+| `manifesto.json` | data, versione di Metodo v2 e di PostgreSQL, numero di tabelle e file, impronte SHA-256 |
 
 Un backup si scrive in una cartella temporanea e diventa visibile solo se è completo. Subito dopo viene
 verificato: impronte e lettura con `pg_restore`.
@@ -135,8 +135,8 @@ verificato: impronte e lettura con `pg_restore`.
 in configurazione). L'ultimo non viene mai eliminato.
 
 **Copia su un altro computer.** Un backup sullo stesso disco del server non protegge da un guasto del disco.
-Indica in `copia_remota` una destinazione rsync, es. `backup@nas.azienda.local:/backup/dumetodo`. Serve una
-chiave SSH senza password per root verso quel computer. In alternativa, fai copiare `/var/backups/dumetodo`
+Indica in `copia_remota` una destinazione rsync, es. `backup@nas.azienda.local:/backup/metodo`. Serve una
+chiave SSH senza password per root verso quel computer. In alternativa, fai copiare `/var/backups/metodo`
 dal sistema di backup aziendale.
 
 ## Ripristino
@@ -156,15 +156,15 @@ MetodoConsole:
 3. ferma web, worker e beat;
 4. ricrea il database e carica i dati;
 5. rimette i file caricati;
-6. riavvia DuMetodo, che applica le migrazioni del codice attuale.
+6. riavvia Metodo v2, che applica le migrazioni del codice attuale.
 
 Se un ripristino è stato un errore, si torna indietro ripristinando il backup `prima-del-ripristino`.
 
 **Su un server nuovo** (es. dopo un guasto):
 
-1. Installa Docker e DuMetodo.
-2. Copia la cartella del backup in `/var/backups/dumetodo/`.
-3. Copia il file `env` del backup in `.env` di DuMetodo. Così restano valide la chiave segreta e la password
+1. Installa Docker e Metodo v2.
+2. Copia la cartella del backup in `/var/backups/metodo/`.
+3. Copia il file `env` del backup in `.env` di Metodo v2. Così restano valide la chiave segreta e la password
    cifrata della casella ordini.
 4. Esegui `metodoconsole avvia` e poi `metodoconsole ripristina NOME`.
 
@@ -178,7 +178,7 @@ metodoconsole aggiorna
 2. Scarica il codice nuovo (`git fetch`). Se non c'è niente di nuovo si ferma.
 3. Fa un backup con la nota `prima-di-<versione>`.
 4. Aggiorna il codice, ricostruisce le immagini e riavvia; le migrazioni partono da sole.
-5. Aspetta che DuMetodo torni in salute ed esegue la diagnostica.
+5. Aspetta che Metodo v2 torni in salute ed esegue la diagnostica.
 
 Se qualcosa va storto stampa i comandi esatti per tornare alla versione precedente con i dati di prima.
 

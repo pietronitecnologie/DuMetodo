@@ -1,5 +1,5 @@
 [Unit]
-Description=MetodoConsole: controllo di DuMetodo ogni 15 minuti
+Description=MetodoConsole: controllo di Metodo v2 ogni 15 minuti
 
 [Timer]
 OnBootSec=5min

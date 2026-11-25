@@ -1,18 +1,18 @@
-﻿# Preleva i dati da Metodo in DuMetodo (Docker Desktop su questo PC) attraverso un tunnel SSH.
+﻿# Preleva i dati da Metodo in Metodo v2 (Docker Desktop su questo PC) attraverso un tunnel SSH.
 #
-# Uso (PowerShell, nella cartella di DuMetodo):
+# Uso (PowerShell, nella cartella di Metodo v2):
 #   powershell -ExecutionPolicy Bypass -File .\preleva-da-metodo.ps1
 #   powershell -ExecutionPolicy Bypass -File .\preleva-da-metodo.ps1 --max-kb 256 --pausa 1
 #   powershell -ExecutionPolicy Bypass -File .\preleva-da-metodo.ps1 --ricomincia ordini righe consegne
 #
 # Le opzioni vengono passate a preleva_da_metodo. Le risposte (tranne le password) vengono ricordate in
-# %APPDATA%\DuMetodo\prelievo-metodo.json. La password del database non finisce mai sulla riga di comando
+# %APPDATA%\Metodo\prelievo-metodo.json. La password del database non finisce mai sulla riga di comando
 # né su disco; quella SSH si scrive nella finestra di ssh (o si usa la chiave SSH).
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 $OpzioniPrelievo = $args
 
-$ConfFile = Join-Path $env:APPDATA "DuMetodo\prelievo-metodo.json"
+$ConfFile = Join-Path $env:APPDATA "Metodo\prelievo-metodo.json"
 $script:Tunnel = $null
 
 # ------------------------------------------------------------------------------------------------ utilità
@@ -90,7 +90,7 @@ $ErrorActionPreference = "Continue"
 $servizi = & docker compose ps --status running --services 2>$null
 $ErrorActionPreference = "Stop"
 if ($LASTEXITCODE -ne 0 -or -not ($servizi -contains "web")) {
-    Write-Host "DuMetodo non è in esecuzione: avvialo con avvia-dumetodo.ps1 (e controlla che Docker Desktop sia aperto)." -ForegroundColor Red
+    Write-Host "Metodo v2 non è in esecuzione: avvialo con avvia-metodo.ps1 (e controlla che Docker Desktop sia aperto)." -ForegroundColor Red
     exit 1
 }
 if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) {
@@ -101,7 +101,7 @@ if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) {
 # --------------------------------------------------------------------------------------------- domande
 $c = [ordered]@{
     SshHost = ""; SshUtente = "root"; SshPorta = "22"
-    DbHost = "localhost"; DbPorta = "5432"; DbNome = "metodo"; DbUtente = "dumetodo_lettura"
+    DbHost = "localhost"; DbPorta = "5432"; DbNome = "metodo"; DbUtente = "metodo_lettura"
     TunnelPorta = "15432"
 }
 if (Test-Path $ConfFile) {
@@ -156,7 +156,7 @@ try {
     while ($true) {
         Prelievo (@("--log", "/app/media/prelievo-metodo.log") + $OpzioniPrelievo)
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "Prelievo completato. Gli avvisi sono nel file prelievo-metodo.log dei file caricati di DuMetodo." -ForegroundColor Green
+            Write-Host "Prelievo completato. Gli avvisi sono nel file prelievo-metodo.log dei file caricati di Metodo v2." -ForegroundColor Green
             $esito = 0
             break
         }

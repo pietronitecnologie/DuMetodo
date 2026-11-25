@@ -1,4 +1,4 @@
-# 02 — Ordini, Consegna, DDT, Etichette, Tabulati (DuMetodo functional spec)
+# 02 — Ordini, Consegna, DDT, Etichette, Tabulati (Metodo v2 functional spec)
 
 Source analysed: `/home/user/metodo-branch` (branch `Metodo`). This document replaces the source code of the
 following files for the rewrite:
@@ -307,7 +307,7 @@ CON-protection and `Errori` reporting; record due-date changes in StoricoScadenz
 - The only XML parser in the codebase is the inbound-DDT parser `Prod/inventario.py:847-1034`
   (`parse_ddt_xml_file`), structure `<Docs><Doc><DocType/><DocNumber/><DocDate>YYYY-MM-DD</DocDate><Anag><Name/></Anag>
   <DocRows><DocRow><Product><Code/></Product><Description/><Quantity/><Price/></DocRow></DocRows></Doc></Docs>`.
-  If DuMetodo implements XML order import, the natural mapping is: `DocNumber`→rif_ordine (zfill 7),
+  If Metodo v2 implements XML order import, the natural mapping is: `DocNumber`→rif_ordine (zfill 7),
   `DocDate.year`→anno, form `serie`→serie, `'CL'`→appendice, row index→n_riga, `Product/Code`→articolo,
   `Quantity`→qta, `Price`→prezzo_ea, `Description`→Anagrafica.description. **This is a proposal; confirm with users.**
 
@@ -336,7 +336,7 @@ autnote, notedmg, autdmg, rif_magazzino, rif_serie, cliente, manca, scorta, cl`;
   with **SQL injection from user GET parameters**: `syncOrdini(date)` (`gekosas.py:134`, from `Reports/views.py:262`
   `YEAR`), `statisticheDiProduzione(dateIn,dateOut)` (`gekosas.py:150`, from GET), `getCustomQuery(testo,criterio,len)`
   (`gekosas.py:162-164`, from GET `testo`,`campo`,`len`; unknown criterio → executes empty query).
-  DuMetodo: Gekosas appears legacy; if kept, use a read-only account, parameterised queries, secrets in env.
+  Metodo v2: Gekosas appears legacy; if kept, use a read-only account, parameterised queries, secrets in env.
 
 ### 3.8 `vwInserimentoManuale` — manual order entry
 - URL `vwInserimentoManuale/` (name `InserimentoManuale`), GET/POST, **Geko** (`orders.py:2019-2119`).
@@ -608,7 +608,7 @@ UI only reachable from manage page (Geko Admin / GekoCapRep, order not SPE/CON, 
     dell'ordine e delle N linee collegate?", table of lines to be updated, history table with link to full history.
 - Dead templates: `Prod/tplPosticipoScadenzaLinea.html` and `Prod/tplStoricoScadenzeLinea.html` (line-level postpone
   and history) reference URL names `posticipa_scadenza_linea` / `storico_scadenze_linea` that do not exist; no view
-  renders them. StoricoScadenza supports `linea` FK for this unimplemented feature. DuMetodo may implement
+  renders them. StoricoScadenza supports `linea` FK for this unimplemented feature. Metodo v2 may implement
   "posticipa scadenza linea" (fields: `nuova_data_scadenza`, `motivo`) properly.
 
 ---------------------------------------------------------------------------------------------------------------
@@ -851,7 +851,7 @@ order) else NULL (pieces aggregated across orders). Output per group: `qtaSum`, 
 
 ---------------------------------------------------------------------------------------------------------------
 
-## 11. Rewrite checklist (DuMetodo)
+## 11. Rewrite checklist (Metodo v2)
 1. Add `Ordine` PK FK on `Linea` + unique (rif, serie, appendice, anno); keep the 4 string fields for
    display/search; migrate data (resolve duplicates found by `ordiniConsegnatiDoppi`).
 2. Explicit state machine (§1.1) enforced server-side; line actions separate from order state.

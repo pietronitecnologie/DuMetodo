@@ -1,11 +1,11 @@
-//! Messaggi dalla pagina (client.js servito da DuMetodo) al client.
+//! Messaggi dalla pagina (client.js servito da Metodo v2) al client.
 
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "tipo", rename_all = "snake_case")]
 pub enum Messaggio {
-    /// Mostra un menu nativo con queste voci; la scelta torna alla pagina con `DuMetodoClient.esegui(id)`.
+    /// Mostra un menu nativo con queste voci; la scelta torna alla pagina con `MetodoClient.esegui(id)`.
     Menu {
         voci: Vec<Voce>,
         /// Logo e nome dell'azienda (Configurazione), mostrati in testa al menu.
@@ -18,7 +18,7 @@ pub enum Messaggio {
     Copia {
         testo: String,
     },
-    /// Legge gli appunti e li passa alla pagina con `DuMetodoClient.incolla(testo)`.
+    /// Legge gli appunti e li passa alla pagina con `MetodoClient.incolla(testo)`.
     Incolla,
     /// Apre una nuova scheda (senza indirizzo: la pagina iniziale del server).
     NuovaScheda {
@@ -151,7 +151,7 @@ pub const SCRIPT_INIZIALE: &str = r#"
     else if (e.altKey && e.key === "ArrowLeft") { history.back(); }
     else if (e.altKey && e.key === "ArrowRight") { history.forward(); }
   }, true);
-  window.__duMetodoAvviso = (testo) => {
+  window.__metodoAvviso = (testo) => {
     const d = document.createElement("div");
     d.textContent = testo;
     d.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:99999;background:#212529;color:#fff;" +

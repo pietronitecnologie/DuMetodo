@@ -1,8 +1,8 @@
 import pytest
 from django.contrib.auth.models import Permission, User
 
-from dumetodo.core.permessi import FUNZIONI, F, applica_profilo, codici_profilo, ha_permesso, is_cliente
-from dumetodo.core.utenti import PERMESSI_AREA_UTENTI as PERMESSI_AREA
+from metodo.core.permessi import FUNZIONI, F, applica_profilo, codici_profilo, ha_permesso, is_cliente
+from metodo.core.utenti import PERMESSI_AREA_UTENTI as PERMESSI_AREA
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def test_pagina_utenti(client, gestore):
     )
     mario = User.objects.get(username="mario")
     assert r["Location"] == f"/utenti/{mario.pk}/"
-    assert ha_permesso(mario, F.CONSEGNA) and mario.profilo_dumetodo.deve_cambiare_password
+    assert ha_permesso(mario, F.CONSEGNA) and mario.profilo_metodo.deve_cambiare_password
     # permessi singoli (quelli inventati ignorati)
     client.post(f"/utenti/{mario.pk}/", {"azione": "permessi", "permesso": [F.ORDINI_VEDERE, F.REPORT_DASHBOARD, "x"]})
     assert {p.codename for p in User.objects.get(pk=mario.pk).user_permissions.all()} == {
@@ -61,7 +61,7 @@ def test_pagina_utenti(client, gestore):
     client.post("/utenti/nuovo/", {"username": "MARIO", "password": "una-password-sicura-9"})
     assert User.objects.filter(username__iexact="mario").count() == 1
     # storico
-    from dumetodo.core.models import EventoUtente
+    from metodo.core.models import EventoUtente
 
     azioni = set(EventoUtente.objects.filter(utente=mario).values_list("azione", flat=True))
     assert {"CRE", "PRO", "PER"} <= azioni
@@ -76,7 +76,7 @@ def test_non_ci_si_chiude_fuori(client, gestore):
 
 
 def _utente(nome, *codici):
-    from dumetodo.core.permessi import permessi_di
+    from metodo.core.permessi import permessi_di
 
     u = User.objects.create_user(nome, password="password-lunga-123")
     u.user_permissions.set(permessi_di(codici))
@@ -160,8 +160,8 @@ def test_vecchio_permesso_utenti_diviso(db):
     from django.contrib.auth.models import Permission
     from django.contrib.contenttypes.models import ContentType
 
-    from dumetodo.core.models import Funzionalita
-    from dumetodo.core.permessi import sincronizza_permessi
+    from metodo.core.models import Funzionalita
+    from metodo.core.permessi import sincronizza_permessi
 
     ct = ContentType.objects.get_for_model(Funzionalita, for_concrete_model=False)
     vecchio = Permission.objects.create(content_type=ct, codename="utenti", name="Utenti e permessi")
@@ -180,7 +180,7 @@ def test_senza_permesso_403(client, db):
 
 
 def test_pagina_iniziale_secondo_i_permessi(client, db):
-    from dumetodo.core.permessi import permessi_di
+    from metodo.core.permessi import permessi_di
 
     u = User.objects.create_user("x")
     client.force_login(u)
@@ -192,8 +192,8 @@ def test_pagina_iniziale_secondo_i_permessi(client, db):
 
 
 def test_nuove_funzioni_agli_amministratori_completi(db):
-    from dumetodo.core import permessi
-    from dumetodo.core.permessi import Funzione, Sezione, sincronizza_permessi
+    from metodo.core import permessi
+    from metodo.core.permessi import Funzione, Sezione, sincronizza_permessi
 
     admin = User.objects.create_user("a")
     applica_profilo(admin, "Amministratore")
@@ -232,7 +232,7 @@ def test_crea_amministratore_idempotente():
 
 # =========================================================================== anagrafiche senza admin di Django
 def test_reparti_dall_app(client, db):
-    from dumetodo.core.models import Reparto
+    from metodo.core.models import Reparto
 
     u = _utente("r", F.REPARTI)
     client.force_login(u)
@@ -248,7 +248,7 @@ def test_reparti_dall_app(client, db):
 
 
 def test_nuovo_articolo_dall_app(client, db):
-    from dumetodo.anagrafica.models import Articolo
+    from metodo.anagrafica.models import Articolo
 
     client.force_login(_utente("m", F.MAGAZZINO_ANAGRAFICHE))
     r = client.post(
@@ -263,8 +263,8 @@ def test_nuovo_articolo_dall_app(client, db):
 
 
 def test_utente_di_sistema_nascosto(client, db):
-    from dumetodo.migrazione.tracciabilita import MODELLI
-    from dumetodo.tracciatura import da_qualita
+    from metodo.migrazione.tracciabilita import MODELLI
+    from metodo.tracciatura import da_qualita
 
     sistema = da_qualita.utente_sistema(MODELLI)
     admin = User.objects.create_superuser("root", password="password-di-test")

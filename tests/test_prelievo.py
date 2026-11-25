@@ -9,15 +9,15 @@ from django.contrib.auth.models import User
 from django.core.management import CommandError, call_command
 from django.db import transaction
 
-from dumetodo.anagrafica.models import Articolo
-from dumetodo.comunicazioni.models import LetturaNota, Nota
-from dumetodo.consegne.models import DDT, RigaConsegnata
-from dumetodo.core.models import Reparto
-from dumetodo.migrazione import prelievo as modulo
-from dumetodo.migrazione.models import Avanzamento
-from dumetodo.migrazione.prelievo import Limitatore
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StoricoScadenza
-from dumetodo.tracciatura.models import Tracciatura, Valore
+from metodo.anagrafica.models import Articolo
+from metodo.comunicazioni.models import LetturaNota, Nota
+from metodo.consegne.models import DDT, RigaConsegnata
+from metodo.core.models import Reparto
+from metodo.migrazione import prelievo as modulo
+from metodo.migrazione.models import Avanzamento
+from metodo.migrazione.prelievo import Limitatore
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StoricoScadenza
+from metodo.tracciatura.models import Tracciatura, Valore
 
 from .test_migrazione_tracciabilita import metodo_db  # noqa: F401  (fixture)
 
@@ -224,14 +224,14 @@ def test_incrementale_e_ricomincia(metodo_db):
 
 
 @pytest.mark.django_db
-def test_ordine_gia_presente_in_dumetodo_non_viene_toccato(metodo_db, ordine):
+def test_ordine_gia_presente_in_metodo_non_viene_toccato(metodo_db, ordine):
     ordine.serie, ordine.numero, ordine.appendice, ordine.anno = "00042", "0004302", "", 2024
     ordine.stato = StatoOrdine.CONSEGNATO
     ordine.save()
     out = _preleva(metodo_db)
     ordine.refresh_from_db()
     assert ordine.stato == StatoOrdine.CONSEGNATO
-    assert "già presenti in DuMetodo" in out
+    assert "già presenti in Metodo v2" in out
 
 
 @pytest.mark.django_db

@@ -28,10 +28,10 @@ mod test {
 
     #[test]
     fn solo_il_server_configurato() {
-        let o = Url::parse("https://dumetodo.esempio.it").unwrap();
-        assert!(matches!(classifica(&o, "https://dumetodo.esempio.it/ordini/"), Destinazione::Interna));
-        assert!(matches!(classifica(&o, "http://dumetodo.esempio.it/ordini/"), Destinazione::Esterna));
-        assert!(matches!(classifica(&o, "https://dumetodo.esempio.it.evil.com/"), Destinazione::Esterna));
+        let o = Url::parse("https://metodo.esempio.it").unwrap();
+        assert!(matches!(classifica(&o, "https://metodo.esempio.it/ordini/"), Destinazione::Interna));
+        assert!(matches!(classifica(&o, "http://metodo.esempio.it/ordini/"), Destinazione::Esterna));
+        assert!(matches!(classifica(&o, "https://metodo.esempio.it.evil.com/"), Destinazione::Esterna));
         assert!(matches!(classifica(&o, "https://www.google.com/"), Destinazione::Esterna));
         assert!(matches!(classifica(&o, "file:///etc/passwd"), Destinazione::Bloccata));
         assert!(matches!(classifica(&o, "javascript:alert(1)"), Destinazione::Bloccata));

@@ -1,9 +1,9 @@
-# Manuale utente di DuMetodo
+# Manuale utente di Metodo v2
 
-DuMetodo gestisce la produzione: gli ordini del Cliente, la pianificazione dei reparti, le consegne con bolla e
+Metodo v2 gestisce la produzione: gli ordini del Cliente, la pianificazione dei reparti, le consegne con bolla e
 DDT, il magazzino, la qualità e la tracciabilità. Questo manuale descrive ogni sezione dell'applicazione.
 
-Ogni pagina di DuMetodo ha in alto a destra un piccolo pulsante **?**: apre in una scheda separata il capitolo
+Ogni pagina di Metodo v2 ha in alto a destra un piccolo pulsante **?**: apre in una scheda separata il capitolo
 del manuale che riguarda quella pagina.
 
 Ognuno vede solo le sezioni per cui ha il permesso: se nel tuo menu manca una voce descritta qui, chiedi a un
@@ -14,7 +14,7 @@ amministratore di abilitarla (vedi [Utenti e permessi](#utenti-e-permessi)).
 ### Accesso e password
 
 - Entra con il nome utente e la password ricevuti dall'amministratore.
-- Se la password è stata impostata da un amministratore, al primo accesso DuMetodo chiede di sceglierne una
+- Se la password è stata impostata da un amministratore, al primo accesso Metodo v2 chiede di sceglierne una
   nuova: scrivi la password attuale, poi due volte la nuova. Finché non la cambi le altre pagine non si aprono.
 - La password deve avere almeno 10 caratteri, non solo numeri, non troppo simile al nome utente e non tra le
   più comuni.
@@ -24,7 +24,7 @@ amministratore di abilitarla (vedi [Utenti e permessi](#utenti-e-permessi)).
 
 ### La barra in alto
 
-- **Logo e scritta DuMetodo**: riportano alla pagina iniziale.
+- **Logo e scritta Metodo v2**: riportano alla pagina iniziale.
 - **Menu**: le sezioni (Ordini, Produzione, Spedizioni, Magazzino, Qualità, Report, Utilità, Amministrazione).
   Le sezioni con più pagine si aprono a tendina.
 - **Cerca ordine**: il campo a destra apre subito un ordine. Scrivi una parte del numero, la serie, l'appendice
@@ -60,14 +60,14 @@ pagina all'accesso. **Chiudi** li nasconde.
 
 ### Uso da telefono e tablet
 
-DuMetodo funziona anche da telefono: il menu si apre con il pulsante ☰, e le tabelle larghe diventano schede
+Metodo v2 funziona anche da telefono: il menu si apre con il pulsante ☰, e le tabelle larghe diventano schede
 una sotto l'altra. Dal telefono si possono anche scattare foto e allegarle a un ordine, con una tracciatura che
 ha un campo *Fotografia* (vedi [Tracciatura](#tracciatura)).
 
 ## Il client desktop
 
-Il client desktop (`dumetodo-client.exe`) è il programma consigliato per lavorare con DuMetodo sui PC: apre
-solo DuMetodo e aggiunge funzioni che un browser non ha.
+Il client desktop (`metodo-client.exe`) è il programma consigliato per lavorare con Metodo v2 sui PC: apre
+solo Metodo v2 e aggiunge funzioni che un browser non ha.
 
 ### Schede
 
@@ -261,7 +261,7 @@ riscaricabile.
 1. Seleziona le righe consegnate in attesa di DDT.
 2. Controlla i **dati del trasporto**: causale, aspetto dei beni, colli, peso, trasporto a cura, porto ed
    eventuale vettore. I valori proposti si impostano una volta per tutte nei dati fiscali.
-3. **Emetti DDT**: DuMetodo assegna il **numero di legge** dalla numerazione dei DDT (progressivo dell'anno,
+3. **Emetti DDT**: Metodo v2 assegna il **numero di legge** dalla numerazione dei DDT (progressivo dell'anno,
    mostrato prima di emettere), crea il DDT, genera e invia il **file tecnico**.
 4. Nella pagina **DDT registrati** compare **Stampa il DDT**: il documento da accompagnare alla merce.
 
@@ -277,7 +277,7 @@ riscaricabile.
   **Registra e invia il file tecnico**.
 
 **DDT registrati** elenca i DDT con il file tecnico e lo stato dell'invio; **Stampa** riapre la stampa dei DDT
-emessi da DuMetodo; **Reinvia** ripete l'invio non riuscito.
+emessi da Metodo v2; **Reinvia** ripete l'invio non riuscito.
 
 ### Importazione ordini
 
@@ -470,7 +470,7 @@ Ogni modello ha:
   Ognuno può essere *non previsto*, *facoltativo* od *obbligatorio*;
 - **a quali codici si applica**: codici articolo o finiti, uno per riga, anche con `*` (es. `18090*` = tutti i
   codici che iniziano così). È così che si stabilisce **quale test va fatto su quale codice**:
-  - DuMetodo propone il modello sugli ordini di quei codici;
+  - Metodo v2 propone il modello sugli ordini di quei codici;
   - non permette di usarlo per codici diversi.
 
   Vuoto = vale per tutti;
@@ -497,9 +497,9 @@ tracciature vecchie. Un modello non più usato si disattiva.
 ## Timbrature
 
 Il modulo **Timbrature** registra le entrate e le uscite dei lavoratori e **il tempo passato in ogni reparto**,
-per avere ore e costi per reparto. Si timbra alle **postazioni**: PC o tablet con il client DuMetodo
+per avere ore e costi per reparto. Si timbra alle **postazioni**: PC o tablet con il client Metodo v2
 all'ingresso dello stabilimento e nei reparti. Un PC associato a una postazione si usa anche per tutto il resto
-di DuMetodo: la timbratura si apre dal menu **Timbrature → Timbra**.
+di Metodo v2: la timbratura si apre dal menu **Timbrature → Timbra**.
 
 ### Postazioni di timbratura
 
@@ -511,10 +511,10 @@ di DuMetodo: la timbratura si apre dal menu **Timbrature → Timbra**.
 - **Associare il PC alla postazione**: sul PC della postazione apri **Timbrature → Postazioni** e premi
   **Associa questo PC** sulla postazione giusta.
   - In alternativa basta aprire una volta, su quel PC, il **link segreto** della postazione.
-  - Da quel momento, su quel PC, chiunque usi DuMetodo trova in **Timbrature** la voce **Timbra · nome della
+  - Da quel momento, su quel PC, chiunque usi Metodo v2 trova in **Timbrature** la voce **Timbra · nome della
     postazione**, anche senza permessi sulle timbrature. Per timbrare non serve un utente: basta il codice
     personale.
-  - Dalla timbratura, **Apri DuMetodo** (in alto a destra) porta al resto del programma.
+  - Dalla timbratura, **Apri Metodo v2** (in alto a destra) porta al resto del programma.
   - **Scollega questo PC** toglie l'associazione.
 - **PC solo per timbrare** (chiosco): nel `client.toml` del PC si mette come indirizzo il link segreto, a
   schermo intero. Il client apre subito la timbratura. La pagina Postazioni mostra le due configurazioni da
@@ -538,7 +538,7 @@ un'ora, serve ai costi per reparto: lo vede solo chi ha il permesso dei costi).
 
 Ogni lavoratore ha un **codice personale** da digitare alla postazione.
 
-- Alla creazione DuMetodo genera un codice di 6 cifre e lo mostra **una sola volta**: comunicalo al lavoratore.
+- Alla creazione Metodo v2 genera un codice di 6 cifre e lo mostra **una sola volta**: comunicalo al lavoratore.
 - In alternativa si imposta un codice scelto, da 4 a 10 cifre (es. il numero del badge).
 - Il codice non è leggibile da nessuno, nemmeno dagli amministratori. Se il lavoratore lo dimentica, se ne genera
   uno nuovo e il vecchio smette di funzionare.
@@ -546,7 +546,7 @@ Ogni lavoratore ha un **codice personale** da digitare alla postazione.
 
 Oltre al codice, ogni lavoratore può avere **badge e tessere** (scheda del lavoratore → *Badge e tessere*).
 
-- **Crea un badge da stampare**: DuMetodo genera un codice (es. `DMHAURVXYC`).
+- **Crea un badge da stampare**: Metodo v2 genera un codice (es. `DMHAURVXYC`).
   - **Stampa** produce una tessera 85,6 × 54 mm con nome, matricola, **codice a barre** e **QR** dello stesso
     codice. Va bene per una stampante per badge o per un cartoncino da plastificare.
 - **Associa una tessera NFC/RFID** o un badge che il lavoratore ha già (es. il badge della mensa):
@@ -641,7 +641,7 @@ e avvisa se mancano dati fiscali.
    - trasporto a cura del mittente, del destinatario o di un vettore (indica il vettore e il suo indirizzo);
    - porto (franco o assegnato);
    - annotazioni.
-3. **Emetti DDT**: DuMetodo assegna il **numero progressivo dell'anno** (1, 2, 3…), genera il **file tecnico** e
+3. **Emetti DDT**: Metodo v2 assegna il **numero progressivo dell'anno** (1, 2, 3…), genera il **file tecnico** e
    lo invia ai destinatari configurati, come in Spedizioni → DDT.
 
 Il DDT contiene i dati richiesti dal D.P.R. 472/1996 e fotografa tutto al momento dell'emissione: mittente,
@@ -649,7 +649,7 @@ destinatario, luogo di destinazione, righe e data e ora di inizio del trasporto.
 il documento già emesso resta com'era. **Stampa** apre il documento pronto per la stampa in A4, con gli spazi
 per le firme.
 
-**Bolle (DDT)** elenca tutti i DDT: quelli emessi da DuMetodo e quelli registrati con il numero del gestionale
+**Bolle (DDT)** elenca tutti i DDT: quelli emessi da Metodo v2 e quelli registrati con il numero del gestionale
 esterno. I numeri già usati da un DDT registrato a mano vengono saltati.
 
 **Annullare un DDT.** Un DDT non ancora fatturato si annulla dal suo dettaglio, indicando il motivo. Il numero
@@ -686,12 +686,12 @@ ritirato, quindi avvisa chi lo ha ricevuto.
    fatturare).
    - Se mancano dati obbligatori (partita IVA, CAP, codice destinatario…) la pagina li elenca e l'emissione
      resta bloccata.
-4. **Emetti**: la fattura riceve il **numero definitivo** e DuMetodo scrive il file **XML FatturaPA**.
+4. **Emetti**: la fattura riceve il **numero definitivo** e Metodo v2 scrive il file **XML FatturaPA**.
    - Scegli la **numerazione** accanto al pulsante Emetti: il numero è il prossimo di quella serie, nel suo formato
      (es. `1`, `1/2026`, `FT1`). Vedi [Numerazioni](#numerazioni).
    - Il nome del file segue le regole dello SdI, es. `IT01234567897_0IPd3.xml`.
    - Le fatture si numerano in ordine di data: non si emette una fattura con data precedente all'ultima emessa.
-   - Con più bozze, in **Fatture e note di credito** spunta le bozze ed **Emetti le bozze selezionate**: DuMetodo le
+   - Con più bozze, in **Fatture e note di credito** spunta le bozze ed **Emetti le bozze selezionate**: Metodo v2 le
      emette in ordine di data, così i numeri seguono le date. Si ferma alla prima che ha un problema e dice quale.
 
 Dopo l'emissione:
@@ -726,7 +726,7 @@ progressivo che riparte da 1 ogni anno.
 - **Partire da un numero**: nella riga dell'anno scrivi il prossimo numero e premi **Imposta**. Esempio: 10, se
   fino al 9 hai emesso con un altro programma.
   - Si imposta anche per l'anno successivo, in anticipo.
-  - Non si può tornare su un numero che DuMetodo ha già assegnato.
+  - Non si può tornare su un numero che Metodo v2 ha già assegnato.
 - **Nuova numerazione**: es. «Fatture estero» con formato `{numero}/E`.
   - Due numerazioni dello stesso tipo devono avere formati diversi, così due documenti non hanno mai lo stesso
     numero.
@@ -776,7 +776,7 @@ Ogni parametro è controllato prima del salvataggio; **Ripristina predefinito** 
 
 **Amministrazione → Aggiornamenti del client** distribuisce le nuove versioni del client.
 
-1. Scarica `dumetodo-client-X.Y.Z.exe` dalla Release su GitHub.
+1. Scarica `metodo-client-X.Y.Z.exe` dalla Release su GitHub.
 2. **Nuova versione**: scrivi il numero di versione (es. 0.3.0), scegli il file e, se vuoi, le novità da mostrare
    agli utenti. **Carica**.
 3. I client con una versione più vecchia propongono l'aggiornamento.
@@ -824,7 +824,7 @@ ha in automatico. Un superuser apre **Amministrazione → Utenti e permessi**, s
 profilo → Amministrazione**. In alternativa, sul server: `python manage.py assegna_profilo <utente> Amministrazione`.
 Per creare i DDT non serve: bastano **Spedizioni → DDT** e la numerazione in **Amministrazione → Numerazione DDT**.
 
-**Nell'elenco delle tracciature compare l'operatore «dumetodo-sistema».** È l'autore tecnico dei dati storici
+**Nell'elenco delle tracciature compare l'operatore «metodo-sistema».** È l'autore tecnico dei dati storici
 (importati da Metodo o convertiti dalle vecchie funzioni) di cui non si conosce chi li ha registrati. Non è una
 persona: non compare tra gli utenti e non può accedere.
 

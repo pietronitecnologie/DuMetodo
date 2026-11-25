@@ -3,11 +3,11 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from dumetodo.configurazione import servizi as config
-from dumetodo.core.permessi import F, ha_permesso
-from dumetodo.ordini.models import Ordine
-from dumetodo.tracciabilita import servizi
-from dumetodo.tracciabilita.servizi import OperazioneNonConsentita
+from metodo.configurazione import servizi as config
+from metodo.core.permessi import F, ha_permesso
+from metodo.ordini.models import Ordine
+from metodo.tracciabilita import servizi
+from metodo.tracciabilita.servizi import OperazioneNonConsentita
 
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 200
 

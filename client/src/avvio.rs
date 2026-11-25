@@ -25,14 +25,14 @@ document.getElementById('stato').textContent='Connessione in corso…';}</script
 /// Schermata di primo avvio (o "cambia indirizzo"): chiede l'indirizzo del server e lo salva.
 pub fn pagina_indirizzo(attuale: &str, errore: &str, percorso_conf: &Path) -> String {
     format!(
-        "<!doctype html><meta charset=utf-8><title>DuMetodo</title><style>{STILE}</style>{SCRIPT}<main>\
-         <h1>Collegamento a DuMetodo</h1>\
-         <p>Indica l'indirizzo del server DuMetodo, ad esempio <code>https://dumetodo.miaazienda.it</code> \
-         oppure, se DuMetodo gira su un PC della rete, <code>http://192.168.1.20:8000</code>.</p>\
+        "<!doctype html><meta charset=utf-8><title>Metodo v2</title><style>{STILE}</style>{SCRIPT}<main>\
+         <h1>Collegamento a Metodo v2</h1>\
+         <p>Indica l'indirizzo del server Metodo v2, ad esempio <code>https://metodo.miaazienda.it</code> \
+         oppure, se Metodo v2 gira su un PC della rete, <code>http://192.168.1.20:8000</code>.</p>\
          <form onsubmit=\"salva(event)\"><input id=url type=url required autofocus placeholder=\"https://…\" value=\"{}\">\
          <button>Collega</button>{}</form><p id=stato class=err>{}</p>\
-         <p class=mut>L'indirizzo viene salvato in <code>{}</code>.<br>Il client mostra solo DuMetodo: \
-         serve un server DuMetodo installato e acceso (vedi README del progetto, \"Produzione (Docker)\").</p></main>",
+         <p class=mut>L'indirizzo viene salvato in <code>{}</code>.<br>Il client mostra solo Metodo v2: \
+         serve un server Metodo v2 installato e acceso (vedi README del progetto, \"Produzione (Docker)\").</p></main>",
         esc(attuale),
         if attuale.is_empty() {
             ""
@@ -47,10 +47,10 @@ pub fn pagina_indirizzo(attuale: &str, errore: &str, percorso_conf: &Path) -> St
 /// Server configurato ma non raggiungibile.
 pub fn pagina_non_raggiungibile(url: &str, dettaglio: &str) -> String {
     format!(
-        "<!doctype html><meta charset=utf-8><title>DuMetodo</title><style>{STILE}</style>{SCRIPT}<main>\
-         <h1>Server DuMetodo non raggiungibile</h1>\
+        "<!doctype html><meta charset=utf-8><title>Metodo v2</title><style>{STILE}</style>{SCRIPT}<main>\
+         <h1>Server Metodo v2 non raggiungibile</h1>\
          <p>Il client non riesce a collegarsi a <code>{}</code>.</p><p class=err>{}</p>\
-         <ul class=mut><li>il server DuMetodo è acceso e avviato?</li><li>l'indirizzo e la porta sono corretti?</li>\
+         <ul class=mut><li>il server Metodo v2 è acceso e avviato?</li><li>l'indirizzo e la porta sono corretti?</li>\
          <li>questo PC è nella stessa rete (o in VPN) del server?</li></ul>\
          <button onclick=\"invia({{tipo:'riprova'}})\">Riprova</button>\
          <button class=sec onclick=\"invia({{tipo:'cambia_server'}})\">Cambia indirizzo</button></main>",
@@ -117,14 +117,14 @@ mod test {
 
     #[test]
     fn normalizzazione() {
-        assert_eq!(normalizza("dumetodo.it").unwrap().as_str(), "https://dumetodo.it/");
+        assert_eq!(normalizza("metodo.it").unwrap().as_str(), "https://metodo.it/");
         assert_eq!(normalizza("http://192.168.1.20:8000").unwrap().port(), Some(8000));
         assert!(normalizza("").is_err() && normalizza("file:///c:/x").is_err() && normalizza("javascript:x").is_err());
     }
 
     #[test]
     fn salvataggio_mantiene_il_resto() {
-        let dir = std::env::temp_dir().join("dumetodo-client-test");
+        let dir = std::env::temp_dir().join("metodo-client-test");
         let _ = std::fs::create_dir_all(&dir);
         let p = dir.join("client.toml");
         std::fs::write(&p, crate::configurazione::MODELLO).unwrap();

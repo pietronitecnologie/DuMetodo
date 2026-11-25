@@ -9,8 +9,8 @@
     display: grid; grid-template-rows: auto 1fr auto; }
   header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; background: #fff; border-bottom: 1px solid #dde3ec; }
   header .dove { font-weight: 700; font-size: 22px; } header .tipo { color: var(--tenue); }
-  header .apri-dumetodo { color: var(--tenue); font-size: 14px; text-decoration: none; border: 1px solid #dde3ec; border-radius: 8px; padding: 6px 10px; }
-  header .apri-dumetodo:hover { color: #1450bd; border-color: #a9c3f5; }
+  header .apri-metodo { color: var(--tenue); font-size: 14px; text-decoration: none; border: 1px solid #dde3ec; border-radius: 8px; padding: 6px 10px; }
+  header .apri-metodo:hover { color: #1450bd; border-color: #a9c3f5; }
   header .ora { margin-left: auto; font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
   main { display: grid; place-items: center; padding: 16px; }
   .pannello { width: min(560px, 100%); background: #fff; border-radius: 18px; box-shadow: 0 6px 24px rgba(20,40,80,.08); padding: 24px; }
@@ -38,7 +38,7 @@
 <body>
 <header><div><div class="dove">{{ p.nome }}</div><div class="tipo">{% if p.reparto %}Reparto {{ p.reparto.nome }}{% else %}Ingresso e uscita{% endif %}</div></div>
   <div class="ora" id="ora">--:--</div>
-  <a class="apri-dumetodo" href="/" title="Usa DuMetodo con il tuo utente; per tornare qui: Timbrature → Timbra">Apri DuMetodo</a></header>
+  <a class="apri-metodo" href="/" title="Usa Metodo v2 con il tuo utente; per tornare qui: Timbrature → Timbra">Apri Metodo v2</a></header>
 <main>
   <section class="pannello" id="fase-codice">
     <div class="invito">{% if p.usa_tastierino %}Digita il tuo codice{% if p.usa_lettori %} o passa il badge / la tessera sul lettore{% endif %}{% elif p.usa_lettori %}Passa il badge o la tessera sul lettore{% else %}Inquadra il QR del tuo badge{% endif %}</div>
@@ -59,7 +59,7 @@
   </section>
   <section class="pannello esito" id="fase-esito" hidden><div class="segno" id="segno"></div><div class="testo" id="esito"></div></section>
 </main>
-<footer>DuMetodo · Timbrature — i dati delle timbrature sono trattati secondo l'informativa aziendale sulla privacy.</footer>
+<footer>Metodo v2 · Timbrature — i dati delle timbrature sono trattati secondo l'informativa aziendale sulla privacy.</footer>
 <form id="csrf">{% csrf_token %}</form>
 {% if p.usa_fotocamera %}<script src="{% static 'vendor/jsQR.js' %}"></script>{% endif %}
 <script>

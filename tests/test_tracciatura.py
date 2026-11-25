@@ -7,14 +7,14 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from dumetodo.anagrafica.models import Articolo
-from dumetodo.consegne.models import DDT
-from dumetodo.core.permessi import applica_profilo
-from dumetodo.magazzino.models import Componente
-from dumetodo.ordini.models import Ordine, RigaOrdine
-from dumetodo.ordini.servizi import OperazioneNonConsentita
-from dumetodo.tracciatura import servizi
-from dumetodo.tracciatura.models import Campo, Esito, Tracciatura
+from metodo.anagrafica.models import Articolo
+from metodo.consegne.models import DDT
+from metodo.core.permessi import applica_profilo
+from metodo.magazzino.models import Componente
+from metodo.ordini.models import Ordine, RigaOrdine
+from metodo.ordini.servizi import OperazioneNonConsentita
+from metodo.tracciatura import servizi
+from metodo.tracciatura.models import Campo, Esito, Tracciatura
 
 PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"

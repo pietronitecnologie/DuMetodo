@@ -1,12 +1,17 @@
-# DuMetodo
+# Metodo v2
 
-Gestione della **Produzione** del **Fornitore** (l'azienda che possiede DuMetodo): ordini (commesse),
+Gestione della **Produzione** del **Fornitore** (l'azienda che possiede Metodo v2): ordini (commesse),
 importazione degli ordini inviati dal **Cliente**,
 comunicazione con il cliente tramite note. È la riscrittura completa dell'app `Prod` di
 [Metodo](https://github.com/pietronitecnologie/Metodo) (branch `Metodo`), con Django 5.2 LTS.
 
 L'analisi funzionale del codice originale, che fa da specifica per la riscrittura, è in
 [`docs/analisi-metodo/`](docs/analisi-metodo/).
+
+
+> **Aggiornamento da DuMetodo.** Il progetto si chiamava *DuMetodo*. Ora si chiama **Metodo v2**, con nome
+> tecnico `metodo`. Le installazioni precedenti vanno spostate una volta: vedi
+> [docs/aggiornamento-a-metodo-v2.md](docs/aggiornamento-a-metodo-v2.md).
 
 ## Stato dei lavori
 
@@ -143,7 +148,7 @@ Il linguaggio si usa oggi per:
 
 ## Magazzino
 
-DuMetodo, come Metodo, **non gestisce i movimenti di magazzino**: la giacenza è l'ultimo conteggio
+Metodo v2, come Metodo, **non gestisce i movimenti di magazzino**: la giacenza è l'ultimo conteggio
 d'inventario. Quando un materiale arriva con un DDT in ingresso (inserito a mano o importato), le
 richieste materiali aperte per lo stesso codice e variante, di qualsiasi reparto, vengono **chiuse
 automaticamente**; sulla richiesta resta la riga del DDT che l'ha chiusa. La giacenza non cambia.
@@ -151,7 +156,7 @@ automaticamente**; sulla richiesta resta la riga del DDT che l'ha chiusa. La gia
 ## Tracciature
 
 Tutto ciò che si registra (controlli qualità, lotti, operazioni, foto e documenti) passa dal modulo
-**Tracciatura** (`dumetodo.tracciatura`): modelli configurabili con campi tipizzati ed esito automatico.
+**Tracciatura** (`metodo.tracciatura`): modelli configurabili con campi tipizzati ed esito automatico.
 
 * **Conversione delle vecchie funzioni** (migrazione `tracciatura 0002`, poi eliminazione in
   `tracciabilita 0005`):
@@ -162,11 +167,11 @@ Tutto ciò che si registra (controlli qualità, lotti, operazioni, foto e docume
   * i file degli ordini diventano tracciature del modello *Foto e file dell'ordine*, senza spostare i file;
   * se lotto/busta era in uso, viene creato il modello *Lotto e busta*.
 
-  La logica è in `dumetodo/tracciatura/da_qualita.py`, usata anche dall'importazione da Metodo.
+  La logica è in `metodo/tracciatura/da_qualita.py`, usata anche dall'importazione da Metodo.
 * **Tracce**: anche le tracce (dell'archivio e quelle importate da Metodo, anche milioni) diventano
   tracciature del modello *Tracce (da Metodo)*, create a blocchi (migrazione `tracciatura 0003`, prelievo
-  e importatore); l'archivio `dumetodo.tracciabilita` non ha più modelli né pagine.
-* **Utente `dumetodo-sistema`**: autore dei dati storici senza operatore; disattivato, senza password
+  e importatore); l'archivio `metodo.tracciabilita` non ha più modelli né pagine.
+* **Utente `metodo-sistema`**: autore dei dati storici senza operatore; disattivato, senza password
   utilizzabile e nascosto dall'elenco utenti.
 * Non riportati da Metodo perché non più usati: reclami, test display, batterie (con i work order di
   ricarica), cavi e postazioni dei banchi di prova (API `insertTracciaCavi`), *Attiva produzione*.
@@ -177,7 +182,7 @@ Ogni funzione del sito è un permesso assegnabile al singolo utente dalla pagina
 permessi**, raggruppato per sezione (Produzione, Magazzino, Tracciature, Report, Utilità,
 Amministrazione). I **profili** (Operatore, Caporeparto, Amministratore, Cliente) sono punti di partenza:
 applicati a un utente, gli assegnano un insieme di permessi che poi si personalizza funzione per funzione.
-Il catalogo delle funzioni è in `dumetodo/core/permessi.py`; un test controlla che ogni pagina richieda
+Il catalogo delle funzioni è in `metodo/core/permessi.py`; un test controlla che ogni pagina richieda
 login e permesso.
 
 **Utenti e permessi** ha quattro permessi propri: *vedere*, *creare e modificare utenti*, *reimpostare le
@@ -187,7 +192,7 @@ i permessi dell'area; il ruolo superuser lo cambia solo un superuser. Le passwor
 mostrate una volta) e quelle dei nuovi utenti vanno cambiate al primo accesso; ognuno cambia la propria da
 *Cambia password* nel menu utente. Ogni modifica finisce nello storico dell'utente.
 
-Tutto si gestisce da DuMetodo: utenti, reparti, modelli di tracciatura, articoli. L'admin di Django
+Tutto si gestisce da Metodo v2: utenti, reparti, modelli di tracciatura, articoli. L'admin di Django
 (menu *Admin tecnico*, solo superuser) serve solo per interventi tecnici.
 
 Da riga di comando: `python manage.py assegna_profilo <utente> Amministratore`.
@@ -245,12 +250,12 @@ python manage.py preleva_da_metodo --stato           # a che punto è
     Metodo fermo;
   * per ricaricare anche le modifiche ai record già presi (cambi di stato, DDT emessi dopo) usa
     `--ricomincia ordini righe consegne`;
-  * gli ordini che esistono già in DuMetodo e non vengono da Metodo non vengono modificati.
+  * gli ordini che esistono già in Metodo v2 e non vengono da Metodo non vengono modificati.
 * **Avvisi:** tutti gli avvisi vanno in un file con `--log prelievo.log`; a video ne compaiono solo i primi.
 * **Volumi:**
   * in prova sono stati elaborati circa 6000 record al secondo, a circa 220 byte per riga d'ordine;
   * 6 milioni di righe sono circa 1,3 GB, cioè poco più di 20 minuti a 1 MB/s.
-* **Da un computer con DuMetodo in Docker:**
+* **Da un computer con Metodo v2 in Docker:**
   * `./preleva-da-metodo.sh` chiede i dati del server e del database di Metodo, apre il tunnel SSH, verifica e
     avvia il prelievo; alla fine chiude il tunnel;
   * le opzioni vengono passate al comando, es. `./preleva-da-metodo.sh --max-kb 256 --pausa 1`;
@@ -278,14 +283,14 @@ ruff check . && ruff format --check .
 Serve solo Python 3.12 o più recente (`winget install Python.Python.3.12`).
 
 ```powershell
-git clone https://github.com/pietronitecnologie/dumetodo.git
-cd dumetodo
-powershell -ExecutionPolicy Bypass -File .\avvia-dumetodo-semplice.ps1
+git clone https://github.com/pietronitecnologie/metodo.git
+cd metodo
+powershell -ExecutionPolicy Bypass -File .\avvia-metodo-semplice.ps1
 ```
 
 Lo script crea l'ambiente Python, genera `.env` con segreti casuali, usa un database **SQLite** in `dati\`,
 crea l'utente `admin` (password stampata una sola volta) e avvia il server (waitress) su
-`http://localhost:8000`: la finestra resta aperta finché DuMetodo è attivo. Per riavviarlo, rilancia lo script.
+`http://localhost:8000`: la finestra resta aperta finché Metodo v2 è attivo. Per riavviarlo, rilancia lo script.
 
 Per provarlo con **dati di prova realistici** (48 ordini importati da un file del Cliente, consegne,
 DDT, note, tracce, controlli qualità, magazzino, annunci, ore lavorate e utenti `operatore`,
@@ -302,19 +307,19 @@ Per l'uso in produzione con più utenti preferisci Docker/PostgreSQL. Per fare i
 Serve solo [Docker Desktop](https://www.docker.com/products/docker-desktop/) avviato.
 
 ```powershell
-git clone https://github.com/pietronitecnologie/dumetodo.git
-cd dumetodo
-powershell -ExecutionPolicy Bypass -File .\avvia-dumetodo.ps1
+git clone https://github.com/pietronitecnologie/metodo.git
+cd metodo
+powershell -ExecutionPolicy Bypass -File .\avvia-metodo.ps1
 ```
 
-Su Linux/macOS: `./avvia-dumetodo.sh`. Lo script:
+Su Linux/macOS: `./avvia-metodo.sh`. Lo script:
 
 1. crea `.env` con chiavi e password casuali (solo la prima volta; uso in rete locale via http);
 2. avvia database, Redis, web, worker e beat (`docker compose up -d --build`) e applica le migrazioni;
 3. crea l'utente `admin` con una password casuale e la stampa **una sola volta**;
 4. collega il client desktop a `http://localhost:8000` e lo apre (o apre il browser).
 
-Gli altri PC della rete raggiungono DuMetodo su `http://<nome-del-pc>:8000`.
+Gli altri PC della rete raggiungono Metodo v2 su `http://<nome-del-pc>:8000`.
 Fermare: `docker compose down` (i dati restano nei volumi). Riavviare: rilanciare lo script.
 
 ## Produzione (Docker)

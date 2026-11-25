@@ -2,7 +2,7 @@ from .base import *
 
 DEBUG = False
 # DJANGO_HTTPS=false solo per l'uso in rete locale senza certificato (es. prova sul PC dell'ufficio):
-# in produzione DuMetodo va servito in https.
+# in produzione Metodo v2 va servito in https.
 HTTPS = env.bool("DJANGO_HTTPS", default=True)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = HTTPS and env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)

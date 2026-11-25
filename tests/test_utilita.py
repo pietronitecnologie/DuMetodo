@@ -4,13 +4,13 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from dumetodo.comunicazioni.servizi import aggiungi_nota
-from dumetodo.consegne import servizi as consegne
-from dumetodo.core.permessi import F, applica_profilo, permessi_di
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StoricoScadenza
-from dumetodo.ordini.servizi import OperazioneNonConsentita
-from dumetodo.utilita import servizi
-from dumetodo.utilita.models import Annuncio
+from metodo.comunicazioni.servizi import aggiungi_nota
+from metodo.consegne import servizi as consegne
+from metodo.core.permessi import F, applica_profilo, permessi_di
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StoricoScadenza
+from metodo.ordini.servizi import OperazioneNonConsentita
+from metodo.utilita import servizi
+from metodo.utilita.models import Annuncio
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def admin_u(db):
 
 @pytest.fixture
 def consegnato(ordine, operatore):
-    from dumetodo.ordini import servizi as ordini
+    from metodo.ordini import servizi as ordini
 
     ordini.cambia_stato(ordine.pk, StatoOrdine.IN_SPEDIZIONE, operatore)
     c = consegne.consegna(operatore, ordini_ids=[ordine.pk])

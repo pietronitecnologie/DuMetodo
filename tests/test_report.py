@@ -5,16 +5,16 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from dumetodo.anagrafica.models import Articolo
-from dumetodo.configurazione import servizi as config
-from dumetodo.consegne import servizi as consegne
-from dumetodo.core.models import Reparto
-from dumetodo.core.permessi import F, applica_profilo
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
-from dumetodo.ordini.servizi import OperazioneNonConsentita
-from dumetodo.pianificazione.calendario import lunedi
-from dumetodo.report import servizi
-from dumetodo.report.models import OreLavorate
+from metodo.anagrafica.models import Articolo
+from metodo.configurazione import servizi as config
+from metodo.consegne import servizi as consegne
+from metodo.core.models import Reparto
+from metodo.core.permessi import F, applica_profilo
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
+from metodo.ordini.servizi import OperazioneNonConsentita
+from metodo.pianificazione.calendario import lunedi
+from metodo.report import servizi
+from metodo.report.models import OreLavorate
 
 OGGI = timezone.localdate()
 LUN = lunedi(OGGI)
@@ -170,7 +170,7 @@ def test_viste_report(client, dati, analista, operatore):
 
 
 def test_permesso_singolo(client, dati):
-    from dumetodo.core.permessi import permessi_di
+    from metodo.core.permessi import permessi_di
 
     u = User.objects.create_user("solo_prezzi")
     u.user_permissions.set(permessi_di([F.REPORT_PREZZI]))

@@ -1,8 +1,8 @@
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from dumetodo.core import manuale
-from dumetodo.core.menu import MENU
+from metodo.core import manuale
+from metodo.core.menu import MENU
 
 
 def test_ogni_capitolo_collegato_esiste():
@@ -26,7 +26,7 @@ def test_pagina_e_file_md(client, db):
 
 
 def test_pulsante_aiuto_porta_al_capitolo_in_altra_scheda(client, db):
-    from dumetodo.core.permessi import F, permessi_di
+    from metodo.core.permessi import F, permessi_di
 
     u = User.objects.create_user("x")
     u.user_permissions.set(permessi_di([F.ORDINI_VEDERE]))

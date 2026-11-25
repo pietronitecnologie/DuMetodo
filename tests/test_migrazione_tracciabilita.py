@@ -11,12 +11,12 @@ import pytest
 from django.core.management import call_command
 from django.utils import timezone
 
-from dumetodo.ordini.models import Ordine
-from dumetodo.tracciatura.models import Modello, Tracciatura
+from metodo.ordini.models import Ordine
+from metodo.tracciatura.models import Modello, Tracciatura
 
 from .test_migrazione import DATI, SCHEMA
 
-BASE = os.environ.get("DATABASE_URL", "postgres://dumetodo:dumetodo@localhost:5432/dumetodo").rsplit("/", 1)[0]
+BASE = os.environ.get("DATABASE_URL", "postgres://metodo:metodo@localhost:5432/metodo").rsplit("/", 1)[0]
 NOME_DB = "metodo_legacy_tracciabilita_test"
 
 SCHEMA_TRACCIABILITA = """

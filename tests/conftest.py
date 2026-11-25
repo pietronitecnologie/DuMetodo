@@ -4,8 +4,8 @@ from decimal import Decimal
 import pytest
 from django.contrib.auth.models import User
 
-from dumetodo.core.permessi import applica_profilo
-from dumetodo.ordini.models import Ordine, RigaOrdine
+from metodo.core.permessi import applica_profilo
+from metodo.ordini.models import Ordine, RigaOrdine
 
 
 def _utente(username: str, profilo: str) -> User:
@@ -50,7 +50,7 @@ def ordine(db) -> Ordine:
 
 @pytest.fixture
 def configura_email(db):
-    from dumetodo.configurazione import servizi as config
+    from metodo.configurazione import servizi as config
 
     config.scrivi_molti(
         {

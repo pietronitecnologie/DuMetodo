@@ -5,11 +5,11 @@ from decimal import Decimal
 
 import pytest
 
-from dumetodo.configurazione import servizi as config
-from dumetodo.importazione import formato_txt, servizi
-from dumetodo.importazione.allegati import AllegatoNonValido, estrai_file_ordine
-from dumetodo.importazione.models import FileImportato, Livello, OrigineFile, StatoFile
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StatoRiga, StoricoScadenza
+from metodo.configurazione import servizi as config
+from metodo.importazione import formato_txt, servizi
+from metodo.importazione.allegati import AllegatoNonValido, estrai_file_ordine
+from metodo.importazione.models import FileImportato, Livello, OrigineFile, StatoFile
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StatoRiga, StoricoScadenza
 
 INTESTAZIONE = (
     "Periodo riferimento@Serie numerazione@N.ro Ordine@Appendice@N.ro prog. riga@Data registrazione@Data consegna@"
@@ -173,7 +173,7 @@ def test_reimportazione_riporta_a_inserito_solo_se_configurato():
 
 @pytest.mark.django_db
 def test_reimportazione_rispetta_le_divisioni(caporeparto):
-    from dumetodo.ordini.servizi import dividi_riga
+    from metodo.ordini.servizi import dividi_riga
 
     importa(file_txt(riga(qta="10")))
     originale = RigaOrdine.objects.get()
@@ -189,7 +189,7 @@ def test_reimportazione_rispetta_le_divisioni(caporeparto):
 
 @pytest.mark.django_db
 def test_errori_notificati_via_email(configura_email):
-    from dumetodo.comunicazioni.models import EmailInUscita
+    from metodo.comunicazioni.models import EmailInUscita
 
     config.scrivi("importazione.notifica_errori", "it@example.com")
     config.invalida_cache()
@@ -227,8 +227,8 @@ def test_zip_corrotto_e_altri_allegati():
 
 @pytest.mark.django_db
 def test_importazione_registra_i_nuovi_articoli_in_anagrafica():
-    from dumetodo.anagrafica.models import Articolo
-    from dumetodo.core.models import Reparto
+    from metodo.anagrafica.models import Articolo
+    from metodo.core.models import Reparto
 
     Reparto.objects.create(codice="GK01-UDEF", nome="Non definito")
     Articolo.objects.create(codice="ESISTENTE", descrizione="già curato", reparto=None, nuovo=False)

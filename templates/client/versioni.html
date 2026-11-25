@@ -2,7 +2,7 @@
 {% block titolo %}Aggiornamenti del client{% endblock %}
 {% block contenuto %}
 <h1 class="h4">Aggiornamenti del client desktop</h1>
-<p class="small text-muted" style="max-width:52rem">Carica qui il nuovo <code>dumetodo-client.exe</code> (da GitHub → Actions → workflow «client»)
+<p class="small text-muted" style="max-width:52rem">Carica qui il nuovo <code>metodo-client.exe</code> (da GitHub → Actions → workflow «client»)
 con il suo numero di versione. Ogni client collegato, se ha una versione più vecchia, mostra l'avviso «È disponibile
 un aggiornamento»: con un clic lo scarica, controlla che il file sia integro (impronta SHA-256) e si riavvia aggiornato.</p>
 <div class="row g-3">
@@ -13,7 +13,7 @@ un aggiornamento»: con un clic lo scarica, controlla che il file sia integro (i
       <div class="card-body">
         <label class="form-label" for="versione">Versione *</label>
         <input class="form-control form-control-sm mb-2" id="versione" name="versione" required placeholder="es. 0.3.0" pattern="\d+\.\d+\.\d+">
-        <label class="form-label" for="file">File dumetodo-client.exe *</label>
+        <label class="form-label" for="file">File metodo-client.exe *</label>
         <input class="form-control form-control-sm mb-2" type="file" id="file" name="file" accept=".exe" required>
         <label class="form-label" for="note">Novità (mostrate agli utenti)</label>
         <textarea class="form-control form-control-sm" id="note" name="note" rows="3"></textarea>

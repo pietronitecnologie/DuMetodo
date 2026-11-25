@@ -4,9 +4,9 @@ from decimal import Decimal
 import pytest
 from django.core.exceptions import ValidationError
 
-from dumetodo.configurazione import servizi as config
-from dumetodo.tracciati import esempi
-from dumetodo.tracciati.linguaggio import ErroreTracciato, compila, genera
+from metodo.configurazione import servizi as config
+from metodo.tracciati import esempi
+from metodo.tracciati.linguaggio import ErroreTracciato, compila, genera
 
 
 def _genera(sorgente, ordini=None, documento=None):

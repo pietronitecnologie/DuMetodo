@@ -14,7 +14,7 @@
   <td><a href="{% url 'gestionale:ddt' d.pk %}" class="fw-semibold">{{ d.numero }}/{{ d.anno }}</a>{% if d.annullato %} <span class="badge text-bg-secondary">annullato</span>{% endif %}</td>
   <td>{{ d.data|date:"d/m/Y" }}</td><td class="small">{{ d.get_origine_display }}</td><td>{{ d.causale|default:"—" }}</td>
   <td class="text-end">{{ d.n_righe }}</td><td class="small">{% if d.colli %}{{ d.colli }} colli{% endif %}{% if d.peso_kg %} · {{ d.peso_kg }} kg{% endif %}</td>
-  <td class="text-end">{% if d.emesso_da_dumetodo %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'gestionale:ddt_stampa' d.pk %}" target="_blank">Stampa</a>{% endif %}</td></tr>
+  <td class="text-end">{% if d.emesso_da_metodo %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'gestionale:ddt_stampa' d.pk %}" target="_blank">Stampa</a>{% endif %}</td></tr>
 {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Nessun DDT.</td></tr>{% endfor %}
 </tbody></table></div>
 {% include "_paginazione.html" %}

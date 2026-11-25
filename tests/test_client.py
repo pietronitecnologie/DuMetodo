@@ -4,11 +4,11 @@ import pytest
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
-from dumetodo.client import menu
-from dumetodo.configurazione import servizi as config
-from dumetodo.core.permessi import F, permessi_di
+from metodo.client import menu
+from metodo.configurazione import servizi as config
+from metodo.core.permessi import F, permessi_di
 
-UA_CLIENT = "Mozilla/5.0 AppleWebKit DuMetodoClient/0.1.0"
+UA_CLIENT = "Mozilla/5.0 AppleWebKit MetodoClient/0.1.0"
 
 
 def test_menu_predefinito_valido():
@@ -76,7 +76,7 @@ def test_script_solo_nel_client(client, ordine, operatore):
 def test_scorciatoie_predefinite_filtrate_per_permessi(client, db):
     from django.contrib.auth.models import User
 
-    from dumetodo.core.permessi import F, permessi_di
+    from metodo.core.permessi import F, permessi_di
 
     u = User.objects.create_user("x")
     u.user_permissions.set(permessi_di([F.ORDINI_VEDERE]))
@@ -103,14 +103,14 @@ def test_scorciatoie_predefinite_filtrate_per_permessi(client, db):
     ],
 )
 def test_scorciatoie_non_valide(voci, errore):
-    from dumetodo.client.scorciatoie import ScorciatoieNonValide, valida
+    from metodo.client.scorciatoie import ScorciatoieNonValide, valida
 
     with pytest.raises(ScorciatoieNonValide, match=errore):
         valida(voci)
 
 
 def test_normalizza_tasto():
-    from dumetodo.client.scorciatoie import normalizza_tasto
+    from metodo.client.scorciatoie import normalizza_tasto
 
     assert normalizza_tasto("shift + ctrl + k") == "CTRL+SHIFT+K"
     assert normalizza_tasto("alt+3") == "ALT+3"
@@ -127,7 +127,7 @@ def media(settings, tmp_path):
 def _exe(contenuto=b"MZ" + b"\x00" * 500):
     from django.core.files.uploadedfile import SimpleUploadedFile
 
-    return SimpleUploadedFile("dumetodo-client.exe", contenuto, content_type="application/octet-stream")
+    return SimpleUploadedFile("metodo-client.exe", contenuto, content_type="application/octet-stream")
 
 
 def test_caricamento_e_proposta_aggiornamento(client, db, media):
@@ -135,7 +135,7 @@ def test_caricamento_e_proposta_aggiornamento(client, db, media):
 
     from django.contrib.auth.models import User
 
-    from dumetodo.core.permessi import F, permessi_di
+    from metodo.core.permessi import F, permessi_di
 
     admin = User.objects.create_user("a")
     admin.user_permissions.set(permessi_di([F.CONFIGURAZIONE]))
@@ -149,7 +149,7 @@ def test_caricamento_e_proposta_aggiornamento(client, db, media):
     a = client.get("/client/aggiornamento.json").json()["aggiornamento"]
     assert a["versione"] == "0.10.0"  # confronto numerico, non alfabetico
     # ritirando la 0.10.0 si torna a proporre la più alta rimasta
-    from dumetodo.client.models import VersioneClient
+    from metodo.client.models import VersioneClient
 
     v10 = VersioneClient.objects.get(versione="0.10.0")
     client.post("/client/versioni/", {"azione": "disattiva", "pk": v10.pk})
@@ -158,7 +158,7 @@ def test_caricamento_e_proposta_aggiornamento(client, db, media):
     v3 = VersioneClient.objects.get(versione="0.3.0")
     assert v3.sha256 == hashlib.sha256(contenuto).hexdigest()
     r = client.get(f"/client/scarica/{v3.pk}/")
-    assert b"".join(r.streaming_content) == contenuto and "dumetodo-client-0.3.0.exe" in r["Content-Disposition"]
+    assert b"".join(r.streaming_content) == contenuto and "metodo-client-0.3.0.exe" in r["Content-Disposition"]
     assert client.get(f"/client/scarica/{v10.pk}/").status_code == 404  # ritirata
 
 
@@ -172,7 +172,7 @@ def test_caricamento_e_proposta_aggiornamento(client, db, media):
 def test_caricamento_rifiutato(client, db, media, versione, contenuto, errore):
     from django.contrib.auth.models import User
 
-    from dumetodo.core.permessi import F, permessi_di
+    from metodo.core.permessi import F, permessi_di
 
     u = User.objects.create_user("a")
     u.user_permissions.set(permessi_di([F.CONFIGURAZIONE]))
@@ -184,8 +184,8 @@ def test_caricamento_rifiutato(client, db, media, versione, contenuto, errore):
 def test_eliminazione_libera_la_versione(client, db, media, django_capture_on_commit_callbacks):
     from django.contrib.auth.models import User
 
-    from dumetodo.client.models import VersioneClient
-    from dumetodo.core.permessi import F, permessi_di
+    from metodo.client.models import VersioneClient
+    from metodo.core.permessi import F, permessi_di
 
     u = User.objects.create_user("a")
     u.user_permissions.set(permessi_di([F.CONFIGURAZIONE]))
@@ -194,7 +194,7 @@ def test_eliminazione_libera_la_versione(client, db, media, django_capture_on_co
     v = VersioneClient.objects.get(versione="0.3.0")
     percorso = media / v.file.name
     assert percorso.exists()
-    from dumetodo.client import aggiornamenti
+    from metodo.client import aggiornamenti
 
     with pytest.raises(aggiornamenti.AggiornamentoNonValido, match="già stata caricata"):
         aggiornamenti.carica(u, "0.3.0", _exe())

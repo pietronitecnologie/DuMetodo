@@ -4,10 +4,10 @@ from unittest import mock
 import pytest
 from django.core import mail
 
-from dumetodo.comunicazioni import email as outbox
-from dumetodo.comunicazioni import servizi
-from dumetodo.comunicazioni.models import EmailInUscita, Lato, Nota, StatoEmail, Visibilita
-from dumetodo.ordini.models import Ordine
+from metodo.comunicazioni import email as outbox
+from metodo.comunicazioni import servizi
+from metodo.comunicazioni.models import EmailInUscita, Lato, Nota, StatoEmail, Visibilita
+from metodo.ordini.models import Ordine
 
 
 def test_nota_fornitore_avvisa_il_cliente(ordine, operatore, configura_email, django_capture_on_commit_callbacks):
@@ -92,7 +92,7 @@ def test_viste_note(client, ordine, cliente, operatore):
 def test_nomi_azienda_configurabili(
     client, ordine, operatore, cliente, configura_email, django_capture_on_commit_callbacks
 ):
-    from dumetodo.configurazione import servizi as config
+    from metodo.configurazione import servizi as config
 
     config.scrivi_molti({"azienda.nome_fornitore": "Geko Srl", "azienda.nome_cliente": "DMG Spa"})
     config.invalida_cache()

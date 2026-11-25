@@ -8,12 +8,12 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from dumetodo.anagrafica.models import Articolo
-from dumetodo.comunicazioni.models import EmailInUscita
-from dumetodo.configurazione import servizi as config
-from dumetodo.core.models import Reparto
-from dumetodo.magazzino import formati_ddt, servizi
-from dumetodo.magazzino.models import (
+from metodo.anagrafica.models import Articolo
+from metodo.comunicazioni.models import EmailInUscita
+from metodo.configurazione import servizi as config
+from metodo.core.models import Reparto
+from metodo.magazzino import formati_ddt, servizi
+from metodo.magazzino.models import (
     Componente,
     ComponenteDistinta,
     ConteggioInventario,
@@ -22,7 +22,7 @@ from dumetodo.magazzino.models import (
     MaterialeIngresso,
     RichiestaMateriale,
 )
-from dumetodo.ordini.servizi import OperazioneNonConsentita
+from metodo.ordini.servizi import OperazioneNonConsentita
 
 
 @pytest.fixture
@@ -619,7 +619,7 @@ def test_menu_magazzino_solo_per_il_fornitore(client, cliente, operatore):
 
 
 def test_parametri_magazzino_registrati():
-    from dumetodo.configurazione.registro import REGISTRO, Gruppo
+    from metodo.configurazione.registro import REGISTRO, Gruppo
 
     assert REGISTRO["magazzino.reparti_richieste"].gruppo == Gruppo.MAGAZZINO
     assert REGISTRO["magazzino.dimensione_massima_file_ddt_mb"].default == 5
@@ -725,8 +725,8 @@ def test_migrazione_magazzino(metodo_magazzino_db):
 def test_arrivo_ddt_chiude_le_richieste_senza_toccare_la_giacenza(operatore, pulsanti):
     import datetime as dt
 
-    from dumetodo.core.models import Reparto
-    from dumetodo.magazzino.models import ConteggioInventario
+    from metodo.core.models import Reparto
+    from metodo.magazzino.models import ConteggioInventario
 
     elettronica = Reparto.objects.create(codice="GK01-ETT", nome="Elettronica prova")
     r1, _ = servizi.richiedi_materiale(operatore, pulsanti, "AB1")

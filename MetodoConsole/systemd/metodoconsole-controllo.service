@@ -1,5 +1,5 @@
 [Unit]
-Description=MetodoConsole: controllo di DuMetodo
+Description=MetodoConsole: controllo di Metodo v2
 After=docker.service
 
 [Service]

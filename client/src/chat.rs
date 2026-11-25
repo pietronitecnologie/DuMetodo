@@ -24,8 +24,8 @@ pub fn non_letti() -> u32 {
 pub fn notifica_di_sistema(nome: &str, testo: &str) {
     let corpo: String = testo.chars().take(180).collect();
     let _ = notify_rust::Notification::new()
-        .appname("DuMetodo")
-        .summary(&format!("DuMetodo · messaggio da {nome}"))
+        .appname("Metodo v2")
+        .summary(&format!("Metodo v2 · messaggio da {nome}"))
         .body(&corpo)
         .show();
 }

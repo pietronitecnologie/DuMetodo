@@ -1,8 +1,8 @@
 [package]
-name = "dumetodo-client"
+name = "metodo-client"
 version = "0.3.0"
 edition = "2024"
-description = "DuMetodo: browser desktop personalizzato (la grafica resta sul server)"
+description = "Metodo v2: browser desktop personalizzato (la grafica resta sul server)"
 license = "LicenseRef-Proprietario"
 publish = false
 

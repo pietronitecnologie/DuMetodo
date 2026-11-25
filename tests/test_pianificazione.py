@@ -6,13 +6,13 @@ import pytest
 from django.core import mail
 from django.utils import timezone
 
-from dumetodo.anagrafica.models import Articolo, Tabulato, UnitaMisura
-from dumetodo.comunicazioni.servizi import aggiungi_nota
-from dumetodo.configurazione import servizi as config
-from dumetodo.core.models import Reparto
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
-from dumetodo.ordini.servizi import OperazioneNonConsentita
-from dumetodo.pianificazione import calendario, piano, servizi
+from metodo.anagrafica.models import Articolo, Tabulato, UnitaMisura
+from metodo.comunicazioni.servizi import aggiungi_nota
+from metodo.configurazione import servizi as config
+from metodo.core.models import Reparto
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
+from metodo.ordini.servizi import OperazioneNonConsentita
+from metodo.pianificazione import calendario, piano, servizi
 
 # Mercoledì 15 aprile 2026 ore 10:00 -> lunedì 13/04
 ADESSO = timezone.make_aware(dt.datetime(2026, 4, 15, 10, 0))
@@ -125,7 +125,7 @@ def test_invio_report(scenario, operatore, amministratore, django_capture_on_com
         {
             "email.report_produzione_to": "capo@x.it",
             "email.report_produzione_cc": "capo@x.it, cc@x.it",
-            "email.mittente": "dumetodo@x.it",
+            "email.mittente": "metodo@x.it",
         }
     )
     config.invalida_cache()
@@ -144,7 +144,7 @@ def test_invio_report(scenario, operatore, amministratore, django_capture_on_com
 
 
 def test_invio_automatico(scenario):
-    from dumetodo.pianificazione.tasks import invia_report_pianificazione
+    from metodo.pianificazione.tasks import invia_report_pianificazione
 
     assert "destinatari" in invia_report_pianificazione()  # nessun destinatario: nessun errore, solo log
     config.scrivi("pianificazione.report_automatico", False)

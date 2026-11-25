@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Metodo v2
+GenericName=Gestione della produzione
+Comment=Client desktop di Metodo v2
+Exec=metodo-client
+Icon=metodo-client
+Terminal=false
+Categories=Office;Network;
+StartupNotify=true

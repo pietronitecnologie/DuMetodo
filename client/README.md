@@ -1,8 +1,8 @@
-# DuMetodo Client
+# Metodo v2 Client
 
-Browser desktop personalizzato per DuMetodo, scritto in Rust (`wry` + `tao` + `muda`).
+Browser desktop personalizzato per Metodo v2, scritto in Rust (`wry` + `tao` + `muda`).
 
-**La grafica resta sul server**: il client mostra le pagine di DuMetodo e non ha un'interfaccia
+**La grafica resta sul server**: il client mostra le pagine di Metodo v2 e non ha un'interfaccia
 propria. Aggiunge solo ciò che un browser normale non può fare:
 
 | Funzione | Dove si configura |
@@ -11,7 +11,7 @@ propria. Aggiunge solo ciò che un browser normale non può fare:
 | Aggiorna pagina, Copia tabella / colonna / riga (si incollano in Excel), Copia selezione, Incolla (anche su http) | voci predefinite del menu, modificabili sul server |
 | **Logo dell'azienda** in testa al menu del tasto destro (con il nome) | sul **server**: Configurazione → Azienda → Logo |
 | **Chat 1 a 1** tra gli utenti: pulsante «💬 Chat» nella barra delle schede (con il numero di non letti), pannello a destra sempre attivo; messaggi salvati sul server, anche verso chi non è collegato. All'arrivo di un messaggio: avviso nella pagina, notifica di Windows e icona che lampeggia nella barra di Windows se il client non è in primo piano. Serve il permesso «Usare la chat» | sul **server** (permesso) |
-| **Aggiornamento automatico**: l'amministratore carica il nuovo `dumetodo-client.exe` in *Amministrazione → Aggiornamenti del client* con il numero di versione; ogni client più vecchio mostra «È disponibile un aggiornamento», con *Aggiorna ora* lo scarica, controlla l'impronta SHA-256 e si riavvia riaprendo le schede. Il client deve stare in una cartella dove l'utente può scrivere (non in Programmi) | sul **server** |
+| **Aggiornamento automatico**: l'amministratore carica il nuovo `metodo-client.exe` in *Amministrazione → Aggiornamenti del client* con il numero di versione; ogni client più vecchio mostra «È disponibile un aggiornamento», con *Aggiorna ora* lo scarica, controlla l'impronta SHA-256 e si riavvia riaprendo le schede. Il client deve stare in una cartella dove l'utente può scrivere (non in Programmi) | sul **server** |
 | **Riapertura delle schede**: alla chiusura il client ricorda le schede aperte (file `schede.json` accanto a `client.toml`) e le riapre al prossimo avvio sullo stesso server; l'accesso resta valido. `ripristina_schede = false` in `client.toml` per disattivarla | sul client |
 | **Scorciatoie da tastiera** (F1 elenco, F2 cerca ordine, F3 ordini, …) | sul **server**: Configurazione → Client desktop → Scorciatoie |
 | **Cambia server**: il pulsante a destra nella barra delle schede mostra il server collegato; cliccandolo si indica un altro indirizzo (Annulla = resta su quello attuale). In alternativa `url` in `client.toml` o `--url` | sul client |
@@ -26,11 +26,11 @@ sul PC.
 
 ## Come funzionano i menu
 
-1. Le pagine di DuMetodo marcano gli elementi: `data-dm-menu="ordine" data-dm-id="12" data-dm-codice="..."`.
-2. Quando la pagina è aperta dal client (che si presenta con `DuMetodoClient/<versione>` nello user agent),
-   DuMetodo include `static/client/client.js`, che legge i menu da `/client/configurazione.json`.
+1. Le pagine di Metodo v2 marcano gli elementi: `data-dm-menu="ordine" data-dm-id="12" data-dm-codice="..."`.
+2. Quando la pagina è aperta dal client (che si presenta con `MetodoClient/<versione>` nello user agent),
+   Metodo v2 include `static/client/client.js`, che legge i menu da `/client/configurazione.json`.
 3. Al clic destro lo script compone le voci e chiede al client di mostrare un **menu nativo**. Alla scelta
-   il client richiama `DuMetodoClient.esegui(id)` nella pagina, che esegue l'azione: naviga, post con
+   il client richiama `MetodoClient.esegui(id)` nella pagina, che esegue l'azione: naviga, post con
    CSRF, copia, stampa, ricarica, indietro, avanti, schermo intero.
 
 Il client accetta messaggi solo dalle pagine del server configurato e conosce soltanto questi comandi:
@@ -40,11 +40,11 @@ mostra menu, stampa, schermo intero, zoom. Non esegue nient'altro.
 
 Al primo avvio viene creato `client.toml`, da compilare:
 
-- **Windows:** `%APPDATA%\DuMetodo\DuMetodo Client\config\client.toml`
-- **Linux:** `~/.config/dumetodoclient/client.toml`
+- **Windows:** `%APPDATA%\Metodo v2\Metodo v2 Client\config\client.toml`
+- **Linux:** `~/.config/metodoclient/client.toml`
 
 ```toml
-url = "https://dumetodo.esempio.it"
+url = "https://metodo.esempio.it"
 schermo_intero = false   # true = chiosco
 zoom = 1.0
 
@@ -60,17 +60,17 @@ Opzioni da riga di comando: `--url https://...` e `--configurazione percorso\cli
 
 ## Installazione su Debian / Ubuntu
 
-Ogni versione pubblicata (Release di GitHub *DuMetodo Client X.Y.Z*) contiene, oltre all'`.exe` per Windows,
-il pacchetto `dumetodo-client_X.Y.Z_amd64.deb` per **Debian 12 o più recente** e **Ubuntu 24.04 o più recente**.
+Ogni versione pubblicata (Release di GitHub *Metodo v2 Client X.Y.Z*) contiene, oltre all'`.exe` per Windows,
+il pacchetto `metodo-client_X.Y.Z_amd64.deb` per **Debian 12 o più recente** e **Ubuntu 24.04 o più recente**.
 Si installa con le dipendenze, che apt scarica da solo (WebKitGTK):
 
 ```bash
-sudo apt install ./dumetodo-client_0.3.0_amd64.deb
+sudo apt install ./metodo-client_0.3.0_amd64.deb
 ```
 
-Il client compare nel menu delle applicazioni come **DuMetodo**; da terminale si avvia con `dumetodo-client`
-(anche `dumetodo-client --url https://dumetodo.azienda.it`). Configurazione e schede salvate sono per utente,
-in `~/.config/dumetodoclient/`.
+Il client compare nel menu delle applicazioni come **Metodo v2**; da terminale si avvia con `metodo-client`
+(anche `metodo-client --url https://metodo.azienda.it`). Configurazione e schede salvate sono per utente,
+in `~/.config/metodoclient/`.
 
 **Aggiornamenti.** Su Linux il client non si aggiorna da solo (l'aggiornamento automatico distribuisce
 l'eseguibile Windows): per una versione nuova si installa il nuovo `.deb` con lo stesso comando. Il pacchetto
@@ -105,6 +105,6 @@ powershell -ExecutionPolicy Bypass -File .\client\pubblica-versione.ps1 0.3.0
 ```
 
 Lo script porta `Cargo.toml` alla nuova versione, fa commit, crea il tag `client-v0.3.0` e lo invia. Il
-workflow *client* controlla il tag, compila e crea la Release **DuMetodo Client 0.3.0** con allegato
-`dumetodo-client-0.3.0.exe` e `dumetodo-client_0.3.0_amd64.deb` con le loro impronte SHA-256. Per distribuirla: in DuMetodo, *Amministrazione →
+workflow *client* controlla il tag, compila e crea la Release **Metodo v2 Client 0.3.0** con allegato
+`metodo-client-0.3.0.exe` e `metodo-client_0.3.0_amd64.deb` con le loro impronte SHA-256. Per distribuirla: in Metodo v2, *Amministrazione →
 Aggiornamenti del client*, carica quel file con la versione `0.3.0`; i client la propongono da soli.

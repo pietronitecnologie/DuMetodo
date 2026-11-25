@@ -1,7 +1,7 @@
 import pytest
 
-from dumetodo.importazione.models import FileImportato
-from dumetodo.ordini.models import StatoOrdine
+from metodo.importazione.models import FileImportato
+from metodo.ordini.models import StatoOrdine
 
 from .test_importazione import file_txt, riga
 
@@ -54,7 +54,7 @@ def test_caricamento_file_da_interfaccia(client, operatore):
 
 @pytest.mark.parametrize("torna", ["https://evil.example.com/", "//evil.example.com/"])
 def test_segna_gestito_non_permette_redirect_esterni(client, operatore, torna):
-    from dumetodo.importazione import servizi
+    from metodo.importazione import servizi
 
     client.force_login(operatore)
     f = servizi.importa_caricamento("x.txt", b"rotto", operatore)
@@ -71,23 +71,23 @@ def test_dati_demo_si_caricano_e_le_pagine_rispondono(client):
     from django.core.management import call_command
     from django.urls import reverse
 
-    from dumetodo.ordini.models import Ordine
+    from metodo.ordini.models import Ordine
 
     call_command("crea_amministratore", stdout=StringIO())
-    User.objects.get(username="admin").profilo_dumetodo.__class__.objects.update(deve_cambiare_password=False)
+    User.objects.get(username="admin").profilo_metodo.__class__.objects.update(deve_cambiare_password=False)
     out = StringIO()
     call_command("carica_dati_demo", stdout=out, stderr=StringIO())
     assert "Dati di prova caricati" in out.getvalue()
     assert Ordine.objects.count() == 48 and Ordine.objects.filter(stato="CON").exists()
-    from dumetodo.consegne.models import DDT
-    from dumetodo.gestionale.models import Fattura
+    from metodo.consegne.models import DDT
+    from metodo.gestionale.models import Fattura
 
     assert DDT.objects.filter(origine="DUM").exists() and Fattura.objects.filter(stato="BOZ").exists()
     assert "amministrazione" in out.getvalue()
-    from dumetodo.timbrature.models import Lavoratore, Timbratura
+    from metodo.timbrature.models import Lavoratore, Timbratura
 
     assert Lavoratore.objects.count() == 6 and Timbratura.objects.exists()
-    from dumetodo.tracciatura.models import Modello, Tracciatura
+    from metodo.tracciatura.models import Modello, Tracciatura
 
     # 3 modelli di esempio + «Lotto e busta» + il controllo qualità «Pulsantiere»
     assert Modello.objects.count() == 5 and Tracciatura.objects.exists()

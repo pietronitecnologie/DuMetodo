@@ -86,7 +86,7 @@ def test_elenco_ricerca_e_verifica(tmp_path):
 def test_configurazione(tmp_path):
     f = tmp_path / "mc.conf"
     f.write_text(
-        "[dumetodo]\ncartella = /srv/dm\nfile_compose = compose.yaml compose.prod.yaml\n"
+        "[metodo]\ncartella = /srv/dm\nfile_compose = compose.yaml compose.prod.yaml\n"
         "[backup]\nconserva_giornalieri = 3\ncopia_remota = nas:/backup\n[avvisi]\nemail = no\n"
     )
     c = mc.leggi_conf(str(f))
@@ -120,7 +120,7 @@ class _ComposeFinto:
 
 def _conf(tmp_path, env=""):
     (tmp_path / ".env").write_text(env)
-    return mc.Conf(cartella=tmp_path, cartella_stato=tmp_path / "stato", progetto="DuMetodo")
+    return mc.Conf(cartella=tmp_path, cartella_stato=tmp_path / "stato", progetto="metodo")
 
 
 def test_prelievo_avvia_con_backup_e_opzioni(tmp_path, monkeypatch):
@@ -135,7 +135,7 @@ def test_prelievo_avvia_con_backup_e_opzioni(tmp_path, monkeypatch):
     assert mc.cmd_prelievo(conf, dc, a) == 0
     assert backup == ["prima-del-prelievo"]
     ((argomenti, kw),) = dc.chiamate
-    assert argomenti[:4] == ("run", "-d", "--name", "dumetodo-prelievo") and "-e" not in argomenti
+    assert argomenti[:4] == ("run", "-d", "--name", "metodo-prelievo") and "-e" not in argomenti
     assert argomenti[argomenti.index("--max-kb") + 1] == "256.0" and "--ricomincia" in argomenti
     assert "--log" in argomenti and kw["ambiente"] == {}  # URL già nel .env: non passa dalla riga di comando
 

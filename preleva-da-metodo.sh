@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Preleva i dati da Metodo in DuMetodo (Docker su questo computer) attraverso un tunnel SSH.
+# Preleva i dati da Metodo in Metodo v2 (Docker su questo computer) attraverso un tunnel SSH.
 #
 #   ./preleva-da-metodo.sh                          chiede i dati, verifica e avvia (o riprende) il prelievo
 #   ./preleva-da-metodo.sh --max-kb 256 --pausa 1   le opzioni vengono passate a preleva_da_metodo
 #   ./preleva-da-metodo.sh --ricomincia ordini righe consegne
 #
 # Le risposte (tranne le password) vengono ricordate per la volta successiva in
-# ~/.config/dumetodo/prelievo-metodo.conf. La password del database non finisce mai sulla riga di comando
+# ~/.config/metodo/prelievo-metodo.conf. La password del database non finisce mai sulla riga di comando
 # né su disco; quella SSH la chiede ssh stesso (o si usa la chiave SSH).
 set -euo pipefail
 
-CONF_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dumetodo/prelievo-metodo.conf"
+CONF_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/metodo/prelievo-metodo.conf"
 SOCKET=""
 
 # ---------------------------------------------------------------------------------------------- utilità
@@ -50,7 +50,7 @@ chiudi_tunnel() {
 }
 
 apri_tunnel() {
-  SOCKET="$(mktemp -u "${TMPDIR:-/tmp}/dumetodo-tunnel.XXXXXX")"
+  SOCKET="$(mktemp -u "${TMPDIR:-/tmp}/metodo-tunnel.XXXXXX")"
   echo "Apro il tunnel SSH verso $SSH_DEST (porta $SSH_PORTA)…"
   # Il tunnel ascolta solo sull'indirizzo della rete Docker: il container lo raggiunge come
   # host.docker.internal, gli altri computer della rete no.
@@ -63,7 +63,7 @@ apri_tunnel() {
 main() {
   cd "$(dirname "$0")"
   if ! docker compose ps --status running --services 2>/dev/null | grep -qx web; then
-    echo "DuMetodo non è in esecuzione: avvialo con ./avvia-dumetodo.sh" >&2
+    echo "Metodo v2 non è in esecuzione: avvialo con ./avvia-metodo.sh" >&2
     exit 1
   fi
   if ! command -v ssh >/dev/null; then
@@ -72,7 +72,7 @@ main() {
   fi
 
   SSH_HOST="" SSH_UTENTE="root" SSH_PORTA="22" DB_HOST="localhost" DB_PORTA="5432"
-  DB_NOME="metodo" DB_UTENTE="dumetodo_lettura" TUNNEL_PORTA="15432"
+  DB_NOME="metodo" DB_UTENTE="metodo_lettura" TUNNEL_PORTA="15432"
   # shellcheck disable=SC1090
   [[ -f "$CONF_FILE" ]] && source "$CONF_FILE"
 
@@ -138,7 +138,7 @@ CONF
 
   while true; do
     if "${manage[@]}" --log /app/media/prelievo-metodo.log "$@"; then
-      echo "Prelievo completato. Gli avvisi sono nel file prelievo-metodo.log dei file caricati di DuMetodo."
+      echo "Prelievo completato. Gli avvisi sono nel file prelievo-metodo.log dei file caricati di Metodo v2."
       exit 0
     fi
     echo "Il prelievo si è fermato con un errore (il lavoro fatto è salvato)." >&2

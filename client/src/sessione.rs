@@ -11,7 +11,7 @@ pub const MASSIMO_SCHEDE: usize = 16;
 
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Sessione {
-    /// Origine del server (es. "https://dumetodo.azienda.it").
+    /// Origine del server (es. "https://metodo.azienda.it").
     pub server: String,
     pub schede: Vec<String>,
     pub attiva: usize,
@@ -53,7 +53,7 @@ mod test {
 
     #[test]
     fn salva_e_ricarica_solo_lo_stesso_server() {
-        let cartella = std::env::temp_dir().join(format!("dumetodo-sessione-{}", std::process::id()));
+        let cartella = std::env::temp_dir().join(format!("metodo-sessione-{}", std::process::id()));
         std::fs::create_dir_all(&cartella).unwrap();
         let p = cartella.join("schede.json");
         let s = Sessione {

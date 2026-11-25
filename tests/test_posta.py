@@ -3,9 +3,9 @@ from email.message import EmailMessage
 import pytest
 from django.test import override_settings
 
-from dumetodo.importazione import posta
-from dumetodo.importazione.models import EsitoMessaggio, MessaggioEmail, StatoCasella
-from dumetodo.ordini.models import Ordine
+from metodo.importazione import posta
+from metodo.importazione.models import EsitoMessaggio, MessaggioEmail, StatoCasella
+from metodo.ordini.models import Ordine
 
 from .test_importazione import _zip, file_txt, riga
 

@@ -1,19 +1,19 @@
 # Configurazione di MetodoConsole: copiala in /etc/metodoconsole/metodoconsole.conf (lo fa installa.sh).
 
-[dumetodo]
-# Cartella di DuMetodo sul server (quella con compose.yaml e .env).
-cartella = /opt/dumetodo
+[metodo]
+# Cartella di Metodo v2 sul server (quella con compose.yaml e .env).
+cartella = /opt/metodo
 # File compose usati in produzione, separati da spazi (es. compose.yaml compose.produzione.yaml).
 file_compose = compose.yaml
-# Nome del progetto Docker Compose (vuoto = nome della cartella).
+# Nome del progetto Docker Compose (vuoto = quello di compose.yaml: metodo).
 progetto =
-# Indirizzo con cui gli utenti raggiungono DuMetodo: se indicato si controllano risposta e certificato https.
+# Indirizzo con cui gli utenti raggiungono Metodo v2: se indicato si controllano risposta e certificato https.
 url_pubblico =
-db_nome = dumetodo
-db_utente = dumetodo
+db_nome = metodo
+db_utente = metodo
 
 [backup]
-cartella = /var/backups/dumetodo
+cartella = /var/backups/metodo
 # Rotazione: si tiene l'ultimo backup di ognuno degli ultimi N giorni, N settimane, N mesi.
 conserva_giornalieri = 14
 conserva_settimanali = 8
@@ -21,13 +21,13 @@ conserva_mensili = 12
 # Oltre questa età l'ultimo backup è segnalato dalla diagnostica.
 massima_eta_ore = 26
 # Copia dei backup su un altro computer con rsync (consigliato: un backup sullo stesso disco non protegge
-# da un guasto del disco). Es. backup@nas.azienda.local:/backup/dumetodo  (serve una chiave SSH senza password)
+# da un guasto del disco). Es. backup@nas.azienda.local:/backup/metodo  (serve una chiave SSH senza password)
 copia_remota =
 # Spazio libero minimo sui dischi prima di segnalarlo.
 spazio_minimo_gb = 5
 
 [avvisi]
-# Email ai destinatari di DuMetodo → Configurazione → Indirizzi email → «Destinatari avvisi del server».
+# Email ai destinatari di Metodo v2 → Configurazione → Indirizzi email → «Destinatari avvisi del server».
 email = si
 # Finché un problema dura, l'avviso si ripete ogni N ore.
 ripeti_ore = 6

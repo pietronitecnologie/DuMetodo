@@ -5,14 +5,14 @@
   <a href="{% url 'gestionale:ddt_lista' %}" class="btn btn-sm btn-outline-secondary">← DDT</a>
   <h1 class="h4 me-auto mb-0">DDT n. {{ d.numero }}/{{ d.anno }} del {{ d.data|date:"d/m/Y" }}
     {% if d.annullato %}<span class="badge text-bg-secondary align-middle">annullato</span>{% endif %}</h1>
-  {% if d.emesso_da_dumetodo %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:ddt_stampa' d.pk %}" target="_blank">Stampa</a>{% endif %}
+  {% if d.emesso_da_metodo %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:ddt_stampa' d.pk %}" target="_blank">Stampa</a>{% endif %}
   {% if d.file_nome %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'consegne:ddt_file' d.pk %}">File tecnico</a>{% endif %}
 </div>
 {% if d.annullato %}<div class="alert alert-secondary py-2 small">Annullato il {{ d.annullato_il|date:"d/m/Y H:i" }}{% if d.annullato_da %} da {{ d.annullato_da }}{% endif %}: {{ d.motivo_annullamento }}. Il numero resta consumato.</div>{% endif %}
 <div class="row g-3">
   <div class="col-lg-4"><div class="card"><div class="card-body small">
     <div><span class="text-muted">Origine:</span> {{ d.get_origine_display }}</div>
-    {% if d.emesso_da_dumetodo %}
+    {% if d.emesso_da_metodo %}
     <div><span class="text-muted">Destinatario:</span> {{ d.documento.destinatario.denominazione }}</div>
     <div><span class="text-muted">Causale:</span> {{ d.causale }}</div>
     <div><span class="text-muted">Aspetto dei beni:</span> {{ d.aspetto_beni|default:"—" }}</div>
@@ -24,7 +24,7 @@
       {% for f in fatture %}<a href="{{ f.get_absolute_url }}">{{ f }}</a>{% if not forloop.last %}, {% endif %}{% empty %}non ancora fatturato{% endfor %}</div>
   </div></div>
   {% if perms.core.tracciatura_vedere %}<div class="mt-2" hx-get="{% url 'tracciatura:pannello' %}?ddt={{ d.pk }}" hx-trigger="load" hx-swap="outerHTML"></div>{% endif %}
-  {% if puo_ddt and d.emesso_da_dumetodo and not d.annullato and not fatture %}
+  {% if puo_ddt and d.emesso_da_metodo and not d.annullato and not fatture %}
   <form method="post" class="card mt-2" onsubmit="return confirm('Annullare il DDT? Il numero resta consumato e le righe tornano da emettere.')">{% csrf_token %}
     <div class="card-body"><label class="form-label" for="motivo">Annulla il DDT</label>
       <input class="form-control form-control-sm mb-2" id="motivo" name="motivo" required maxlength="200" placeholder="Motivo (es. errore nei colli)">

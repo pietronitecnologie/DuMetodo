@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use directories::ProjectDirs;
 use serde::Deserialize;
 
-pub const MODELLO: &str = r#"# Configurazione del client DuMetodo (questo PC).
-# Indirizzo del server DuMetodo, ad esempio: url = "https://dumetodo.esempio.it"
+pub const MODELLO: &str = r#"# Configurazione del client Metodo v2 (questo PC).
+# Indirizzo del server Metodo v2, ad esempio: url = "https://metodo.esempio.it"
 url = ""
 
 # Modalità chiosco per le postazioni di reparto: schermo intero, senza strumenti di sviluppo.
@@ -57,7 +57,7 @@ pub struct Regola {
 }
 
 pub fn percorso_predefinito() -> Option<PathBuf> {
-    ProjectDirs::from("it", "DuMetodo", "DuMetodo Client").map(|d| d.config_dir().join("client.toml"))
+    ProjectDirs::from("it", "Metodo", "Metodo Client").map(|d| d.config_dir().join("client.toml"))
 }
 
 /// Legge la configurazione; se il file non esiste ne crea uno di esempio da compilare.

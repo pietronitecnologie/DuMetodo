@@ -8,14 +8,14 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from dumetodo.configurazione import servizi as config
-from dumetodo.consegne import servizi as consegne
-from dumetodo.consegne.models import DDT
-from dumetodo.core.permessi import F, applica_profilo, codici_profilo, ha_permesso, sincronizza_permessi
-from dumetodo.gestionale import fatturapa, servizi
-from dumetodo.gestionale.models import Fattura, Numerazione, StatoFattura
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
-from dumetodo.ordini.servizi import OperazioneNonConsentita
+from metodo.configurazione import servizi as config
+from metodo.consegne import servizi as consegne
+from metodo.consegne.models import DDT
+from metodo.core.permessi import F, applica_profilo, codici_profilo, ha_permesso, sincronizza_permessi
+from metodo.gestionale import fatturapa, servizi
+from metodo.gestionale.models import Fattura, Numerazione, StatoFattura
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine
+from metodo.ordini.servizi import OperazioneNonConsentita
 
 NS = {"p": fatturapa.NS}
 OGGI = timezone.localdate()
@@ -298,7 +298,7 @@ def test_ddt_di_legge_numerati_e_file_tecnico(db, ufficio, dati_fiscali, django_
     a = _consegna(ufficio, **{"ART-A": (10, Decimal("2.5")), "ART-B": (5, Decimal("1"))})
     with django_capture_on_commit_callbacks(execute=True):
         d1 = servizi.emetti_ddt(ufficio, a[:1], OGGI, _campi_ddt())
-    assert (d1.numero, d1.progressivo, d1.emesso_da_dumetodo) == ("1", 1, True)
+    assert (d1.numero, d1.progressivo, d1.emesso_da_metodo) == ("1", 1, True)
     assert d1.file_nome and d1.email is not None  # stesso file tecnico di Spedizioni → DDT
     assert d1.documento["destinatario"]["denominazione"] == "Cliente & Figli S.p.A."
     assert d1.documento["destinazione"].startswith("Magazzino") and d1.documento["righe"][0]["codice"] == "ART-A"
@@ -316,7 +316,7 @@ def test_ddt_di_legge_numerati_e_file_tecnico(db, ufficio, dati_fiscali, django_
     assert servizi.righe_da_emettere().filter(pk=a[0]).exists()
     d4 = servizi.emetti_ddt(ufficio, a[:1], OGGI, _campi_ddt())
     assert d4.numero == "4"
-    with pytest.raises(OperazioneNonConsentita, match="emessi da DuMetodo"):
+    with pytest.raises(OperazioneNonConsentita, match="emessi da Metodo v2"):
         servizi.annulla_ddt(ufficio, DDT.objects.get(numero="2").pk, "x")
 
 
@@ -522,7 +522,7 @@ def test_pagina_da_fatturare_con_le_scelte(client, ufficio, due_giorni):
 
 # ------------------------------------------------------------------------------------------- numerazioni
 def test_numerazioni_predefinite_create_dalla_migrazione(db):
-    from dumetodo.gestionale.models import Numerazione
+    from metodo.gestionale.models import Numerazione
 
     assert {(n.tipo, n.nome, n.predefinita) for n in Numerazione.objects.all()} == {
         ("DDT", "DDT", True),
@@ -630,7 +630,7 @@ def test_pagina_numerazioni(client, db, ufficio):
 
 
 def test_ddt_creato_da_spedizioni_con_numerazione_e_stampa(client, db, ufficio, dati_fiscali, operatore):
-    from dumetodo.consegne.models import DDT, OrigineDDT
+    from metodo.consegne.models import DDT, OrigineDDT
 
     righe = _consegna(ufficio, **{"ART-A": (3, Decimal("2"))})
     ddt_num = Numerazione.objects.get(tipo="DDT", predefinita=True)
@@ -643,7 +643,7 @@ def test_ddt_creato_da_spedizioni_con_numerazione_e_stampa(client, db, ufficio, 
     )
     d = DDT.objects.get()
     assert r.status_code == 302 and r["Location"].endswith(f"?creato={d.pk}")
-    assert (d.origine, d.progressivo, d.numero) == (OrigineDDT.DUMETODO, 41, ddt_num.numero(41, OGGI.year))
+    assert (d.origine, d.progressivo, d.numero) == (OrigineDDT.INTERNO, 41, ddt_num.numero(41, OGGI.year))
     assert "Stampa il DDT" in client.get(r["Location"]).content.decode()
     assert client.get(f"/gestionale/ddt/{d.pk}/stampa/").status_code == 200
     assert client.get("/gestionale/").status_code == 403  # il resto del Gestionale resta riservato

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MetodoConsole: controllo del server DuMetodo (Docker Compose su Debian).
+"""MetodoConsole: controllo del server Metodo v2 (Docker Compose su Debian).
 
 Stato dei servizi, diagnostica completa, backup / verifica / ripristino del database PostgreSQL e dei file
 caricati, aggiornamento, avvisi via email. Solo libreria standard di Python (3.11+, quella di Debian 12).
@@ -86,7 +86,7 @@ def stampa_esiti(esiti: list[Esito]) -> None:
             gruppo = e.gruppo
             info(
                 tinta(
-                    "\n" + {"server": "Server e Docker", "app": "Applicazione DuMetodo"}.get(gruppo, gruppo), "titolo"
+                    "\n" + {"server": "Server e Docker", "app": "Applicazione Metodo v2"}.get(gruppo, gruppo), "titolo"
                 )
             )
         info(f"  {tinta(ETICHETTA[e.esito], e.esito)}  {e.nome:<28} {e.dettaglio}")
@@ -115,13 +115,13 @@ def eta(secondi: float) -> str:
 # ========================================================================================= configurazione
 @dataclass
 class Conf:
-    cartella: Path = Path("/opt/dumetodo")
+    cartella: Path = Path("/opt/metodo")
     file_compose: list[str] = field(default_factory=lambda: ["compose.yaml"])
     progetto: str = ""
     url_pubblico: str = ""
-    db_nome: str = "dumetodo"
-    db_utente: str = "dumetodo"
-    backup_cartella: Path = Path("/var/backups/dumetodo")
+    db_nome: str = "metodo"
+    db_utente: str = "metodo"
+    backup_cartella: Path = Path("/var/backups/metodo")
     conserva_giornalieri: int = 14
     conserva_settimanali: int = 8
     conserva_mensili: int = 12
@@ -142,7 +142,9 @@ def leggi_conf(percorso: str | None) -> Conf:
         return c
     ini = configparser.ConfigParser()
     ini.read(p, encoding="utf-8")
-    d, b, a = (ini[x] if ini.has_section(x) else {} for x in ("dumetodo", "backup", "avvisi"))
+    # [dumetodo]: nome della sezione prima della rinomina in Metodo v2 (ancora accettato).
+    sezione = "metodo" if ini.has_section("metodo") or not ini.has_section("dumetodo") else "dumetodo"
+    d, b, a = (ini[x] if ini.has_section(x) else {} for x in (sezione, "backup", "avvisi"))
     c.cartella = Path(d.get("cartella", str(c.cartella)))
     c.file_compose = d.get("file_compose", "compose.yaml").split()
     c.progetto = d.get("progetto", "")
@@ -259,7 +261,7 @@ def controlli_server(conf: Conf, dc: Compose) -> list[Esito]:
             Esito(
                 "Installazione",
                 ERRORE,
-                f"{conf.cartella / conf.file_compose[0]} non trovato (vedi [dumetodo] cartella)",
+                f"{conf.cartella / conf.file_compose[0]} non trovato (vedi [metodo] cartella)",
             )
         )
         return esiti
@@ -568,7 +570,7 @@ def esegui_backup(conf: Conf, dc: Compose, nota: str = "", *, con_file: bool = T
             "creato_il": adesso.isoformat(timespec="seconds"),
             "creato_da": f"MetodoConsole {VERSIONE}",
             "host": socket.gethostname(),
-            "versione_dumetodo": versione_codice(conf),
+            "versione_metodo": versione_codice(conf),
             "postgresql": r.stdout.strip(),
             "database": conf.db_nome,
             "tabelle_con_dati": tabelle,
@@ -703,7 +705,7 @@ def decidi_avviso(precedente: dict[str, Any], esito: str, firma: str, adesso: fl
 # ================================================================================================ comandi
 def cmd_stato(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     servizi = dc.servizi()
-    info(tinta(f"DuMetodo su {socket.gethostname()} — {conf.cartella} (codice {versione_codice(conf)})", "titolo"))
+    info(tinta(f"Metodo v2 su {socket.gethostname()} — {conf.cartella} (codice {versione_codice(conf)})", "titolo"))
     if not servizi:
         info("  Nessun container: metodoconsole avvia")
         return 2
@@ -765,9 +767,14 @@ def cmd_backup(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
             copia_remota(conf)
         except Errore as exc:
             if a.avvisa:
-                invia_avviso(conf, dc, "Backup NON riuscito", f"Il backup di DuMetodo non è riuscito:\n\n{exc}\n")
+                invia_avviso(conf, dc, "Backup NON riuscito", f"Il backup di Metodo v2 non è riuscito:\n\n{exc}\n")
             raise
     return 0
+
+
+def versione_backup(m: dict[str, Any]) -> str:
+    """Versione di Metodo v2 con cui è stato fatto il backup (i backup di DuMetodo usavano un'altra chiave)."""
+    return str(m.get("versione_metodo") or m.get("versione_dumetodo") or "?")
 
 
 def cmd_backup_elenco(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
@@ -778,7 +785,7 @@ def cmd_backup_elenco(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     info(f"{'NOME':<34} {'DIMENSIONE':>10}  {'VERSIONE':<9} NOTA")
     for b in elenco:
         m = b.manifesto
-        info(f"{b.nome:<34} {misura(b.dimensione):>10}  {m.get('versione_dumetodo', '?'):<9} {m.get('nota', '')}")
+        info(f"{b.nome:<34} {misura(b.dimensione):>10}  {versione_backup(m):<9} {m.get('nota', '')}")
     return 0
 
 
@@ -793,7 +800,7 @@ def cmd_backup_verifica(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     info(
         tinta(f"Backup {b.nome} integro", OK)
         + f": {m.get('tabelle_con_dati')} tabelle, {m.get('file_caricati')} file, "
-        f"versione {m.get('versione_dumetodo')}, PostgreSQL {m.get('postgresql')}"
+        f"versione {versione_backup(m)}, PostgreSQL {m.get('postgresql')}"
     )
     return 0
 
@@ -815,12 +822,12 @@ def cmd_ripristina(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
         raise Errore("Il backup non è integro, ripristino annullato: " + "; ".join(problemi))
     m = b.manifesto
     info(tinta(f"Ripristino del backup {b.nome}", "titolo"))
-    info(f"  creato il {m.get('creato_il')} su {m.get('host')}, versione DuMetodo {m.get('versione_dumetodo')}")
+    info(f"  creato il {m.get('creato_il')} su {m.get('host')}, versione Metodo v2 {versione_backup(m)}")
     info(f"  {m.get('tabelle_con_dati')} tabelle, {m.get('file_caricati')} file caricati")
     con_file = "file.tar.gz" in m.get("file", {}) and not a.solo_database
     conferma(
         tinta(
-            "TUTTI i dati attuali di DuMetodo saranno sostituiti"
+            "TUTTI i dati attuali di Metodo v2 saranno sostituiti"
             + (" (anche i file caricati)" if con_file else "")
             + " con quelli del backup.",
             ATTENZIONE,
@@ -871,10 +878,10 @@ def cmd_ripristina(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
                     testo=False,
                     timeout=6 * 3600,
                 )
-        passo("Riavvio DuMetodo (con le migrazioni del codice attuale)…")
+        passo("Riavvio Metodo v2 (con le migrazioni del codice attuale)…")
         dc("up", "-d", timeout=900)
         if not dc.attendi_sani():
-            avviso("DuMetodo non è tornato in salute entro 3 minuti: metodoconsole diagnostica")
+            avviso("Metodo v2 non è tornato in salute entro 3 minuti: metodoconsole diagnostica")
             return 2
     env_backup = b.percorso / "env"
     if (
@@ -914,12 +921,12 @@ def cmd_aggiorna(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
         passo(f"Aggiorno il codice ({prima} → {dopo})…")
         esegui([*git, "merge", "--ff-only", "--quiet", "@{u}"], timeout=300)
         passo("Ricostruisco e riavvio…")
-        dc("up", "-d", "--build", "--remove-orphans", ambiente={"DUMETODO_VERSIONE": dopo}, uscita=None, timeout=3600)
+        dc("up", "-d", "--build", "--remove-orphans", ambiente={"METODO_VERSIONE": dopo}, uscita=None, timeout=3600)
         if not dc.attendi_sani():
             indietro = f"git -C {conf.cartella} reset --hard {prima} && metodoconsole avvia --ricostruisci"
             if backup:
                 indietro += f" && metodoconsole ripristina {backup.nome}"
-            avviso(f"DuMetodo non è tornato in salute (metodoconsole diagnostica). Per tornare indietro: {indietro}")
+            avviso(f"Metodo v2 non è tornato in salute (metodoconsole diagnostica). Per tornare indietro: {indietro}")
             return 2
     info(tinta(f"Aggiornato alla versione {dopo}.", OK))
     return cmd_diagnostica(conf, dc, argparse.Namespace(json=False, silenzioso=False, avvisa=False))
@@ -927,7 +934,7 @@ def cmd_aggiorna(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
 
 def cmd_avvia(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     extra = ["--build"] if a.ricostruisci else []
-    dc("up", "-d", *extra, *a.servizi, ambiente={"DUMETODO_VERSIONE": versione_codice(conf)}, uscita=None, timeout=3600)
+    dc("up", "-d", *extra, *a.servizi, ambiente={"METODO_VERSIONE": versione_codice(conf)}, uscita=None, timeout=3600)
     return 0 if dc.attendi_sani() else 2
 
 
@@ -967,7 +974,7 @@ def cmd_psql(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
 
 
 def cmd_versione(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
-    info(f"MetodoConsole {VERSIONE} — DuMetodo {versione_codice(conf)} in {conf.cartella}")
+    info(f"MetodoConsole {VERSIONE} — Metodo v2 {versione_codice(conf)} in {conf.cartella}")
     return 0
 
 
@@ -977,7 +984,7 @@ LOG_PRELIEVO = "/app/media/prelievo-metodo.log"  # nel volume dei file: resta an
 
 def nome_prelievo(conf: Conf) -> str:
     """Container dedicato al prelievo: separato da «web», continua anche se si chiude la sessione SSH."""
-    base = conf.progetto or conf.cartella.name or "dumetodo"
+    base = conf.progetto or conf.cartella.name or "metodo"
     return "".join(c if c.isalnum() or c in "-_" else "-" for c in base.lower()) + "-prelievo"
 
 
@@ -995,7 +1002,7 @@ def leggi_env(conf: Conf) -> dict[str, str]:
 
 
 def url_metodo(conf: Conf, *, chiedi: bool = True) -> dict[str, str]:
-    """Ambiente da passare al container: vuoto se METODO_DB_URL è già nel .env di DuMetodo.
+    """Ambiente da passare al container: vuoto se METODO_DB_URL è già nel .env di Metodo v2.
 
     In alternativa si legge dall'ambiente o si chiede (senza eco): l'URL contiene una password e così non
     finisce né nella riga di comando (visibile con ps) né nella cronologia della shell."""
@@ -1118,7 +1125,7 @@ def cmd_prelievo(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
         else:
             info(f"  {tinta(ETICHETTA[e.esito], e.esito)}  {e.dettaglio}")
         if dc.servizi().get("web", {}).get("State") == "running":
-            info(tinta("\nAvanzamento salvato in DuMetodo", "titolo"))
+            info(tinta("\nAvanzamento salvato in Metodo v2", "titolo"))
             r = dc.manage("preleva_da_metodo", "--stato", controlla=False, timeout=60)
             info(r.stdout.rstrip() or r.stderr.strip())
         if st is not None:
@@ -1154,7 +1161,7 @@ def cmd_prelievo(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
 
 # ================================================================================================== main
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="metodoconsole", description="Controllo del server DuMetodo (Docker su Debian).")
+    p = argparse.ArgumentParser(prog="metodoconsole", description="Controllo del server Metodo v2 (Docker su Debian).")
     p.add_argument("--conf", help=f"file di configurazione (predefinito {CONF_PREDEFINITA})")
     s = p.add_subparsers(dest="comando", required=True, metavar="COMANDO")
 
@@ -1184,9 +1191,9 @@ def parser() -> argparse.ArgumentParser:
     x.add_argument("--senza-backup", action="store_true")
     x.add_argument("--forza", action="store_true", help="ricostruisci anche se il codice non è cambiato")
     for nome, funzione, aiuto in (
-        ("avvia", cmd_avvia, "avvia DuMetodo (o i servizi indicati)"),
-        ("ferma", cmd_ferma, "ferma DuMetodo (o i servizi indicati)"),
-        ("riavvia", cmd_riavvia, "riavvia DuMetodo (o i servizi indicati)"),
+        ("avvia", cmd_avvia, "avvia Metodo v2 (o i servizi indicati)"),
+        ("ferma", cmd_ferma, "ferma Metodo v2 (o i servizi indicati)"),
+        ("riavvia", cmd_riavvia, "riavvia Metodo v2 (o i servizi indicati)"),
     ):
         x = sub(nome, funzione, aiuto)
         x.add_argument("servizi", nargs="*", metavar="SERVIZIO")
@@ -1217,7 +1224,7 @@ def parser() -> argparse.ArgumentParser:
     x.add_argument("--senza-backup", action="store_true", help="avvia senza il backup di sicurezza")
     x.add_argument("-f", "--segui", action="store_true", help="con «log»: segue l'avanzamento")
     x.add_argument("-n", "--righe", type=int, default=50, help="con «log»: righe da mostrare")
-    sub("versione", cmd_versione, "versione di MetodoConsole e di DuMetodo")
+    sub("versione", cmd_versione, "versione di MetodoConsole e di Metodo v2")
     return p
 
 

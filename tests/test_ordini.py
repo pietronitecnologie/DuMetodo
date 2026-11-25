@@ -4,10 +4,10 @@ from decimal import Decimal
 import pytest
 from django.urls import reverse
 
-from dumetodo.configurazione import servizi as config
-from dumetodo.ordini import servizi
-from dumetodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StatoRiga, StoricoScadenza
-from dumetodo.ordini.servizi import OperazioneNonConsentita
+from metodo.configurazione import servizi as config
+from metodo.ordini import servizi
+from metodo.ordini.models import Ordine, RigaOrdine, StatoOrdine, StatoRiga, StoricoScadenza
+from metodo.ordini.servizi import OperazioneNonConsentita
 
 
 def test_transizioni_valide(ordine, operatore):
@@ -123,8 +123,8 @@ def test_vincolo_db_una_sola_riga_attiva_per_numero(ordine):
 def test_colore_cambia_a_ogni_cambio_articolo():
     from types import SimpleNamespace
 
-    from dumetodo.ordini.aiuti_visivi import PALETTE_CAMBIO_ARTICOLO as P
-    from dumetodo.ordini.aiuti_visivi import colora_cambi_articolo
+    from metodo.ordini.aiuti_visivi import PALETTE_CAMBIO_ARTICOLO as P
+    from metodo.ordini.aiuti_visivi import colora_cambi_articolo
 
     def righe():
         return [SimpleNamespace(articolo=a) for a in ["A", "A", "B", "A", "C", "D", "E", "F", "G"]]
@@ -137,7 +137,7 @@ def test_colore_cambia_a_ogni_cambio_articolo():
 
 
 def test_dettaglio_mostra_i_colori_degli_articoli(client, ordine, operatore):
-    from dumetodo.ordini.aiuti_visivi import PALETTE_CAMBIO_ARTICOLO as P
+    from metodo.ordini.aiuti_visivi import PALETTE_CAMBIO_ARTICOLO as P
 
     client.force_login(operatore)
     html = client.get(f"/ordini/{ordine.pk}/").content.decode()
@@ -147,7 +147,7 @@ def test_dettaglio_mostra_i_colori_degli_articoli(client, ordine, operatore):
 
 # =========================================================================== selezione univoca dell'ordine
 def test_selezione_ordine_cerca_per_parole(db):
-    from dumetodo.ordini import selezione
+    from metodo.ordini import selezione
 
     a = Ordine.objects.create(serie="00040", numero="0004300", anno=2026)
     b = Ordine.objects.create(serie="00040", numero="0004300", appendice="T1", anno=2026)
@@ -166,7 +166,7 @@ def test_selezione_ordine_cerca_per_parole(db):
 def test_campo_ordine_accetta_chiave_o_codice(db):
     from django import forms
 
-    from dumetodo.ordini.selezione import CampoOrdine
+    from metodo.ordini.selezione import CampoOrdine
 
     o = Ordine.objects.create(serie="00040", numero="0004300", anno=2026)
 

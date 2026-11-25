@@ -1,5 +1,5 @@
 [Unit]
-Description=MetodoConsole: backup di DuMetodo
+Description=MetodoConsole: backup di Metodo v2
 After=docker.service
 Requires=docker.service
 
