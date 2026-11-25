@@ -853,6 +853,23 @@ L'anagrafica è in **Amministrazione → Clienti committenti** (permesso *Gestir
     Così ABB non riceve mai i dati fiscali o le email di DMG; senza i suoi dati fiscali, DDT e fatture di
     ABB non si emettono.
   - Il predefinito usa i valori generali (Configurazione e Gestionale → Impostazioni).
+- **Flusso produttivo del cliente**: ogni cliente può seguire un flusso diverso. I valori generali sono in
+  Configurazione → *Flusso produttivo*; quelli di un cliente in Clienti committenti → Impostazioni.
+  - *Stato «Lavorato con mancanze»*: se è spento, gli ordini del cliente non hanno quel pulsante e passano
+    direttamente in spedizione.
+  - *Consegne parziali*: se è spento, un ordine con righe bloccate non si spedisce finché le righe non sono
+    sbloccate o annullate.
+  - *Tracciature obbligatorie*: se è spento, per quel cliente le tracciature restano facoltative.
+- **Tracciature obbligatorie** (Tracciature → Modelli, nella scheda del modello):
+  - *Per l'ordine*: facoltativa, obbligatoria prima della spedizione oppure prima della consegna.
+  - *Clienti committenti*: i clienti per cui vale il modello; nessuno = tutti.
+  - Vale per gli ordini che contengono i codici indicati nel modello (vuoto = tutti gli ordini).
+  - Finché manca una tracciatura conforme, «Spedisci» o la consegna si fermano e dicono quale manca. Una
+    tracciatura *non conforme* o annullata non basta.
+  - Nella pagina dell'ordine, il riquadro Tracciature mostra in giallo le tracciature obbligatorie da fare.
+  - La *consegna forzata* degli amministratori non le controlla.
+- **Reparti del cliente** (Amministrazione → Reparti): spunta i clienti per cui lavora il reparto (nessuno =
+  tutti). Con un cliente scelto in alto, pianificazione e tabulati propongono solo i suoi reparti.
 - **Caricamento manuale degli ordini**: con più committenti, nella pagina Importazione si sceglie di quale
   cliente sono gli ordini del file. Lo stesso file caricato per due clienti crea ordini distinti.
 - **Codici d'ordine uguali**: se un codice letto da un codice a barre esiste per due committenti, si apre

@@ -26,6 +26,7 @@ from .models import (
     Collegamento,
     Esito,
     Modello,
+    Momento,
     TipoCampo,
     Tracciatura,
     Uso,
@@ -51,11 +52,22 @@ def si_applica(modello: Modello, codici: Iterable[str]) -> bool:
     return any(fnmatch.fnmatchcase(c.strip().upper(), r) for c in codici if c and c.strip() for r in regole)
 
 
-def modelli_per(codici: Iterable[str] = (), solo_specifici: bool = False) -> list[Modello]:
-    """Modelli attivi da proporre per questi codici: prima quelli previsti per il codice, poi quelli generici."""
+def del_committente(qs: QuerySet[Modello], committente_id: int | None) -> QuerySet[Modello]:
+    """Modelli che valgono per il cliente committente (quelli senza committenti valgono per tutti)."""
+    if committente_id is None:
+        return qs
+    return qs.filter(Q(committenti=None) | Q(committenti=committente_id)).distinct()
+
+
+def modelli_per(
+    codici: Iterable[str] = (), solo_specifici: bool = False, committente_id: int | None = None
+) -> list[Modello]:
+    """Modelli attivi da proporre per questi codici: prima quelli previsti per il codice, poi quelli generici.
+
+    Con ``committente_id`` solo quelli del flusso di quel cliente committente."""
     codici = [c for c in codici if c]
     specifici, generici = [], []
-    for m in Modello.objects.filter(attivo=True).prefetch_related("campi"):
+    for m in del_committente(Modello.objects.filter(attivo=True), committente_id).prefetch_related("campi"):
         if schemi(m):
             if codici and si_applica(m, codici):
                 specifici.append(m)
@@ -85,8 +97,55 @@ def salva_modello(utente: Any, modello_id: int | None, dati: Mapping[str, Any]) 
     righe = [r.strip() for r in str(dati.get("codici", "")).splitlines() if r.strip()]
     m.codici = "\n".join(dict.fromkeys(righe))[:4000]
     m.attivo = bool(dati.get("attivo", True))
+    richiesta = str(dati.get("richiesta", "") or "")
+    if richiesta not in Momento.values:
+        raise OperazioneNonConsentita("Scelta non valida per «per l'ordine».")
+    if richiesta and not m.uso_ordine:
+        raise OperazioneNonConsentita("Una tracciatura obbligatoria per l'ordine deve potersi collegare all'ordine.")
+    m.richiesta = richiesta
     m.save()
+    if "committenti" in dati:
+        from metodo.committenti.models import Committente
+
+        ids = [int(i) for i in dati.get("committenti") or [] if str(i).isdigit()]
+        m.committenti.set(Committente.objects.filter(pk__in=ids))
     return m
+
+
+# ------------------------------------------------------------------------------------- flusso dell'ordine
+def mancanti(ordine: Ordine, momento: str) -> list[Modello]:
+    """Tracciature obbligatorie per l'ordine non ancora registrate (o registrate solo NON CONFORMI).
+
+    ``momento``: SPEDIZIONE (prima di «Spedisci») o CONSEGNA (prima della bolla, che comprende anche quelle
+    richieste prima della spedizione). Valgono i modelli attivi del committente dell'ordine e dei suoi codici;
+    il committente può spegnerle (Impostazioni → Flusso produttivo)."""
+    from metodo.configurazione import servizi as config
+
+    if not config.leggi("flusso.tracciature_obbligatorie", ordine.committente_id):
+        return []
+    momenti = [Momento.SPEDIZIONE] if momento == Momento.SPEDIZIONE else [Momento.SPEDIZIONE, Momento.CONSEGNA]
+    richiesti = del_committente(Modello.objects.filter(attivo=True, richiesta__in=momenti), ordine.committente_id)
+    if not richiesti:
+        return []
+    codici = list(ordine.righe.attive().values_list("articolo", flat=True).distinct())
+    fatte = set(
+        Tracciatura.objects.filter(ordine=ordine, annullata_il__isnull=True)
+        .exclude(esito=Esito.NON_CONFORME)
+        .values_list("modello_id", flat=True)
+    )
+    return [m for m in richiesti if m.pk not in fatte and si_applica(m, codici)]
+
+
+def controlla_flusso(ordine: Ordine, momento: str) -> None:
+    """Solleva ``OperazioneNonConsentita`` se mancano tracciature obbligatorie."""
+    mancano = mancanti(ordine, momento)
+    if mancano:
+        quando = "spedire" if momento == Momento.SPEDIZIONE else "consegnare"
+        raise OperazioneNonConsentita(
+            f"Ordine {ordine.codice_breve}: prima di {quando} servono le tracciature "
+            + ", ".join(f"«{m}»" for m in mancano)
+            + " (conformi)."
+        )
 
 
 def _decimale(v: Any, etichetta: str) -> Decimal | None:

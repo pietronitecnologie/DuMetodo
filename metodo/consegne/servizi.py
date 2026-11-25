@@ -99,6 +99,10 @@ def consegna(
     blocchi = [(o, righe) for o, righe in blocchi if righe]
     if not blocchi:
         raise OperazioneNonConsentita("Nessuna riga da consegnare per la selezione indicata.")
+    from metodo.tracciatura.servizi import controlla_flusso
+
+    for o, _ in blocchi:
+        controlla_flusso(o, "CON")  # tracciature obbligatorie prima della consegna
     if len({o.committente_id for o, _ in blocchi}) > 1:
         raise OperazioneNonConsentita(
             "La selezione contiene ordini di più clienti committenti: una bolla è di un solo cliente. "

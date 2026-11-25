@@ -15,6 +15,14 @@
           <select class="form-select form-select-sm" name="uso_{{ chiave }}">{% for v, e in usi %}<option value="{{ v }}"{% if uso == v %} selected{% endif %}>{% if v %}{{ e }}{% else %}Non previsto{% endif %}</option>{% endfor %}</select></td></tr>{% endfor %}</tbody></table></div>
       <div class="col-12"><label class="form-label">Si applica ai codici</label><textarea class="form-control form-control-sm font-monospace" name="codici" rows="3" placeholder="18090*&#10;40020025">{{ m.codici }}</textarea>
         <div class="form-text">Codici articolo o finiti, uno per riga, anche con * (es. 18090*). Vuoto = tutti. I modelli con codici vengono proposti in evidenza sugli ordini di quei codici.</div></div>
+      <div class="col-sm-7"><label class="form-label" for="richiesta">Per l'ordine</label>
+        <select class="form-select form-select-sm" name="richiesta" id="richiesta">{% for v, e in momenti %}<option value="{{ v }}"{% if m.richiesta == v %} selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+        <div class="form-text">Obbligatoria: l'ordine non si spedisce (o non si consegna) finché non c'è una tracciatura conforme di questo modello.
+          Vale per gli ordini dei codici indicati sopra.</div></div>
+      {% if tutti_committenti|length > 1 %}<div class="col-sm-5"><label class="form-label mb-1">Clienti committenti</label>
+        {% for c in tutti_committenti %}<div class="form-check"><input class="form-check-input" type="checkbox" name="committente" value="{{ c.pk }}" id="comm-{{ c.pk }}"{% if c.pk in committenti_modello %} checked{% endif %}>
+          <label class="form-check-label" for="comm-{{ c.pk }}">{% include "committenti/_nome.html" with c=c %}</label></div>{% endfor %}
+        <div class="form-text">Nessuno = vale per tutti i clienti.</div></div>{% endif %}
       <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="attivo" id="attivo"{% if m.attivo %} checked{% endif %}><label class="form-check-label" for="attivo">Attivo (si può usare)</label></div></div>
     </div><div class="card-footer text-end"><button class="btn btn-sm btn-primary">Salva</button></div></form></div>
   <div class="col-xl-7">

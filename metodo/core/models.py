@@ -24,6 +24,14 @@ class Reparto(ModelloTemporale):
         "capacità settimanale (ore)", max_digits=8, decimal_places=2, null=True, blank=True
     )
     attivo = models.BooleanField("attivo", default=True)
+    # Metodo v3: i reparti del flusso di ogni cliente committente (vuoto = reparto di tutti).
+    committenti = models.ManyToManyField(
+        "committenti.Committente",
+        blank=True,
+        related_name="reparti",
+        verbose_name="clienti committenti",
+        help_text="Vuoto = il reparto lavora per tutti i clienti.",
+    )
     gruppo_report = models.CharField(
         "gruppo nel report di pianificazione",
         max_length=80,

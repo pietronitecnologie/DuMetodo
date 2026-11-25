@@ -12,7 +12,7 @@ from metodo.committenti import servizi as committenti
 from metodo.comunicazioni import servizi as note
 from metodo.core.permessi import F, ha_permesso, richiede_permesso
 
-from . import selezione, servizi, stati
+from . import selezione, servizi
 from .aiuti_visivi import colora_cambi_articolo
 from .forms import CambiaScadenzaForm, DividiRigaForm, FiltriOrdiniForm
 from .models import Ordine, RigaOrdine, StatoRiga
@@ -47,7 +47,7 @@ def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
     mostra_tutte = request.GET.get("tutte") == "1" and ha_permesso(request.user, F.ORDINI_RIGHE)
     righe = ordine.righe.all() if mostra_tutte else ordine.righe.attive()
     note.segna_lette(ordine, request.user)
-    transizioni = [t for t in stati.transizioni_possibili(ordine.stato) if ha_permesso(request.user, t.permesso)]
+    transizioni = servizi.transizioni_ammesse(ordine, request.user)
     return render(
         request,
         "ordini/dettaglio.html",

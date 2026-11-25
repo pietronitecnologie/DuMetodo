@@ -44,6 +44,14 @@ class Uso(models.TextChoices):
     OBBLIGATORIO = "O", "Obbligatorio"
 
 
+class Momento(models.TextChoices):
+    """Metodo v3: quando una tracciatura è obbligatoria per l'ordine."""
+
+    NESSUNO = "", "Facoltativa"
+    SPEDIZIONE = "SPE", "Obbligatoria prima della spedizione"
+    CONSEGNA = "CON", "Obbligatoria prima della consegna"
+
+
 class Modello(ModelloTemporale):
     nome = models.CharField("nome", max_length=80, unique=True)
     categoria = models.CharField("categoria", max_length=3, choices=Categoria.choices, default=Categoria.QUALITA)
@@ -62,6 +70,17 @@ class Modello(ModelloTemporale):
         help_text="Uno per riga, anche con * (es. 18090*). Vuoto = tutti. Vale per codici articolo e codici finiti.",
     )
     attivo = models.BooleanField("attivo", default=True)
+    # Metodo v3: flusso per cliente committente.
+    committenti = models.ManyToManyField(
+        "committenti.Committente",
+        blank=True,
+        related_name="modelli_tracciatura",
+        verbose_name="clienti committenti",
+        help_text="Vuoto = tutti i clienti.",
+    )
+    richiesta = models.CharField(
+        "per l'ordine", max_length=3, choices=Momento.choices, blank=True, default=Momento.NESSUNO
+    )
 
     history = HistoricalRecords()
 

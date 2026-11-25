@@ -13,10 +13,25 @@ from .permessi import F, richiede_permesso
 class RepartoForm(forms.ModelForm):
     class Meta:
         model = Reparto
-        fields = ["codice", "nome", "soglia_ore_settimanali", "gruppo_report", "attivo"]
+        fields = ["codice", "nome", "soglia_ore_settimanali", "gruppo_report", "committenti", "attivo"]
+        widgets = {"committenti": forms.CheckboxSelectMultiple}
         help_texts = {
             "soglia_ore_settimanali": "Ore di lavoro disponibili in una settimana: base della pianificazione.",
         }
+
+    def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+        super().__init__(*args, **kwargs)
+        from metodo.committenti.models import Committente
+
+        attivi = Committente.objects.filter(attivo=True)
+        if attivi.count() > 1:
+            self.fields["committenti"].queryset = attivi
+            self.fields["committenti"].help_text = (
+                "I clienti per cui lavora il reparto: nel piano e nei tabulati di un cliente compaiono solo i suoi "
+                "reparti. Nessuno = tutti."
+            )
+        else:
+            del self.fields["committenti"]  # con un solo cliente non serve
 
     def clean_codice(self) -> str:
         return self.cleaned_data["codice"].strip().upper()

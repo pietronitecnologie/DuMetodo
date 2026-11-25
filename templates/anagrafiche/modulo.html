@@ -10,8 +10,8 @@
     {% for e in form.non_field_errors %}<div class="alert alert-danger py-1">{{ e }}</div>{% endfor %}
     <div class="row g-2">
     {% for campo in form %}
-      <div class="{% if campo.field.widget.input_type == 'checkbox' %}col-12{% elif campo.name == 'controlli' or campo.name == 'descrizione' %}col-12{% else %}col-sm-6{% endif %}">
-        {% if campo.name == "controlli" %}
+      <div class="{% if campo.field.widget.input_type == 'checkbox' %}col-12{% elif campo.name == 'controlli' or campo.name == 'descrizione' or campo.name == 'committenti' %}col-12{% else %}col-sm-6{% endif %}">
+        {% if campo.name == "controlli" or campo.name == "committenti" %}
         <label class="form-label">{{ campo.label }}</label>
         <div class="border rounded p-2" style="max-height: 18rem; overflow:auto">{% for c in campo %}<div class="form-check">{{ c.tag }}<label class="form-check-label small" for="{{ c.id_for_label }}">{{ c.choice_label }}</label></div>{% empty %}<span class="text-muted small">Nessun controllo: creane prima qualcuno.</span>{% endfor %}</div>
         {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}

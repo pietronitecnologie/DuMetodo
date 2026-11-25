@@ -15,6 +15,15 @@ from metodo.ordini.servizi import OperazioneNonConsentita
 from . import calendario, piano, servizi
 
 
+def _reparti(request: HttpRequest):  # type: ignore[no-untyped-def]
+    """Reparti attivi; con un cliente scelto in alto, solo quelli del suo flusso (e quelli di tutti)."""
+    from django.db.models import Q
+
+    qs = Reparto.objects.filter(attivo=True)
+    c = committenti.filtrato(request)
+    return qs.filter(Q(committenti=None) | Q(committenti=c)).distinct() if c is not None else qs
+
+
 def _data(valore: str | None, default: dt.date) -> dt.date:
     try:
         return dt.date.fromisoformat(valore) if valore else default
@@ -37,7 +46,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
         "pianificazione/piano.html",
         {
             "piano": p,
-            "reparti": Reparto.objects.filter(attivo=True),
+            "reparti": _reparti(request),
             "colonne_settimane": list(zip(p.etichette, range(len(p.settimane)), strict=True)),
             "committente_filtrato": committenti.filtrato(request),
         },
@@ -128,7 +137,7 @@ def agenda_pulsanti(request: HttpRequest) -> HttpResponse:
 
 
 def _tabulato(request: HttpRequest, tipo: str) -> HttpResponse:
-    reparti = Reparto.objects.filter(attivo=True)
+    reparti = _reparti(request)
     reparto = (
         get_object_or_404(reparti, pk=request.GET["reparto"]) if request.GET.get("reparto", "").isdigit() else None
     )

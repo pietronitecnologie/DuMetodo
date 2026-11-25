@@ -54,6 +54,7 @@ class Gruppo(StrEnum):
     EMAIL = "Indirizzi email"
     TRACCIABILITA = "Tracciabilità"
     CONSEGNA = "Consegna e file per il gestionale"
+    FLUSSO = "Flusso produttivo"
     PIANIFICAZIONE = "Pianificazione e tabulati"
     CLIENT = "Client desktop"
     MAGAZZINO = "Magazzino"
@@ -588,6 +589,33 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Valore della colonna I del file etichette (in Metodo era fisso: 0003659).",
         default="0003659",
     ),
+    # --- Flusso produttivo (Metodo v3: si può impostare per ogni cliente committente) ----
+    Parametro(
+        "flusso.lavorato_con_mancanze",
+        Tipo.BOOLEANO,
+        Gruppo.FLUSSO,
+        "Stato «Lavorato con mancanze»",
+        "Gli ordini possono passare da «Lavorato con mancanze». Se è spento, un ordine va direttamente in spedizione.",
+        default=True,
+    ),
+    Parametro(
+        "flusso.consegna_parziale",
+        Tipo.BOOLEANO,
+        Gruppo.FLUSSO,
+        "Consegne parziali",
+        "Un ordine con righe bloccate si può spedire in parte (evasione parziale). Se è spento, si spedisce "
+        "solo quando non ha righe bloccate.",
+        default=True,
+    ),
+    Parametro(
+        "flusso.tracciature_obbligatorie",
+        Tipo.BOOLEANO,
+        Gruppo.FLUSSO,
+        "Tracciature obbligatorie",
+        "Applica le tracciature richieste prima della spedizione o della consegna (Tracciature → Modelli). Se è "
+        "spento, le tracciature restano facoltative.",
+        default=True,
+    ),
     # --- Magazzino ----------------------------------------------------------------------
     Parametro(
         "magazzino.reparti_richieste",
@@ -743,6 +771,9 @@ PER_COMMITTENTE: dict[str, str] = {
     **{f"casella.{c}": PROPRIO for c in ("server", "porta", "ssl", "utente", "password", "cartella")},
     "casella.mittenti_ammessi": PROPRIO,
     "importazione.notifica_errori": EREDITA,
+    "flusso.lavorato_con_mancanze": EREDITA,
+    "flusso.consegna_parziale": EREDITA,
+    "flusso.tracciature_obbligatorie": EREDITA,
     "email.cliente": PROPRIO,
     "email.file_tecnico": PROPRIO,
     "consegna.tracciato_bolla": EREDITA,

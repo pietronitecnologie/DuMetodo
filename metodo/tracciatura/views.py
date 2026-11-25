@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET
 
 from metodo.committenti import servizi as committenti
+from metodo.committenti.models import Committente
 from metodo.consegne.models import DDT
 from metodo.core.permessi import F, ha_permesso, richiede_permesso
 from metodo.ordini.models import Ordine
@@ -14,7 +15,7 @@ from metodo.ordini.selezione import CampoOrdine
 from metodo.ordini.servizi import OperazioneNonConsentita
 
 from . import servizi
-from .models import Campo, Categoria, Collegamento, Esito, Modello, TipoCampo, Tracciatura, Uso, Valore
+from .models import Campo, Categoria, Collegamento, Esito, Modello, Momento, TipoCampo, Tracciatura, Uso, Valore
 
 
 class OrdineForm(forms.Form):
@@ -158,7 +159,8 @@ def nuova(request: HttpRequest) -> HttpResponse:
     if ordine is not None:
         codici += list(ordine.righe.values_list("articolo", flat=True))
     if modello is None:
-        proposti = servizi.modelli_per(codici)
+        cid = ordine.committente_id if ordine is not None else None
+        proposti = servizi.modelli_per(codici, committente_id=cid)
         return render(
             request,
             "tracciatura/scegli.html",
@@ -166,7 +168,7 @@ def nuova(request: HttpRequest) -> HttpResponse:
                 "proposti": proposti,
                 "coll": coll,
                 "ordine": ordine,
-                "specifici": {m.pk for m in servizi.modelli_per(codici, True)},
+                "specifici": {m.pk for m in servizi.modelli_per(codici, True, cid)},
             },
         )
     return render(
@@ -242,19 +244,31 @@ def pannello(request: HttpRequest) -> HttpResponse:
     ordine_id, ddt_id = request.GET.get("ordine", ""), request.GET.get("ddt", "")
     qs = Tracciatura.objects.select_related("modello", "operatore").filter(annullata_il__isnull=True)
     codici: list[str] = []
+    cid, mancanti = None, []
     if ordine_id.isdigit():
         ordine = committenti.ordine_o_404(request, int(ordine_id))
         qs = qs.filter(ordine=ordine)
         codici = list(ordine.righe.values_list("articolo", flat=True))
+        cid = ordine.committente_id
+        if ordine.stato not in ("CON", "ANN"):
+            mancanti = servizi.mancanti(ordine, Momento.CONSEGNA)
     elif ddt_id.isdigit():
         qs = qs.filter(ddt=committenti.oggetto_o_404(request, DDT.objects.defer("file_contenuto"), int(ddt_id)))
     else:
         raise Http404
-    previsti = servizi.modelli_per(codici, solo_specifici=True) if codici else []
+    previsti = servizi.modelli_per(codici, solo_specifici=True, committente_id=cid) if codici else []
+    previsti = [m for m in previsti if m not in mancanti]
     return render(
         request,
         "tracciatura/_pannello.html",
-        {**_permessi(request), "tracciature": qs[:50], "previsti": previsti, "ordine_id": ordine_id, "ddt_id": ddt_id},
+        {
+            **_permessi(request),
+            "tracciature": qs[:50],
+            "previsti": previsti,
+            "mancanti": mancanti,
+            "ordine_id": ordine_id,
+            "ddt_id": ddt_id,
+        },
     )
 
 
@@ -286,7 +300,11 @@ def modello(request: HttpRequest, pk: int) -> HttpResponse:
         azione = p.get("azione", "")
         try:
             if azione == "modello":
-                servizi.salva_modello(request.user, m.pk, {**p.dict(), "attivo": "attivo" in p})
+                servizi.salva_modello(
+                    request.user,
+                    m.pk,
+                    {**p.dict(), "attivo": "attivo" in p, "committenti": p.getlist("committente")},
+                )
                 messages.success(request, "Modello salvato.")
             elif azione == "campo":
                 campo_id = int(p["campo"]) if p.get("campo", "").isdigit() else None
@@ -317,6 +335,9 @@ def modello(request: HttpRequest, pk: int) -> HttpResponse:
             "tipi": TipoCampo.choices,
             "collegamenti": [(c.value, c.label, m.uso(c.value)) for c in Collegamento],
             "usi": Uso.choices,
+            "momenti": Momento.choices,
+            "tutti_committenti": Committente.objects.filter(attivo=True),
+            "committenti_modello": set(m.committenti.values_list("pk", flat=True)),
             "usati": set(Valore.objects.filter(campo__modello=m).values_list("campo_id", flat=True).distinct()),
         },
     )

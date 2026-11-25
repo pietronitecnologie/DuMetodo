@@ -1,6 +1,9 @@
 <div class="card mb-3"><div class="card-header d-flex align-items-center gap-2"><span class="me-auto">Tracciature</span>
   <a class="small" href="{% url 'tracciatura:elenco' %}?{% if ordine_id %}ordine={{ ordine_id }}{% else %}ddt={{ ddt_id }}{% endif %}">tutte</a>
   {% if puo_registrare %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tracciatura:nuova' %}?{% if ordine_id %}ordine={{ ordine_id }}{% else %}ddt={{ ddt_id }}{% endif %}">Nuova</a>{% endif %}</div>
+  {% if mancanti %}<div class="card-body py-2 small border-bottom bg-warning-subtle"><b>Obbligatorie, da fare:</b>
+    {% for m in mancanti %}{% if puo_registrare %}<a class="btn btn-sm btn-warning py-0 me-1 mb-1" href="{% url 'tracciatura:nuova' %}?modello={{ m.pk }}&ordine={{ ordine_id }}">{{ m.nome }}</a>{% else %}<span class="badge text-bg-warning me-1">{{ m.nome }}</span>{% endif %}
+      <span class="text-muted me-2">({{ m.get_richiesta_display|lower }})</span>{% endfor %}</div>{% endif %}
   {% if previsti and puo_registrare %}<div class="card-body py-2 small border-bottom">Previsti per questi codici:
     {% for m in previsti %}<a class="btn btn-sm btn-light border py-0 me-1 mb-1" href="{% url 'tracciatura:nuova' %}?modello={{ m.pk }}{% if ordine_id %}&ordine={{ ordine_id }}{% endif %}">{{ m.nome }}</a>{% endfor %}</div>{% endif %}
   <ul class="list-group list-group-flush small">{% for t in tracciature %}<li class="list-group-item d-flex gap-2 align-items-center">

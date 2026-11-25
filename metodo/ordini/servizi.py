@@ -55,8 +55,20 @@ def cambia_stato(ordine_id: int, nuovo_stato: str, utente: Any) -> Ordine:
     if not ha_permesso(utente, t.permesso):
         raise OperazioneNonConsentita("Non hai i permessi per questa operazione.")
 
+    # Metodo v3: il flusso del cliente committente (Clienti committenti → Impostazioni → Flusso produttivo).
+    if nuovo_stato == StatoOrdine.IN_LAVORAZIONE and not config.leggi(
+        "flusso.lavorato_con_mancanze", ordine.committente_id
+    ):
+        raise OperazioneNonConsentita(f"Nel flusso di {ordine.committente} non si usa «Lavorato con mancanze».")
     if nuovo_stato == StatoOrdine.IN_SPEDIZIONE:
+        from metodo.tracciatura.servizi import controlla_flusso
+
+        controlla_flusso(ordine, "SPE")
         righe = ordine.righe.attive()
+        if righe.filter(bloccata=True).exists() and not config.leggi("flusso.consegna_parziale", ordine.committente_id):
+            raise OperazioneNonConsentita(
+                f"{ordine.committente} non accetta consegne parziali: sblocca o annulla le righe bloccate."
+            )
         if righe.filter(bloccata=True).exists():
             # Regola di Metodo: con righe bloccate la spedizione diventa parziale e
             # tutte le righe non bloccate e non ancora in bolla vanno in evasione.
@@ -74,6 +86,16 @@ def cambia_stato(ordine_id: int, nuovo_stato: str, utente: Any) -> Ordine:
     ordine.stato = nuovo_stato
     ordine.save()
     return ordine
+
+
+def transizioni_ammesse(ordine: Ordine, utente: Any) -> list[stati.Transizione]:
+    """Pulsanti di stato dell'ordine: quelli permessi all'utente e previsti dal flusso del committente."""
+    usa_lavorato = config.leggi("flusso.lavorato_con_mancanze", ordine.committente_id)
+    return [
+        t
+        for t in stati.transizioni_possibili(ordine.stato)
+        if ha_permesso(utente, t.permesso) and (usa_lavorato or t.a != StatoOrdine.IN_LAVORAZIONE)
+    ]
 
 
 # --------------------------------------------------------------------------- azioni sulle righe
