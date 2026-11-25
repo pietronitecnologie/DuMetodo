@@ -33,6 +33,7 @@ urlpatterns = [
     path("configurazione/", include("metodo.configurazione.urls")),
     path("utenti/", include("metodo.core.urls_utenti")),
     path("reparti/", include("metodo.core.urls_reparti")),
+    path("committenti/", include("metodo.committenti.urls")),
     path("chat/", include("metodo.chat.urls")),
     path("client/", include("metodo.client.urls")),
     path("gestionale/", include("metodo.gestionale.urls")),

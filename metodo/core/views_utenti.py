@@ -8,6 +8,7 @@ from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from metodo.committenti.models import Committente
 from metodo.tracciatura.da_qualita import UTENTE_SISTEMA
 
 from . import utenti as servizi
@@ -80,6 +81,10 @@ def _contesto(request: HttpRequest, utente: User | None, **extra: object) -> dic
         "sezioni": [(s, voci) for s, voci in sezioni if voci],
         "profili": [p for p in PROFILI if servizi.codici_profilo(p) <= concedibili],
         "is_utente_cliente": bool(utente and utente.groups.filter(name=GRUPPO_CLIENTE).exists()),
+        "committenti_tutti": list(Committente.objects.filter(attivo=True).order_by("nome")),
+        "committenti_utente_ids": set(servizi.profilo(utente).committenti.values_list("pk", flat=True))
+        if utente
+        else set(),
         "deve_cambiare": bool(utente and servizi.profilo(utente).deve_cambiare_password),
         "eventi": EventoUtente.objects.filter(utente=utente).select_related("attore")[:50] if utente else [],
         "modificabile": modificabile,
@@ -106,6 +111,7 @@ def nuovo(request: HttpRequest) -> HttpResponse:
                 cliente=request.POST.get("cliente") == "on",
                 note=request.POST.get("note", ""),
                 password=request.POST.get("password", ""),
+                committenti=[int(x) for x in request.POST.getlist("committente") if x.isdigit()],
             )
         except OperazioneUtenti as exc:
             messages.error(request, str(exc))
@@ -139,6 +145,7 @@ def modifica(request: HttpRequest, pk: int) -> HttpResponse:
                     attivo=request.POST.get("attivo") == "on",
                     cliente=request.POST.get("cliente") == "on",
                     note=request.POST.get("note", ""),
+                    committenti=[int(x) for x in request.POST.getlist("committente") if x.isdigit()],
                 )
                 messages.success(request, "Dati salvati.")
             elif azione == "permessi":

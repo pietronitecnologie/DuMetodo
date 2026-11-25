@@ -8,6 +8,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 
 from metodo.anagrafica.servizi import descrizione_subquery
+from metodo.committenti import servizi as committenti
 from metodo.comunicazioni import servizi as note
 from metodo.core.permessi import F, ha_permesso, richiede_permesso
 
@@ -25,7 +26,7 @@ def lista(request: HttpRequest) -> HttpResponse:
     form = FiltriOrdiniForm(request.GET)
     qs = Ordine.objects.none()
     if form.is_valid() and form.ha_filtri():
-        qs = form.filtra(Ordine.objects.all())
+        qs = committenti.filtra(form.filtra(Ordine.objects.select_related("committente")), request)
     # Subquery (non JOIN) così i totali restano corretti anche con il filtro per articolo.
     righe = RigaOrdine.objects.filter(ordine=OuterRef("pk"), stato=StatoRiga.ATTIVA).order_by().values("ordine")
     qs = qs.annotate(
@@ -42,7 +43,7 @@ def lista(request: HttpRequest) -> HttpResponse:
 @require_GET
 @richiede_permesso(F.ORDINI_VEDERE)
 def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
-    ordine = get_object_or_404(Ordine.objects.select_related("reparto"), pk=pk)
+    ordine = committenti.ordine_o_404(request, pk, Ordine.objects.select_related("reparto", "committente"))
     mostra_tutte = request.GET.get("tutte") == "1" and ha_permesso(request.user, F.ORDINI_RIGHE)
     righe = ordine.righe.all() if mostra_tutte else ordine.righe.attive()
     note.segna_lette(ordine, request.user)
@@ -125,7 +126,10 @@ def cambia_scadenza(request: HttpRequest, pk: int) -> HttpResponse:
 def seleziona(request: HttpRequest) -> HttpResponse:
     """Elenco degli ordini per il campo di selezione (HTMX)."""
     testo = request.GET.get(f"{request.GET.get('campo', 'ordine')}_cerca", "")[:60].strip()
-    return render(request, "ordini/_selezione.html", {"testo": testo, "ordini": list(selezione.cerca(testo))})
+    base = committenti.filtra(Ordine.objects.all(), request)
+    return render(
+        request, "ordini/_selezione.html", {"testo": testo, "ordini": list(selezione.cerca(testo, base=base))}
+    )
 
 
 @require_GET
@@ -136,6 +140,8 @@ def vai(request: HttpRequest) -> HttpResponse:
     try:
         ordine = campo.clean(campo.widget.value_from_datadict(request.GET, None, "ordine"))
     except forms.ValidationError:
+        ordine = None
+    if ordine is not None and not committenti.puo_vedere(request, ordine.committente_id):
         ordine = None
     if ordine is None:
         messages.error(request, "Ordine non trovato: sceglilo dall'elenco.")

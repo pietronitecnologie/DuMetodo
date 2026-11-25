@@ -50,6 +50,12 @@ def navigazione(request: HttpRequest) -> dict[str, object]:
             )
 
         contesto["vai_ordine"] = VaiOrdine()
+        from metodo.committenti import servizi as committenti
+
+        elenco = list(committenti.accessibili(request.user))
+        if len(elenco) > 1:  # con un solo committente il selettore non serve
+            contesto["committenti_utente"] = elenco
+            contesto["committente_corrente"] = committenti.corrente(request)
         from .manuale import capitolo_per
 
         vista = getattr(getattr(request, "resolver_match", None), "view_name", None)

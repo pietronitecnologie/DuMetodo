@@ -33,6 +33,7 @@ from django.utils import timezone
 from psycopg import sql
 from psycopg.rows import dict_row
 
+from metodo.committenti.models import predefinito_id
 from metodo.comunicazioni.models import Lato, LetturaNota, Nota, Visibilita
 from metodo.consegne.models import DDT, Consegna, RigaConsegnata
 from metodo.ordini.models import (
@@ -437,7 +438,10 @@ class Prelievo:
         chiavi = set(chiavi)
         if not chiavi:
             return {}
-        qs = Ordine.objects.filter(numero__in={k[1] for k in chiavi}, anno__in={k[3] for k in chiavi})
+        # I dati di Metodo sono del committente predefinito (il cliente per cui si lavorava).
+        qs = Ordine.objects.filter(
+            committente_id=predefinito_id(), numero__in={k[1] for k in chiavi}, anno__in={k[3] for k in chiavi}
+        )
         return {k: o for o in qs if (k := (o.serie, o.numero, o.appendice, o.anno)) in chiavi}
 
     # ---------------------------------------------------------------- utenti, reparti, anagrafica

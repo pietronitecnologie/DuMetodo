@@ -25,7 +25,7 @@
         <div class="col-6 col-md-3"><div class="text-muted">Pezzi</div>{{ totale_pezzi|floatformat:"-3" }}</div>
         <div class="col-6 col-md-3"><div class="text-muted">Tempo teorico</div>{% if ore_teoriche is not None %}{{ ore_teoriche }} h{% else %}<span class="text-warning">resa oraria non configurata</span>{% endif %}</div>
         <div class="col-6 col-md-3"><div class="text-muted">Reparto</div>{{ ordine.reparto|default:ordine.reparto_da_appendice|default:"—" }}</div>
-        <div class="col-6 col-md-3"><div class="text-muted">Cliente</div>{{ ordine.cliente|default:"—" }}</div>
+        <div class="col-6 col-md-3"><div class="text-muted">Cliente committente</div><span class="dm-committente-colore" style="background: {{ ordine.committente.colore }}"></span> {{ ordine.committente.nome }}{% if ordine.cliente %} <span class="text-muted small">· cod. {{ ordine.cliente }}</span>{% endif %}</div>
       </div>
     </div></div>
 

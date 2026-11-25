@@ -97,6 +97,7 @@ class F:
     UTENTI_PASSWORD = "utenti_password"  # noqa: S105 - nome di un permesso, non una password
     UTENTI_PERMESSI = "utenti_permessi"
     REPARTI = "reparti"
+    COMMITTENTI = "committenti"
     CHAT = "chat"
     TRACCIATURA_VEDERE = "tracciatura_vedere"
     TRACCIATURA_REGISTRA = "tracciatura_registra"
@@ -231,6 +232,12 @@ FUNZIONI: list[Funzione] = [
         riservata=True,
     ),
     Funzione(F.REPARTI, Sezione.AMMINISTRAZIONE, "Gestire i reparti", "Codice, nome, capacità settimanale, gruppo."),
+    Funzione(
+        F.COMMITTENTI,
+        Sezione.AMMINISTRAZIONE,
+        "Gestire i clienti committenti",
+        "Clienti per cui si produce (es. DMG, ABB): codice, nome, colore, predefinito.",
+    ),
     Funzione(F.UTENTI_VEDERE, Sezione.UTENTI, "Vedere utenti e permessi", "Elenco utenti, permessi e storico."),
     Funzione(
         F.UTENTI_GESTIRE,

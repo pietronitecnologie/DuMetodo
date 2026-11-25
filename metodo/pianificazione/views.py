@@ -84,7 +84,9 @@ def invia_report(request: HttpRequest) -> HttpResponse:
 
 
 def _filtra_agenda(request: HttpRequest):  # type: ignore[no-untyped-def]
-    qs = Ordine.objects.all()
+    from metodo.committenti import servizi as committenti
+
+    qs = committenti.filtra(Ordine.objects.all(), request)
     for campo, lookup in (
         ("q", "numero__icontains"),
         ("serie", "serie__icontains"),

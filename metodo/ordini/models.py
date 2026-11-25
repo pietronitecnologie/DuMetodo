@@ -18,6 +18,7 @@ from django.db.models import Q
 from django.urls import reverse
 from simple_history.models import HistoricalRecords
 
+from metodo.committenti.models import predefinito_id
 from metodo.core.models import ModelloTemporale
 
 
@@ -55,6 +56,14 @@ class OrdineQuerySet(models.QuerySet["Ordine"]):
 
 
 class Ordine(ModelloTemporale):
+    # Metodo v3: l'ordine appartiene a un cliente committente (es. DMG, ABB); la chiave è unica per committente.
+    committente = models.ForeignKey(
+        "committenti.Committente",
+        on_delete=models.PROTECT,
+        related_name="ordini",
+        default=predefinito_id,
+        verbose_name="cliente committente",
+    )
     serie = models.CharField("serie", max_length=5, help_text="Es. 00040")
     numero = models.CharField("numero ordine", max_length=30, help_text="Es. 0004300")
     appendice = models.CharField(
@@ -82,7 +91,9 @@ class Ordine(ModelloTemporale):
         verbose_name_plural = "ordini"
         ordering = ["-anno", "serie", "numero", "appendice"]
         constraints = [
-            models.UniqueConstraint(fields=["serie", "numero", "appendice", "anno"], name="ordine_chiave_unica"),
+            models.UniqueConstraint(
+                fields=["committente", "serie", "numero", "appendice", "anno"], name="ordine_chiave_unica"
+            ),
             models.CheckConstraint(condition=Q(anno__gte=2000) & Q(anno__lte=2100), name="ordine_anno_valido"),
         ]
         indexes = [

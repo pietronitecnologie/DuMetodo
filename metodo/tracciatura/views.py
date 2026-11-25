@@ -228,7 +228,9 @@ def pannello(request: HttpRequest) -> HttpResponse:
     qs = Tracciatura.objects.select_related("modello", "operatore").filter(annullata_il__isnull=True)
     codici: list[str] = []
     if ordine_id.isdigit():
-        ordine = get_object_or_404(Ordine, pk=int(ordine_id))
+        from metodo.committenti import servizi as committenti
+
+        ordine = committenti.ordine_o_404(request, int(ordine_id))
         qs = qs.filter(ordine=ordine)
         codici = list(ordine.righe.values_list("articolo", flat=True))
     elif ddt_id.isdigit():

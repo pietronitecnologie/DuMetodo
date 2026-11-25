@@ -80,19 +80,29 @@ def _nome_selezione(serie: Sequence[str], ordini: list[Ordine]) -> str:
 
 
 @transaction.atomic
-def consegna(utente: Any, *, serie: Sequence[str] = (), ordini_ids: Sequence[int] = ()) -> Consegna:
+def consegna(
+    utente: Any, *, serie: Sequence[str] = (), ordini_ids: Sequence[int] = (), committenti: Sequence[Any] | None = None
+) -> Consegna:
     """Genera la bolla e segna come consegnate le righe. Tutto o niente.
 
     Le righe d'ordine sono bloccate (SELECT FOR UPDATE): un doppio clic o due utenti insieme non
     possono consegnare due volte la stessa riga; il secondo trova "nessuna riga da consegnare".
     """
     _richiedi(utente, F.CONSEGNA)
-    bloccati = list(ordini_da_consegnare(serie, ordini_ids).select_for_update().order_by("pk"))
+    da_consegnare = ordini_da_consegnare(serie, ordini_ids)
+    if committenti is not None:
+        da_consegnare = da_consegnare.filter(committente__in=committenti)
+    bloccati = list(da_consegnare.select_for_update().order_by("pk"))
     bloccati.sort(key=lambda o: (o.serie, o.numero, o.appendice, o.anno))
     blocchi = [(o, list(righe_consegnabili(o).select_for_update())) for o in bloccati]
     blocchi = [(o, righe) for o, righe in blocchi if righe]
     if not blocchi:
         raise OperazioneNonConsentita("Nessuna riga da consegnare per la selezione indicata.")
+    if len({o.committente_id for o, _ in blocchi}) > 1:
+        raise OperazioneNonConsentita(
+            "La selezione contiene ordini di più clienti committenti: una bolla è di un solo cliente. "
+            "Scegli il committente dal selettore in alto."
+        )
 
     tracciato = _tracciato("consegna.tracciato_bolla")
     selezione = _nome_selezione(serie, [o for o, _ in blocchi])

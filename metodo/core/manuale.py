@@ -20,6 +20,7 @@ CAPITOLI: tuple[tuple[str, str], ...] = (
     ("utenti:mia_password", "accesso-e-password"),
     ("utenti:", "utenti-e-permessi"),
     ("reparti:", "reparti"),
+    ("committenti:", "clienti-committenti"),
     ("chat:", "chat"),
     ("ordini:", "ordini"),
     ("comunicazioni:", "note-e-comunicazione-con-il-cliente"),

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titolo %}Clienti committenti{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><h1 class="h4 me-auto mb-0">Clienti committenti</h1>
+  <a class="btn btn-sm btn-primary" href="{% url 'committenti:nuovo' %}">Nuovo committente</a></div>
+<p class="small text-muted">I clienti per cui l'azienda produce, ognuno con i suoi ordini (es. DMG, ABB). Il <b>predefinito</b> è quello usato
+quando il committente non è indicato, per esempio nelle importazioni. Gli utenti del Cliente vedono solo i committenti assegnati nel loro
+profilo; gli utenti interni tutti, salvo che ne abbiano alcuni assegnati.</p>
+<div class="table-responsive"><table class="table table-hover align-middle">
+  <thead><tr><th>Codice</th><th>Nome</th><th class="text-end">Ordini</th><th>Stato</th><th></th></tr></thead>
+  <tbody>{% for c in committenti %}<tr class="{% if not c.attivo %}text-muted{% endif %}">
+    <td><span class="dm-committente-colore" style="background: {{ c.colore }}"></span> <a href="{% url 'committenti:modifica' c.pk %}">{{ c.codice }}</a></td>
+    <td>{{ c.nome }}</td><td class="text-end">{{ c.n_ordini }}</td>
+    <td>{% if c.attivo %}<span class="badge text-bg-success">attivo</span>{% else %}<span class="badge text-bg-secondary">disattivato</span>{% endif %}
+      {% if c.predefinito %}<span class="badge text-bg-primary">predefinito</span>{% endif %}</td>
+    <td class="text-end">{% if not c.predefinito and c.attivo %}<form method="post" class="d-inline">{% csrf_token %}
+      <button class="btn btn-sm btn-outline-primary" name="predefinito" value="{{ c.pk }}">Rendi predefinito</button></form>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Nessun committente.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

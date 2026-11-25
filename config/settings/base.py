@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "metodo.tracciabilita",
     "metodo.chat",
     "metodo.migrazione",
+    "metodo.committenti",
 ]
 
 MIDDLEWARE = [

@@ -59,6 +59,13 @@
               <label class="form-check-label" for="cliente">Utente di {{ nome_cliente }}</label></div>
           </div>
           <div class="col-12 form-text mt-0">Un utente di {{ nome_cliente }} scrive le note come {{ nome_cliente }} e non vede le note interne.</div>
+          {% if committenti_tutti|length > 1 %}
+          <div class="col-12"><label class="form-label mb-0">Clienti committenti visibili</label>
+            <div class="d-flex flex-wrap gap-3">{% for c in committenti_tutti %}
+              <div class="form-check"><input class="form-check-input" type="checkbox" name="committente" value="{{ c.pk }}" id="comm-{{ c.pk }}"{% if c.pk in committenti_utente_ids %} checked{% endif %}>
+                <label class="form-check-label" for="comm-{{ c.pk }}"><span class="dm-committente-colore" style="background: {{ c.colore }}"></span> {{ c.nome }}</label></div>{% endfor %}</div>
+            <div class="form-text">Utente del Cliente: solo i committenti spuntati (almeno uno). Utente interno: nessuna spunta = tutti.</div></div>
+          {% endif %}
         </div>
       </fieldset>
       {% if not utente or puo_dati %}<div class="card-footer text-end"><button class="btn btn-sm btn-primary">{% if utente %}Salva dati{% else %}Crea utente{% endif %}</button></div>{% endif %}

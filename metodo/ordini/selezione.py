@@ -29,15 +29,16 @@ def _senza_zeri(t: str) -> str:
     return t.lstrip("0") or "0" if t.isdigit() else t
 
 
-def cerca(testo: str, limite: int = MASSIMO_RISULTATI) -> QuerySet[Ordine]:
+def cerca(testo: str, limite: int = MASSIMO_RISULTATI, base: QuerySet[Ordine] | None = None) -> QuerySet[Ordine]:
     """Ordini che corrispondono a TUTTE le parole scritte (parte del numero, serie, appendice o anno).
 
     Senza testo: gli ordini aperti con la scadenza più vicina. Prima gli aperti, poi i più recenti.
     """
+    base = base if base is not None else Ordine.objects.all()
     parole = _PAROLA.findall(testo or "")[:5]
     if not parole:
-        return Ordine.objects.aperti().order_by("data_scadenza", "numero")[:limite]
-    qs = Ordine.objects.all()
+        return base.aperti().order_by("data_scadenza", "numero")[:limite]
+    qs = base
     for p in parole:
         cond = Q(numero__icontains=_senza_zeri(p)) | Q(appendice__iexact=p)
         if p.isdigit():

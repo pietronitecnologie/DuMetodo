@@ -806,6 +806,28 @@ La sezione **Gestionale** è **riservata**. I suoi permessi li ha solo chi li ri
 il profilo **Amministrazione** (l'ufficio amministrativo). Non li hanno il profilo Amministratore, il superuser e
 chi «ha tutto». Li assegna un superuser.
 
+### Clienti committenti
+
+L'azienda può produrre per **più clienti committenti**, per esempio DMG e ABB, ognuno con i suoi ordini.
+L'anagrafica è in **Amministrazione → Clienti committenti** (permesso *Gestire i clienti committenti*).
+
+- Ogni committente ha un **codice** breve (es. `DMG`), un **nome** e un **colore**, per riconoscerlo a colpo
+  d'occhio.
+- Il **predefinito** è quello usato quando il committente non è indicato. Per ora vale per le importazioni
+  degli ordini e per i dati presi dal vecchio Metodo. **Rendi predefinito** lo cambia.
+- Ogni ordine appartiene a un committente. Lo stesso numero d'ordine (serie, numero, appendice, anno) può
+  esistere per committenti diversi: sono ordini distinti.
+- **Chi vede cosa** (scheda dell'utente, *Clienti committenti visibili*):
+  - un **utente del Cliente** vede solo i committenti spuntati;
+  - un **utente interno** vede tutti i committenti, oppure solo quelli spuntati, se ce ne sono.
+- **Selettore in alto**: con più committenti, accanto alla ricerca degli ordini compare l'elenco dei clienti.
+  - Scegliendone uno, elenco ordini, ricerca, agenda e consegna mostrano solo i suoi ordini.
+  - *Tutti i clienti* mostra tutto.
+  - Una consegna, cioè una bolla, è sempre di un solo committente. Con *Tutti i clienti* e ordini di più
+    committenti, scegli prima il committente.
+
+Con un solo committente non cambia niente rispetto a prima: il selettore non compare.
+
 ### Reparti
 
 **Amministrazione → Reparti**: codice, nome, **capacità settimanale in ore** (usata dalla Pianificazione), gruppo

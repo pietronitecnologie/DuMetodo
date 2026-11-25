@@ -138,6 +138,7 @@ MENU: tuple[Sezione, ...] = (
             Voce("Aggiornamenti del client", "client:versioni", (F.CONFIGURAZIONE,)),
             Voce("Utenti e permessi", "utenti:lista", (F.UTENTI_VEDERE, F.UTENTI_GESTIRE, F.UTENTI_PERMESSI)),
             Voce("Reparti", "reparti:lista", (F.REPARTI,)),
+            Voce("Clienti committenti", "committenti:lista", (F.COMMITTENTI,)),
             Voce("Admin tecnico (Django)", "admin:index", solo_staff=True),
         ),
     ),

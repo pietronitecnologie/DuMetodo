@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
+from metodo.committenti import servizi as committenti
+from metodo.committenti.models import Committente
 from metodo.core.permessi import F, ha_permesso, richiede_permesso
 from metodo.ordini.models import StatoOrdine
 from metodo.ordini.servizi import OperazioneNonConsentita
@@ -32,9 +34,11 @@ def _serie_scelte(request: HttpRequest) -> list[str]:
 @richiede_permesso(F.CONSEGNA)
 def pagina(request: HttpRequest) -> HttpResponse:
     serie = _serie_scelte(request)
-    qs = servizi.ordini_da_consegnare(serie)
+    qs = committenti.filtra(servizi.ordini_da_consegnare(serie), request)
     # Le serie proposte sono quelle realmente presenti tra gli ordini da consegnare (in Metodo erano fisse).
-    disponibili = sorted({s[-2:] for s in servizi.ordini_da_consegnare().values_list("serie", flat=True)})
+    disponibili = sorted(
+        {s[-2:] for s in committenti.filtra(servizi.ordini_da_consegnare(), request).values_list("serie", flat=True)}
+    )
     ordini = []
     for o in qs:
         righe = servizi.righe_consegnabili(o)
@@ -57,7 +61,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.CONSEGNA)
 def etichette(request: HttpRequest) -> HttpResponse:
     serie = _serie_scelte(request)
-    qs = servizi.ordini_da_consegnare(serie)
+    qs = committenti.filtra(servizi.ordini_da_consegnare(serie), request)
     suffisso = "-".join(serie) or "Tutto"
     if request.GET.get("pulsanti"):
         qs = qs.filter(appendice__icontains="T")
@@ -74,7 +78,12 @@ def consegna(request: HttpRequest) -> HttpResponse:
         messages.error(request, "Selezione non valida.")
         return redirect("consegne:pagina")
     try:
-        c = servizi.consegna(request.user, serie=serie, ordini_ids=ids)
+        c = servizi.consegna(
+            request.user,
+            serie=serie,
+            ordini_ids=ids,
+            committenti=list(committenti.filtra(Committente.objects.all(), request, campo="pk")),
+        )
     except OperazioneNonConsentita as exc:
         messages.error(request, str(exc))
         return redirect("consegne:pagina")

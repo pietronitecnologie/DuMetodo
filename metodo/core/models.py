@@ -74,6 +74,13 @@ class ProfiloUtente(models.Model):
         help_text="Impostato quando un amministratore genera una password temporanea.",
     )
     note = models.TextField("note", blank=True, default="", help_text="Es. reparto, turno, telefono interno.")
+    committenti = models.ManyToManyField(
+        "committenti.Committente",
+        blank=True,
+        related_name="+",
+        verbose_name="clienti committenti",
+        help_text="Utenti del Cliente: i committenti che vedono. Utenti interni: vuoto = tutti.",
+    )
 
     class Meta:
         verbose_name = "profilo utente"

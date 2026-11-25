@@ -105,8 +105,12 @@ def salva_dati(
     cliente: bool,
     note: str = "",
     password: str = "",
+    committenti: list[int] | None = None,
 ) -> User:
-    """Crea o modifica i dati di un utente. Un utente nuovo nasce senza permessi."""
+    """Crea o modifica i dati di un utente. Un utente nuovo nasce senza permessi.
+
+    ``committenti``: clienti committenti che l'utente vede (None = non cambiarli). Un utente del Cliente ne deve
+    avere almeno uno; con un solo committente attivo gli viene assegnato da solo."""
     _richiedi(attore, F.UTENTI_GESTIRE, "Non hai i permessi per creare o modificare gli utenti.")
     nuovo = utente is None
     if not nuovo:
@@ -160,6 +164,21 @@ def salva_dati(
     if nuovo:
         p.deve_cambiare_password = True  # la password iniziale la conosce chi l'ha scritta
     p.save()
+
+    from metodo.committenti.models import Committente
+
+    attivi = Committente.objects.filter(attivo=True)
+    if committenti is not None:
+        scelti = list(attivi.filter(pk__in=committenti))
+        if cliente and not scelti and attivi.count() == 1:
+            scelti = list(attivi)
+        if cliente and not scelti:
+            raise OperazioneUtenti("Un utente del Cliente deve vedere almeno un cliente committente.")
+        prima_c = set(p.committenti.values_list("pk", flat=True))
+        if prima_c != {c.pk for c in scelti}:
+            p.committenti.set(scelti)
+            if not nuovo:
+                modifiche.append("committenti: " + (", ".join(c.codice for c in scelti) or "tutti"))
 
     gruppo, _ = Group.objects.get_or_create(name=GRUPPO_CLIENTE)
     era_cliente = utente.groups.filter(pk=gruppo.pk).exists()

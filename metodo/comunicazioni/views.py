@@ -2,6 +2,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET, require_POST
 
+from metodo.committenti import servizi as committenti
 from metodo.core.permessi import F, is_fornitore, richiede_permesso
 from metodo.ordini.models import Ordine
 
@@ -25,13 +26,13 @@ def _pannello(request: HttpRequest, ordine: Ordine, errore: str = "", testo: str
 @require_GET
 @richiede_permesso(F.ORDINI_VEDERE)
 def pannello(request: HttpRequest, ordine_id: int) -> HttpResponse:
-    return _pannello(request, get_object_or_404(Ordine, pk=ordine_id))
+    return _pannello(request, committenti.ordine_o_404(request, ordine_id))
 
 
 @require_POST
 @richiede_permesso(F.NOTE_SCRIVERE)
 def aggiungi(request: HttpRequest, ordine_id: int) -> HttpResponse:
-    ordine = get_object_or_404(Ordine, pk=ordine_id)
+    ordine = committenti.ordine_o_404(request, ordine_id)
     testo = request.POST.get("testo", "")
     visibilita = request.POST.get("visibilita", Visibilita.CONDIVISA)
     try:

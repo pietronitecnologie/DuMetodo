@@ -34,6 +34,7 @@ from django.db.models import Sum
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from metodo.committenti.models import predefinito_id
 from metodo.comunicazioni import email
 from metodo.configurazione import servizi as config
 from metodo.ordini.models import (
@@ -212,13 +213,22 @@ def _applica_ordine(file: FileImportato, chiave: ChiaveOrdine, righe: list[RigaF
     clienti = Counter(r.cliente for r in righe if r.cliente)
     cliente = clienti.most_common(1)[0][0] if clienti else ""
 
+    # Metodo v3: per ora gli ordini importati sono del committente predefinito (formati per cliente: fase 3).
+    committente_id = predefinito_id()
     ordine = (
         Ordine.objects.select_for_update()
-        .filter(serie=chiave.serie, numero=chiave.numero, appendice=chiave.appendice, anno=chiave.anno)
+        .filter(
+            committente_id=committente_id,
+            serie=chiave.serie,
+            numero=chiave.numero,
+            appendice=chiave.appendice,
+            anno=chiave.anno,
+        )
         .first()
     )
     if ordine is None:
         ordine = Ordine.objects.create(
+            committente_id=committente_id,
             serie=chiave.serie,
             numero=chiave.numero,
             appendice=chiave.appendice,

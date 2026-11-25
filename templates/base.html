@@ -49,6 +49,17 @@
     {% endfor %}
   </nav>
   <div class="dm-strumenti">
+    {% if committenti_utente %}
+    <form class="dm-committente" method="post" action="{% url 'committenti:scegli' %}" title="Cliente committente su cui stai lavorando">{% csrf_token %}
+      <input type="hidden" name="torna" value="{{ request.get_full_path }}">
+      <span class="dm-committente-colore" style="background: {% if committente_corrente %}{{ committente_corrente.colore }}{% else %}#8a94a3{% endif %}"></span>
+      <select name="committente" class="form-select form-select-sm" aria-label="Cliente committente" onchange="this.form.submit()">
+        <option value="">Tutti i clienti</option>
+        {% for c in committenti_utente %}<option value="{{ c.pk }}"{% if c.pk == committente_corrente.pk %} selected{% endif %}>{{ c.nome }}</option>{% endfor %}
+      </select>
+      <noscript><button class="btn btn-sm btn-primary">Vai</button></noscript>
+    </form>
+    {% endif %}
     {% if perms.core.ordini_vedere %}
     <form class="dm-vai" method="get" action="{% url 'ordini:vai' %}" data-dm-invia-alla-scelta role="search">
       {{ vai_ordine.ordine }}
