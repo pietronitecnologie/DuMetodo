@@ -1,0 +1,3 @@
+# Solo per l'interfaccia a schermo intero (metodoconsole senza argomenti). installa.sh la mette in
+# /opt/metodoconsole/venv; i comandi da riga di comando e i controlli automatici usano solo la libreria standard.
+textual>=8.2,<9

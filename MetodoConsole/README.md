@@ -40,7 +40,7 @@ Poi controlla la configurazione e, in Metodo v2, imposta chi riceve gli avvisi:
 
 | Comando | Cosa fa |
 |---|---|
-| `metodoconsole pannello` (o solo `metodoconsole`) | Pannello a schermo intero, anche via SSH (vedi sotto) |
+| `metodoconsole` (o `metodoconsole pannello`) | Interfaccia a schermo intero, anche via SSH (vedi sotto) |
 | `metodoconsole stato` | Servizi in esecuzione e ultimo backup |
 | `metodoconsole diagnostica` | Controllo completo (vedi sotto). Uscita: 0 tutto ok, 1 attenzione, 2 errore. `--json` per altri strumenti di monitoraggio |
 | `metodoconsole backup` | Backup completo, verificato. `--nota testo` per un backup da conservare (es. prima di una modifica importante), `--solo-database` |
@@ -57,33 +57,34 @@ Poi controlla la configurazione e, in Metodo v2, imposta chi riceve gli avvisi:
 Dove serve un `NOME` di backup basta l'inizio (`20261120`), una parte della nota (`prima-di-abc1234`) oppure
 `ultimo`.
 
-## Pannello
+## Interfaccia
 
-`metodoconsole` da solo (o `metodoconsole pannello`) apre un pannello a schermo intero nel terminale, anche via
-SSH (`ssh -t server metodoconsole`). Non serve installare niente: usa `curses` di Python.
+`metodoconsole` da solo (o `metodoconsole pannello`) apre l'interfaccia a schermo intero, anche via SSH
+(`ssh -t server metodoconsole`). È fatta con [Textual](https://textual.textualize.io/): `installa.sh` la mette in
+un ambiente Python dedicato (`/opt/metodoconsole/venv`, serve `python3-venv`). I comandi da riga di comando e i
+controlli automatici non ne hanno bisogno. Aprila con `sudo` per vedere tutto (firewall, SSH, porte).
 
-- Elenco dei container di Metodo v2 con stato e salute (● acceso, ◐ in avvio, ✖ errore, ○ fermo), porte e, con
-  `s`, CPU e memoria. Si aggiorna da solo ogni 3 secondi.
-- In fondo, gli **altri container del server**: per esempio quelli di una vecchia installazione (`dumetodo-…`).
-  Se sono accesi sulla stessa porta di Metodo v2, il riepilogo in alto lo segnala: fermali con `f`.
-- Tasti principali:
+Schede (tasti **1-8**, oppure clic):
 
-| Tasto | Cosa fa |
-|---|---|
-| ↑ ↓ | Scegli un container |
-| Invio | Log del container: `f` segue in tempo reale, `e` solo errori, `/` cerca, `q` torna |
-| `a` / `f` / `r` | Avvia, ferma (chiede conferma), riavvia il container scelto |
-| `c` | Console (shell) dentro il container scelto |
-| `A` / `F` / `R` | Avvia, ferma, riavvia tutto Metodo v2 |
-| `d` | Diagnostica completa |
-| `b` | Backup (chiede conferma e una nota facoltativa) |
-| `u` | Aggiornamento |
-| `p` | Stato e log del prelievo da Metodo |
-| `o` | Mostra o nasconde gli altri container |
-| `?` | Aiuto |
-| `q` | Esci |
+| Scheda | Cosa mostra | Cosa si fa |
+|---|---|---|
+| 1 Panoramica | Server (sistema, carico, memoria, dischi), servizi di Metodo v2, backup, controlli automatici, riepilogo della sicurezza e **avvisi con cosa fare** | — |
+| 2 Docker | Tutti i container (anche di altri progetti, es. un vecchio `dumetodo`), stato, salute, porte, CPU e memoria; spazio usato, immagini, volumi | Avvia, ferma, riavvia, log (Invio), dettagli (senza le password), console nel container, pulizia di immagini e cache |
+| 3 Log | Log di tutti i servizi o di uno, errori del sistema (journal), controlli automatici, ultima scansione antivirus | Segui in tempo reale, solo errori, cerca |
+| 4 Sicurezza | Controlli con **cosa fare**: firewall, SSH (root, password), fail2ban, accessi falliti nelle 24 ore e IP più insistenti, antivirus, aggiornamenti di sicurezza, porte aperte, permessi del `.env` | Firewall (ufw): attiva (consentendo prima la porta SSH), disattiva, consenti porta, blocca IP, elimina regola, installa. Antivirus (ClamAV): installa, aggiorna firme, scansione in background. Fail2ban: installa, blocca/sblocca IP |
+| 5 Disco | Uso dei dischi, chi occupa spazio (Docker, registro di sistema, backup, cache di apt), cartelle più grandi | Pulisci Docker, riduci il registro, pulisci la cache di apt, ruota i backup, analizza una cartella (Invio per entrare) |
+| 6 Backup | Backup con data, età, dimensione, versione e nota; conservazione e copia remota | Nuovo, verifica, dettagli, ripristina |
+| 7 Diagnostica | I controlli di `metodoconsole diagnostica` | Esegui di nuovo |
+| 8 Aggiornamenti | Pacchetti da aggiornare (di sicurezza in evidenza), aggiornamenti automatici, riavvio richiesto | Aggiorna il sistema, attiva gli aggiornamenti automatici, aggiorna Metodo v2, riavvia il server |
 
-Avvio, arresto di tutto, backup e aggiornamento escono dal pannello e mostrano l'output normale; con Invio si torna.
+Ovunque: **A**/**F**/**R** avvia, ferma, riavvia tutto Metodo v2 · **b** backup · **Ctrl+R** aggiorna · **q** esci.
+
+- Ogni azione che cambia il server chiede conferma; riavvio del server e ripristino due volte.
+- Le operazioni lunghe (avvio, backup, ripristino, apt…) sospendono l'interfaccia e mostrano l'output normale:
+  con Invio si torna. Senza root, le azioni di sistema passano da `sudo`.
+- Le letture lente girano in background: l'interfaccia non si blocca.
+- I valori scritti a mano (porte, indirizzi IP) vengono controllati prima di finire in un comando.
+- Docker apre le porte pubblicate senza passare da ufw: la scheda Sicurezza lo segnala.
 
 ## Prelievo dei dati da Metodo
 
