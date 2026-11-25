@@ -32,6 +32,7 @@ dev = [
     "mypy>=1.11",
     "django-stubs[compatible-mypy]>=5.0",
     "pre-commit>=3.8",
+    "textual>=8.2,<9",  # interfaccia di MetodoConsole (provata dai test)
 ]
 
 [build-system]

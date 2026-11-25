@@ -22,9 +22,21 @@ else
 fi
 [ -f "$METODO/.env" ] && chmod 600 "$METODO/.env"
 
+# Interfaccia a schermo intero (Textual) in un ambiente Python dedicato: il Python di sistema resta intatto e i
+# comandi da riga di comando funzionano anche senza.
+VENV=/opt/metodoconsole/venv
+if python3 -m venv --help >/dev/null 2>&1 && python3 -c 'import ensurepip' 2>/dev/null; then
+    python3 -m venv "$VENV" && "$VENV/bin/pip" install -q --upgrade pip && \
+        "$VENV/bin/pip" install -q -r "$QUI/requirements-interfaccia.txt" && \
+        echo "Interfaccia installata in $VENV: apri «metodoconsole» da un terminale." || \
+        echo "Attenzione: interfaccia non installata (pip non riuscito). I comandi funzionano lo stesso." >&2
+else
+    echo "Per l'interfaccia a schermo intero serve python3-venv: apt install python3-venv, poi rilancia." >&2
+fi
+
 for u in "$QUI"/systemd/*; do install -m 644 "$u" /etc/systemd/system/; done
 systemctl daemon-reload
 systemctl enable --now metodoconsole-backup.timer metodoconsole-controllo.timer
 echo
-echo "MetodoConsole installato. Prova:  metodoconsole diagnostica"
+echo "MetodoConsole installato. Prova:  metodoconsole   (interfaccia)  oppure  metodoconsole diagnostica"
 systemctl list-timers 'metodoconsole-*' --no-pager

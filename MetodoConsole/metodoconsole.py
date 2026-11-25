@@ -9,7 +9,7 @@ caricati, aggiornamento, avvisi via email. Solo libreria standard di Python (3.1
     metodoconsole backup [--nota TESTO]
     metodoconsole ripristina NOME
     metodoconsole prelievo avvia    (dati da Metodo: verifica | avvia | stato | log | ferma)
-    metodoconsole pannello          (controllo a schermo intero, anche via SSH; o solo «metodoconsole»)
+    metodoconsole                   (da un terminale: interfaccia a schermo intero, anche via SSH)
     metodoconsole --help            (tutti i comandi)
 
 Configurazione: /etc/metodoconsole/metodoconsole.conf (vedi metodoconsole.conf.example).
@@ -974,14 +974,32 @@ def cmd_psql(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     return subprocess.run(dc.base() + ["exec", "db", "psql", "-U", conf.db_utente, "-d", conf.db_nome]).returncode
 
 
+VENV_INTERFACCIA = Path("/opt/metodoconsole/venv")
+
+
 def cmd_pannello(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
-    """Pannello a schermo intero (curses): il modulo pannello.py sta accanto a questo file."""
+    """Interfaccia a schermo intero (Textual, nel pacchetto tui/ accanto a questo file).
+
+    Textual non fa parte della libreria standard: installa.sh lo mette in un ambiente dedicato
+    (/opt/metodoconsole/venv). Se il Python attuale non lo trova, si rilancia con quello."""
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        raise Errore("L'interfaccia va aperta da un terminale (anche via SSH: ssh -t server metodoconsole).")
     cartella = str(Path(__file__).resolve().parent)
     if cartella not in sys.path:
         sys.path.insert(0, cartella)
-    import pannello
+    try:
+        import textual  # noqa: F401
+    except ImportError:
+        python = VENV_INTERFACCIA / "bin" / "python"
+        if python.exists() and Path(sys.executable).resolve() != python.resolve():
+            os.execv(str(python), [str(python), str(Path(__file__).resolve()), *sys.argv[1:]])  # noqa: S606
+        raise Errore(
+            "Manca Textual per l'interfaccia: sudo ./MetodoConsole/installa.sh (oppure pip install textual). "
+            "I comandi da riga di comando funzionano anche senza."
+        ) from None
+    from tui import app
 
-    return pannello.avvia(conf, dc, sys.modules[__name__])
+    return app.avvia(conf, dc, sys.modules[__name__])
 
 
 def cmd_versione(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
@@ -1235,7 +1253,7 @@ def parser() -> argparse.ArgumentParser:
     x.add_argument("--senza-backup", action="store_true", help="avvia senza il backup di sicurezza")
     x.add_argument("-f", "--segui", action="store_true", help="con «log»: segue l'avanzamento")
     x.add_argument("-n", "--righe", type=int, default=50, help="con «log»: righe da mostrare")
-    sub("pannello", cmd_pannello, "pannello a schermo intero per controllare Docker (anche via SSH)")
+    sub("pannello", cmd_pannello, "interfaccia a schermo intero: Docker, sicurezza, disco, backup (anche via SSH)")
     sub("versione", cmd_versione, "versione di MetodoConsole e di Metodo v2")
     return p
 
