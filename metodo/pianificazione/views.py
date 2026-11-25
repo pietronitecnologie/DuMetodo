@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from metodo.committenti import servizi as committenti
 from metodo.core.models import Reparto
 from metodo.core.permessi import F, richiede_permesso
 from metodo.ordini.models import Ordine
@@ -30,7 +31,7 @@ def _xlsx(nome: str, contenuto: bytes) -> HttpResponse:
 @require_GET
 @richiede_permesso(F.PIANIFICAZIONE)
 def pagina(request: HttpRequest) -> HttpResponse:
-    p = piano.calcola()
+    p = piano.calcola(committenti=committenti.ids(request))
     return render(
         request,
         "pianificazione/piano.html",
@@ -38,6 +39,7 @@ def pagina(request: HttpRequest) -> HttpResponse:
             "piano": p,
             "reparti": Reparto.objects.filter(attivo=True),
             "colonne_settimane": list(zip(p.etichette, range(len(p.settimane)), strict=True)),
+            "committente_filtrato": committenti.filtrato(request),
         },
     )
 
@@ -63,7 +65,7 @@ def soglie(request: HttpRequest) -> HttpResponse:
 @require_GET
 @richiede_permesso(F.PIANIFICAZIONE)
 def export(request: HttpRequest) -> HttpResponse:
-    nome, contenuto, _ = servizi.genera_xlsx()
+    nome, contenuto, _ = servizi.genera_xlsx(committenti=committenti.ids(request))
     return _xlsx(nome, contenuto)
 
 
@@ -84,8 +86,6 @@ def invia_report(request: HttpRequest) -> HttpResponse:
 
 
 def _filtra_agenda(request: HttpRequest):  # type: ignore[no-untyped-def]
-    from metodo.committenti import servizi as committenti
-
     qs = committenti.filtra(Ordine.objects.all(), request)
     for campo, lookup in (
         ("q", "numero__icontains"),
@@ -133,7 +133,9 @@ def _tabulato(request: HttpRequest, tipo: str) -> HttpResponse:
         get_object_or_404(reparti, pk=request.GET["reparto"]) if request.GET.get("reparto", "").isdigit() else None
     )
     lunedi = calendario.lunedi(_data(request.GET.get("settimana"), timezone.localdate()))
-    voci, totale = ([], 0) if reparto is None else servizi.tabulato_settimanale(reparto, lunedi)
+    voci, totale = (
+        ([], 0) if reparto is None else servizi.tabulato_settimanale(reparto, lunedi, committenti.ids(request))
+    )
     contesto = {
         "tipo": tipo,
         "reparti": reparti,

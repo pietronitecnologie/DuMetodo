@@ -821,10 +821,26 @@ L'anagrafica è in **Amministrazione → Clienti committenti** (permesso *Gestir
   - un **utente del Cliente** vede solo i committenti spuntati;
   - un **utente interno** vede tutti i committenti, oppure solo quelli spuntati, se ce ne sono.
 - **Selettore in alto**: con più committenti, accanto alla ricerca degli ordini compare l'elenco dei clienti.
-  - Scegliendone uno, elenco ordini, ricerca, agenda e consegna mostrano solo i suoi ordini.
-  - *Tutti i clienti* mostra tutto.
-  - Una consegna, cioè una bolla, è sempre di un solo committente. Con *Tutti i clienti* e ordini di più
-    committenti, scegli prima il committente.
+  - Scegliendone uno, tutte le sezioni mostrano solo i suoi dati: ordini, ricerca, agenda, pianificazione,
+    tabulati, consegne, DDT, fatture, report, tracciature e utilità.
+  - *Tutti i clienti* mostra tutto, con la colonna *Cliente* negli elenchi.
+  - Il selettore restringe gli elenchi; quello che un utente può aprire dipende dai committenti visibili
+    nella sua scheda.
+- **Un documento, un cliente**: una bolla di consegna, un DDT e una fattura sono sempre di un solo
+  committente. Con *Tutti i clienti* e una selezione mista Metodo v2 si ferma e chiede di scegliere il
+  committente. In *Da fatturare* i DDT sono raggruppati per committente e mese.
+- **Report**: con un committente scelto, un riquadro azzurro ricorda che i dati sono parziali.
+  - *Analisi produttività* non calcola efficienza e pezzi/ora, perché le ore lavorate sono dell'intera
+    azienda.
+  - *Efficienza per reparto* è sempre dell'intera azienda, perché le timbrature non sono divise per cliente.
+  - In *Pianificazione* il carico è quello del committente; la capacità dei reparti resta quella
+    dell'intera azienda.
+- **Tracciature**: quelle collegate a un ordine o a un DDT seguono il committente; quelle senza ordine e
+  senza DDT (materiali in ingresso, lotti, riferimenti liberi) sono dell'intera azienda e si vedono sempre.
+- **Magazzino e timbrature** sono dell'intera azienda: componenti, distinte, inventario e presenze non
+  cambiano con il selettore.
+- **Codici d'ordine uguali**: se un codice letto da un codice a barre esiste per due committenti, si apre
+  quello del committente scelto in alto (con *Tutti i clienti*, quello del predefinito).
 
 Con un solo committente non cambia niente rispetto a prima: il selettore non compare.
 

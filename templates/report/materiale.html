@@ -2,6 +2,7 @@
 {% block titolo %}Materiale per reparto{% endblock %}
 {% block contenuto %}
 <h1 class="h4">Materiale per reparto e settimana</h1>
+{% include "committenti/_avviso_report.html" %}
 <p class="small text-muted">Ore (valore / resa oraria) delle righe <strong>a scadenza</strong> nella settimana e delle righe <strong>consegnate</strong> nella settimana, per reparto dell'articolo.</p>
 {% include "report/_periodo.html" %}
 <div class="table-responsive"><table class="table table-sm table-bordered bg-white align-middle text-end small">

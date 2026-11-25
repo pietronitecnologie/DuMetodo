@@ -16,11 +16,20 @@ from django.conf import settings
 from django.db import models
 from django.urls import reverse
 
+from metodo.committenti.models import predefinito_id
+
 
 class Consegna(models.Model):
     creata_il = models.DateTimeField(auto_now_add=True)
     creata_da = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
     selezione = models.CharField(max_length=100, blank=True, default="")
+    committente = models.ForeignKey(
+        "committenti.Committente",
+        on_delete=models.PROTECT,
+        related_name="consegne",
+        default=predefinito_id,
+        verbose_name="cliente committente",
+    )
     tracciato = models.CharField("tracciato usato", max_length=100, blank=True, default="")
     file_nome = models.CharField(max_length=200)
     file_contenuto = models.BinaryField()
@@ -54,6 +63,14 @@ class DDT(models.Model):
     numero = models.CharField("numero DDT", max_length=20)
     anno = models.PositiveSmallIntegerField("anno")
     data = models.DateField("data DDT")
+    # Una bolla è di un solo cliente committente: quello degli ordini delle sue righe.
+    committente = models.ForeignKey(
+        "committenti.Committente",
+        on_delete=models.PROTECT,
+        related_name="ddt",
+        default=predefinito_id,
+        verbose_name="cliente committente",
+    )
     creato_il = models.DateTimeField(auto_now_add=True)
     creato_da = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
     file_nome = models.CharField(max_length=200, blank=True, default="")

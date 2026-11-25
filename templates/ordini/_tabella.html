@@ -5,7 +5,7 @@
   {% for o in pagina %}
   <tr data-dm-menu="ordine" data-dm-id="{{ o.pk }}" data-dm-codice="{{ o.codice_breve }}">
     <td><a href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a></td>
-    {% if committenti_utente %}<td class="text-nowrap"><span class="dm-committente-colore" style="background: {{ o.committente.colore }}"></span> {{ o.committente.codice }}</td>{% endif %}
+    {% if committenti_utente %}<td>{% include "committenti/_badge.html" with c=o.committente %}</td>{% endif %}
     <td><span class="dm-stato dm-stato-{{ o.stato }}">{{ o.get_stato_display }}</span></td>
     <td class="{% if o.data_scadenza and o.data_scadenza < oggi and o.stato != 'CON' and o.stato != 'ANN' %}dm-scaduto{% endif %}">{{ o.data_scadenza|date:"d/m/Y"|default:"—" }}</td>
     <td class="text-end">{{ o.n_righe|default:0 }}</td>

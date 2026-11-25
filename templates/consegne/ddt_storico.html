@@ -4,8 +4,8 @@
 <h1 class="h4">DDT registrati</h1>
 {% if creato %}<div class="alert alert-success d-flex flex-wrap align-items-center gap-2 py-2">Creato il DDT n. <b>{{ creato.numero }}/{{ creato.anno }}</b>.
   <a class="btn btn-sm btn-primary ms-auto" href="{% url 'gestionale:ddt_stampa' creato.pk %}" target="_blank">Stampa il DDT</a></div>{% endif %}
-<table class="table table-sm bg-white align-middle"><thead><tr><th>DDT</th><th>Data</th><th class="text-end">Righe</th><th>Registrato da</th><th>File tecnico</th><th>Invio</th><th></th></tr></thead><tbody>
-{% for d in pagina %}<tr><td>{{ d.numero }}/{{ d.anno }}</td><td>{{ d.data|date:"d/m/Y" }}</td><td class="text-end">{{ d.n_righe }}</td><td>{{ d.creato_da|default:"" }}</td>
+<table class="table table-sm bg-white align-middle"><thead><tr><th>DDT</th>{% if committenti_utente %}<th>Cliente</th>{% endif %}<th>Data</th><th class="text-end">Righe</th><th>Registrato da</th><th>File tecnico</th><th>Invio</th><th></th></tr></thead><tbody>
+{% for d in pagina %}<tr><td>{{ d.numero }}/{{ d.anno }}</td>{% if committenti_utente %}<td>{% include "committenti/_badge.html" with c=d.committente %}</td>{% endif %}<td>{{ d.data|date:"d/m/Y" }}</td><td class="text-end">{{ d.n_righe }}</td><td>{{ d.creato_da|default:"" }}</td>
   <td><a href="{% url 'consegne:ddt_file' d.pk %}">{{ d.file_nome }}</a></td>
   <td>{% if d.email %}<span class="badge text-bg-{% if d.email.stato == 'INV' %}success{% elif d.email.stato == 'FAL' %}danger{% else %}warning{% endif %}">{{ d.email.get_stato_display }}</span>{% else %}<span class="badge text-bg-secondary">non inviato</span>{% endif %}</td>
   <td class="text-nowrap">{% if d.origine == "DUM" %}<a class="btn btn-sm btn-outline-primary" href="{% url 'gestionale:ddt_stampa' d.pk %}" target="_blank">Stampa</a>{% endif %}

@@ -2,6 +2,7 @@
 {% block titolo %}In scadenza e consegnato per settimana{% endblock %}
 {% block contenuto %}
 <h1 class="h4">In scadenza e consegnato per settimana e reparto</h1>
+{% include "committenti/_avviso_report.html" %}
 <p class="small text-muted">Per ogni settimana, dalla più recente: ore delle righe <strong>in scadenza</strong> nella settimana (da evadere)
 e ore delle righe <strong>consegnate</strong> (messe in bolla) nella settimana, per reparto dell'articolo. Ore = valore / resa oraria;
 le righe senza prezzo non contano. In rosso le settimane con meno consegnato che in scadenza.</p>

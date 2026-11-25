@@ -8,6 +8,7 @@
 </div>
 <p class="small text-muted">Ore = Σ(quantità × prezzo) / resa oraria delle righe non ancora in bolla, ordini "Inserito" o "Evasione parziale".
 Arretrato dal {{ piano.inizio_arretrato|date:"d/m/Y" }}. Capacità della settimana corrente ridotta alle {{ piano.ore_rimanenti }} ore lavorative rimaste.</p>
+{% if committente_filtrato %}<div class="alert alert-info py-2 small">Carico dei soli ordini di <b>{{ committente_filtrato.nome }}</b>; la capacità dei reparti è quella dell'intera azienda. Scegli «Tutti i clienti» in alto per il carico complessivo.</div>{% endif %}
 {% if piano.resa_mancante %}<div class="alert alert-warning">La resa oraria non è configurata: impostala in Configurazione per calcolare le ore.</div>{% endif %}
 {% if piano.righe_senza_prezzo %}<div class="alert alert-info py-1 small">{{ piano.righe_senza_prezzo }} righe senza prezzo non sono conteggiate.</div>{% endif %}
 <div class="table-responsive"><table class="table table-sm bg-white align-middle text-center">

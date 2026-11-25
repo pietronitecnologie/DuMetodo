@@ -7,6 +7,7 @@
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'gestionale:fattura_stampa' f.pk %}" target="_blank">{% if f.is_bozza %}Anteprima{% else %}Copia di cortesia{% endif %}</a>
   {% if not f.is_bozza %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:fattura_xml' f.pk %}">Scarica XML</a>{% endif %}
 </div>
+{% if committenti_utente %}<div class="small mb-2">Cliente committente: {% include "committenti/_nome.html" with c=f.committente %}</div>{% endif %}
 {% if f.fattura_collegata %}<div class="small mb-2">Storna la fattura <a href="{{ f.fattura_collegata.get_absolute_url }}">{{ f.fattura_collegata }}</a>.</div>{% endif %}
 {% if errori %}<div class="alert alert-warning py-2 small"><b>Da sistemare prima dell'emissione:</b><ul class="mb-0 ps-3">{% for e in errori %}<li>{{ e }}</li>{% endfor %}</ul>
   {% if puo_impostazioni %}<a href="{% url 'gestionale:impostazioni' %}">Dati fiscali e impostazioni</a>{% endif %}</div>{% endif %}

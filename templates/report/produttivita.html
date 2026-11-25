@@ -2,6 +2,7 @@
 {% block titolo %}Analisi produttività{% endblock %}
 {% block contenuto %}
 <h1 class="h4">Analisi produttività</h1>
+{% include "committenti/_avviso_report.html" with nota="Efficienza e pezzi/ora non sono calcolati: le ore lavorate sono dell'intera azienda" %}
 <p class="small text-muted">Pezzi consegnati per settimana (data di consegna; escluse righe annullate e scorporate), valore e ore teoriche
 (valore / resa oraria). Inserisci le <strong>ore lavorate</strong> per ottenere pezzi/ora ed efficienza (ore teoriche / ore lavorate).</p>
 {% include "report/_periodo.html" %}

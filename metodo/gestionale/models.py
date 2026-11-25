@@ -11,6 +11,8 @@ from django.db import models
 from django.db.models import Q
 from django.urls import reverse
 
+from metodo.committenti.models import predefinito_id
+
 from .costanti import TIPI_DOCUMENTO
 
 
@@ -88,6 +90,14 @@ class StatoSdI(models.TextChoices):
 
 class Fattura(models.Model):
     tipo = models.CharField(max_length=4, choices=TIPI_DOCUMENTO, default="TD24")
+    # Il cliente committente fatturato (quello dei DDT della fattura).
+    committente = models.ForeignKey(
+        "committenti.Committente",
+        on_delete=models.PROTECT,
+        related_name="fatture",
+        default=predefinito_id,
+        verbose_name="cliente committente",
+    )
     stato = models.CharField(max_length=3, choices=StatoFattura.choices, default=StatoFattura.BOZZA, db_index=True)
     data = models.DateField("data")
     anno = models.PositiveSmallIntegerField("anno")

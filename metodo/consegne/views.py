@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Count, OuterRef, Subquery, Sum
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
@@ -15,7 +15,7 @@ from metodo.ordini.models import StatoOrdine
 from metodo.ordini.servizi import OperazioneNonConsentita
 
 from . import servizi
-from .models import DDT, Consegna
+from .models import DDT, Consegna, RigaConsegnata
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -106,13 +106,18 @@ def rimuovi(request: HttpRequest, ordine_id: int) -> HttpResponse:
 @richiede_permesso(F.CONSEGNA, F.DDT)
 def storico(request: HttpRequest) -> HttpResponse:
     righe = Consegna.objects.filter(pk=OuterRef("pk")).annotate(n=Count("righe")).values("n")
-    qs = Consegna.objects.select_related("creata_da").defer("file_contenuto").annotate(n_righe=Subquery(righe))
+    qs = committenti.filtra(
+        Consegna.objects.select_related("creata_da", "committente")
+        .defer("file_contenuto")
+        .annotate(n_righe=Subquery(righe)),
+        request,
+    )
     return render(request, "consegne/storico.html", {"pagina": Paginator(qs, 30).get_page(request.GET.get("pagina"))})
 
 
 @richiede_permesso(F.CONSEGNA, F.DDT)
 def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
-    c = get_object_or_404(Consegna.objects.defer("file_contenuto"), pk=pk)
+    c = committenti.oggetto_o_404(request, Consegna.objects.defer("file_contenuto"), pk)
     righe = c.righe.select_related("riga__ordine", "ddt").order_by(
         "riga__ordine__serie", "riga__ordine__numero", "riga__n_riga"
     )
@@ -121,7 +126,7 @@ def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
 
 @richiede_permesso(F.CONSEGNA, F.DDT)
 def file_consegna(request: HttpRequest, pk: int) -> HttpResponse:
-    c = get_object_or_404(Consegna, pk=pk)
+    c = committenti.oggetto_o_404(request, Consegna.objects.all(), pk)
     return _download(c.file_nome, c.file_contenuto)
 
 
@@ -142,7 +147,12 @@ def ddt(request: HttpRequest) -> HttpResponse:
     elif request.method == "POST":
         try:
             data = dt.date.fromisoformat(request.POST.get("data_manuale", ""))
-            ids = [int(i) for i in request.POST.getlist("riga") if i.isdigit()]
+            ids = committenti.controlla_ids(
+                request,
+                RigaConsegnata.objects.all(),
+                [int(i) for i in request.POST.getlist("riga") if i.isdigit()],
+                "riga__ordine__committente",
+            )
             d = servizi.registra_ddt(request.POST.get("numero", ""), data, ids, request.user)
         except ValueError:
             messages.error(request, "Data del DDT non valida.")
@@ -158,7 +168,7 @@ def ddt(request: HttpRequest) -> HttpResponse:
                     "configura i destinatari in Configurazione.",
                 )
             return redirect("consegne:ddt_storico")
-    righe = servizi.righe_senza_ddt()
+    righe = committenti.filtra(servizi.righe_senza_ddt(), request, "riga__ordine__committente")
     return render(
         request,
         "consegne/ddt.html",
@@ -176,7 +186,7 @@ def ddt(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.DDT)
 def ddt_storico(request: HttpRequest) -> HttpResponse:
     qs = (
-        DDT.objects.select_related("creato_da", "email")
+        committenti.filtra(DDT.objects.select_related("creato_da", "email", "committente"), request)
         .defer("file_contenuto")
         .annotate(n_righe=Count("righe"))
         .order_by("-anno", "-data", "-id")
@@ -187,20 +197,23 @@ def ddt_storico(request: HttpRequest) -> HttpResponse:
         "consegne/ddt_storico.html",
         {
             "pagina": Paginator(qs, 30).get_page(request.GET.get("pagina")),
-            "creato": DDT.objects.filter(pk=int(creato)).first() if creato.isdigit() else None,
+            "creato": committenti.filtra(DDT.objects.filter(pk=int(creato)), request).first()
+            if creato.isdigit()
+            else None,
         },
     )
 
 
 @richiede_permesso(F.DDT)
 def ddt_file(request: HttpRequest, pk: int) -> HttpResponse:
-    d = get_object_or_404(DDT, pk=pk)
+    d = committenti.oggetto_o_404(request, DDT.objects.all(), pk)
     return _download(d.file_nome, d.file_contenuto)
 
 
 @require_POST
 @richiede_permesso(F.DDT_REINVIA)
 def ddt_reinvia(request: HttpRequest, pk: int) -> HttpResponse:
+    committenti.oggetto_o_404(request, DDT.objects.defer("file_contenuto"), pk)
     try:
         d = servizi.reinvia_file_tecnico(pk, request.user)
         messages.success(request, f"File tecnico del {d} rimesso in invio.")

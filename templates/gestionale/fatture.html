@@ -12,11 +12,11 @@
 <form method="post" id="form-bozze">{% csrf_token %}</form>
 <div class="table-responsive"><table class="table table-sm bg-white align-middle"><thead><tr>
   {% if puo_fatture %}<th><input type="checkbox" class="form-check-input" title="Tutte le bozze" onclick="document.querySelectorAll('input[name=bozza]').forEach(c => c.checked = this.checked)"></th>{% endif %}
-  <th>Numero</th><th>Data</th><th>Tipo</th><th class="text-end">Imponibile</th><th class="text-end">IVA</th><th class="text-end">Totale</th><th>Stato</th><th>SdI</th><th></th></tr></thead><tbody>
+  <th>Numero</th>{% if committenti_utente %}<th>Cliente</th>{% endif %}<th>Data</th><th>Tipo</th><th class="text-end">Imponibile</th><th class="text-end">IVA</th><th class="text-end">Totale</th><th>Stato</th><th>SdI</th><th></th></tr></thead><tbody>
 {% for f in pagina %}<tr>
   {% if puo_fatture %}<td>{% if f.is_bozza %}<input type="checkbox" class="form-check-input" name="bozza" value="{{ f.pk }}" form="form-bozze">{% endif %}</td>{% endif %}
   <td><a class="fw-semibold" href="{{ f.get_absolute_url }}">{% if f.numero %}{{ f.numero }}{% else %}bozza {{ f.pk }}{% endif %}</a></td>
-  <td>{{ f.data|date:"d/m/Y" }}</td><td class="small">{{ f.get_tipo_display }}{% if f.fattura_collegata %} di {{ f.fattura_collegata.numero }}{% endif %}</td>
+  {% if committenti_utente %}<td>{% include "committenti/_badge.html" with c=f.committente %}</td>{% endif %}<td>{{ f.data|date:"d/m/Y" }}</td><td class="small">{{ f.get_tipo_display }}{% if f.fattura_collegata %} di {{ f.fattura_collegata.numero }}{% endif %}</td>
   <td class="text-end">{{ f.imponibile|floatformat:2 }}</td><td class="text-end">{{ f.imposta|floatformat:2 }}</td><td class="text-end fw-semibold">{{ f.totale|floatformat:2 }}</td>
   <td>{% if f.is_bozza %}<span class="badge text-bg-warning">bozza</span>{% else %}<span class="badge text-bg-success">emessa</span>{% endif %}</td>
   <td class="small">{% if not f.is_bozza %}{% if f.stato_sdi == "SCA" %}<span class="text-danger fw-semibold">{{ f.get_stato_sdi_display }}</span>{% else %}{{ f.get_stato_sdi_display }}{% endif %}{% endif %}</td>

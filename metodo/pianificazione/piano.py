@@ -93,7 +93,9 @@ class Piano:
         return [f"Sett. {i + 1} ({a:%d/%m} - {b:%d/%m})" for i, (a, b) in enumerate(self.settimane)]
 
 
-def calcola(adesso: dt.datetime | None = None) -> Piano:
+def calcola(adesso: dt.datetime | None = None, committenti: list[int] | None = None) -> Piano:
+    """Carico dei reparti per settimana. ``committenti``: solo gli ordini di quei clienti (``None`` = tutti);
+    la capacità dei reparti resta quella dell'intera azienda."""
     adesso = timezone.localtime(adesso)
     oggi = adesso.date()
     n_sett = config.leggi("pianificazione.settimane")
@@ -137,6 +139,8 @@ def calcola(adesso: dt.datetime | None = None) -> Piano:
         data_scadenza__gte=inizio_arretrato,
         data_scadenza__lte=settimane[-1][1],
     )
+    if committenti is not None:
+        qs = qs.filter(ordine__committente__in=committenti)
     if config.leggi("pianificazione.solo_ordini_con_appendice"):
         qs = qs.exclude(ordine__appendice="")
     for articolo, qta, prezzo, scadenza, ordine_id in qs.values_list(

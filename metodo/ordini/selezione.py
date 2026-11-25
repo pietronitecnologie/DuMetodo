@@ -52,17 +52,25 @@ def cerca(testo: str, limite: int = MASSIMO_RISULTATI, base: QuerySet[Ordine] | 
     ).order_by("chiuso", "-anno", "numero", "appendice", "serie")[:limite]
 
 
-def da_codice(testo: str) -> Ordine | None:
-    """Ordine dal codice completo (lettore di codici a barre, link). None se non valido o inesistente."""
+def da_codice(testo: str, base: QuerySet[Ordine] | None = None) -> Ordine | None:
+    """Ordine dal codice completo (lettore di codici a barre, link). None se non valido o inesistente.
+
+    Il codice non dice il cliente committente: se esiste per più committenti vince quello predefinito.
+    ``base`` limita la ricerca (es. ai committenti visibili all'utente)."""
     m = _CODICE.match(testo or "")
     if not m:
         return None
     numero, serie = m["numero"], m["serie"]
     numeri = {numero, numero.zfill(7)} if numero.isdigit() else {numero}
     serie_possibili = {serie, serie.zfill(5)} if serie.isdigit() else {serie}
-    return Ordine.objects.filter(
-        serie__in=serie_possibili, numero__in=numeri, appendice=(m["appendice"] or "").upper(), anno=int(m["anno"])
-    ).first()
+    return (
+        (base if base is not None else Ordine.objects.all())
+        .filter(
+            serie__in=serie_possibili, numero__in=numeri, appendice=(m["appendice"] or "").upper(), anno=int(m["anno"])
+        )
+        .order_by("-committente__predefinito", "committente__nome")
+        .first()
+    )
 
 
 class WidgetOrdine(forms.Widget):
@@ -104,7 +112,8 @@ class CampoOrdine(forms.Field):
         "non_trovato": "Ordine non trovato: scrivi il numero e sceglilo dall'elenco.",
     }
 
-    def __init__(self, **kw: Any) -> None:
+    def __init__(self, base: QuerySet[Ordine] | None = None, **kw: Any) -> None:
+        self.base = base  # ordini tra cui cercare (None = tutti)
         kw.setdefault("label", "Ordine")
         kw.setdefault("help_text", "Scrivi numero, serie, appendice o anno e scegli dall'elenco.")
         super().__init__(**kw)
@@ -118,7 +127,8 @@ class CampoOrdine(forms.Field):
         testo = str(value or "").strip()
         if not testo:
             return None
-        ordine = Ordine.objects.filter(pk=int(testo)).first() if testo.isdigit() else da_codice(testo)
+        base = self.base if self.base is not None else Ordine.objects.all()
+        ordine = base.filter(pk=int(testo)).first() if testo.isdigit() else da_codice(testo, base)
         if ordine is None:
             raise forms.ValidationError(self.error_messages["non_trovato"], code="non_trovato")
         return ordine

@@ -7,9 +7,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from metodo.committenti import servizi as committenti
 from metodo.consegne.servizi import etichette_xlsx
 from metodo.core.permessi import F, ha_permesso, is_fornitore, richiede_permesso
-from metodo.ordini.models import Ordine
+from metodo.ordini.models import Ordine, RigaOrdine
 from metodo.ordini.selezione import CampoOrdine
 from metodo.ordini.servizi import OperazioneNonConsentita
 
@@ -92,7 +93,7 @@ def ristampa_etichette(request: HttpRequest) -> HttpResponse:
     dati = request.POST if request.method == "POST" else request.GET
     numero = dati.get("numero", "").strip()
     anno = int(dati["anno"]) if dati.get("anno", "").isdigit() else timezone.localdate().year
-    ordini = servizi.ordini_per_ddt(numero, anno) if numero else Ordine.objects.none()
+    ordini = servizi.ordini_per_ddt(numero, anno, committenti.ids(request)) if numero else Ordine.objects.none()
     if request.method == "POST":
         scelti = ordini.filter(pk__in=servizi.ids_da_post(request.POST.getlist("ordine")))
         if scelti.exists():
@@ -118,15 +119,23 @@ def scorporazione(request: HttpRequest) -> HttpResponse:
     articolo, variante = dati.get("articolo", ""), dati.get("variante", "")
     if request.method == "POST":
         try:
+            visualizzate = committenti.controlla_ids(
+                request,
+                RigaOrdine.objects.all(),
+                servizi.ids_da_post(request.POST.getlist("visualizzata")),
+                "ordine__committente",
+            )
             n = servizi.scorpora_massa(
                 request.user,
-                servizi.ids_da_post(request.POST.getlist("visualizzata")),
+                visualizzate,
                 servizi.ids_da_post(request.POST.getlist("scorpora")),
             )
             messages.success(request, f"Aggiornate {n} righe." if n else "Nessuna modifica da salvare.")
         except OperazioneNonConsentita as exc:
             messages.error(request, str(exc))
-    righe = servizi.righe_consegnate(articolo, variante, dal, al) if articolo.strip() else None
+    righe = (
+        servizi.righe_consegnate(articolo, variante, dal, al, committenti.ids(request)) if articolo.strip() else None
+    )
     return render(
         request,
         "utilita/scorporazione.html",
@@ -157,6 +166,7 @@ def scorporazione(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.UTILITA_CAMBIA_ORDINE)
 def cambia_ordine_cerca(request: HttpRequest) -> HttpResponse:
     form = SceltaOrdineForm(request.GET or None)
+    form.fields["ordine"].base = committenti.filtra(Ordine.objects.all(), request)
     if form.is_valid() and form.cleaned_data["ordine"]:
         return redirect("utilita:cambia_ordine", pk=form.cleaned_data["ordine"].pk)
     return render(request, "utilita/cambia_ordine_cerca.html", {"form": form})
@@ -164,7 +174,7 @@ def cambia_ordine_cerca(request: HttpRequest) -> HttpResponse:
 
 @richiede_permesso(F.UTILITA_CAMBIA_ORDINE)
 def cambia_ordine(request: HttpRequest, pk: int) -> HttpResponse:
-    ordine = get_object_or_404(Ordine, pk=pk)
+    ordine = committenti.ordine_o_404(request, pk)
     if request.method == "POST":
         try:
             ordine = servizi.cambia_ordine(

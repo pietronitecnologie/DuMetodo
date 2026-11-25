@@ -69,9 +69,10 @@ def attiva_disattiva(utente: Any, annuncio_id: int) -> Annuncio:
 
 
 # ----------------------------------------------------------------------------------------- ristampa etichette
-def ordini_per_ddt(numero: str, anno: int) -> QuerySet[Ordine]:
+def ordini_per_ddt(numero: str, anno: int, committenti: list[int] | None = None) -> QuerySet[Ordine]:
+    qs = Ordine.objects.all() if committenti is None else Ordine.objects.filter(committente__in=committenti)
     return (
-        Ordine.objects.filter(righe__consegnata__ddt__numero=numero.strip(), righe__consegnata__ddt__anno=anno)
+        qs.filter(righe__consegnata__ddt__numero=numero.strip(), righe__consegnata__ddt__anno=anno)
         .distinct()
         .order_by("serie", "numero", "appendice")
     )
@@ -82,8 +83,12 @@ def anni_del_ddt(numero: str) -> list[int]:
 
 
 # ----------------------------------------------------------------------------------------- scorporazione di massa
-def righe_consegnate(articolo: str, variante: str, dal: dt.date, al: dt.date) -> QuerySet[RigaOrdine]:
+def righe_consegnate(
+    articolo: str, variante: str, dal: dt.date, al: dt.date, committenti: list[int] | None = None
+) -> QuerySet[RigaOrdine]:
     qs = RigaOrdine.objects.filter(bolla_emessa=True, data_consegna__range=(dal, al)).select_related("ordine")
+    if committenti is not None:
+        qs = qs.filter(ordine__committente__in=committenti)
     if articolo.strip():
         qs = qs.filter(articolo__icontains=articolo.strip())
     if variante.strip():
@@ -128,7 +133,12 @@ def cambia_ordine(
     if len(numero) > 30 or len(serie) > 5 or len(appendice) > 10:
         raise OperazioneNonConsentita("Numero (max 30), serie (max 5) o appendice (max 10) troppo lunghi.")
     ordine = Ordine.objects.select_for_update().get(pk=ordine_id)
-    if Ordine.objects.per_chiave(serie, numero, appendice, ordine.anno).exclude(pk=ordine.pk).exists():
+    if (
+        Ordine.objects.per_chiave(serie, numero, appendice, ordine.anno)
+        .filter(committente_id=ordine.committente_id)
+        .exclude(pk=ordine.pk)
+        .exists()
+    ):
         raise OperazioneNonConsentita(
             f"Esiste già l'ordine {serie}.{numero}{'.' + appendice if appendice else ''}-{ordine.anno}."
         )

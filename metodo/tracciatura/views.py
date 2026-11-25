@@ -6,6 +6,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
+from metodo.committenti import servizi as committenti
+from metodo.consegne.models import DDT
 from metodo.core.permessi import F, ha_permesso, richiede_permesso
 from metodo.ordini.models import Ordine
 from metodo.ordini.selezione import CampoOrdine
@@ -31,7 +33,7 @@ def _permessi(request: HttpRequest) -> dict[str, bool]:
 @richiede_permesso(F.TRACCIATURA_VEDERE)
 def elenco(request: HttpRequest) -> HttpResponse:
     filtri = request.GET.dict()
-    qs = servizi.cerca(filtri)
+    qs = servizi.cerca(filtri, committenti.ids(request))
     modello = (
         Modello.objects.filter(pk=filtri.get("modello") or None).first()
         if filtri.get("modello", "").isdigit()
@@ -113,13 +115,18 @@ def _contesto_collegamenti(request: HttpRequest) -> dict[str, str]:
 @richiede_permesso(F.TRACCIATURA_REGISTRA)
 def nuova(request: HttpRequest) -> HttpResponse:
     coll = _contesto_collegamenti(request)
-    ordine = Ordine.objects.filter(pk=coll["ordine"]).first() if coll["ordine"].isdigit() else None
+    ordine = (
+        committenti.filtra(Ordine.objects.filter(pk=coll["ordine"]), request).first()
+        if coll["ordine"].isdigit()
+        else None
+    )
     modello = None
     sel = (request.POST if request.method == "POST" else request.GET).get("modello", "")
     if sel.isdigit():
         modello = get_object_or_404(Modello, pk=int(sel), attivo=True)
     if request.method == "POST" and modello is not None:
         form_ordine = OrdineForm(request.POST)
+        form_ordine.fields["ordine"].base = committenti.filtra(Ordine.objects.all(), request)
         coll["ordine"] = form_ordine.cleaned_data.get("ordine") if form_ordine.is_valid() else None
         try:
             t = servizi.registra(
@@ -129,6 +136,7 @@ def nuova(request: HttpRequest) -> HttpResponse:
                 valori=request.POST,
                 files=request.FILES,
                 note=request.POST.get("note", ""),
+                committenti=committenti.ids(request),
             )
         except OperazioneNonConsentita as exc:
             messages.error(request, str(exc))
@@ -175,9 +183,15 @@ def nuova(request: HttpRequest) -> HttpResponse:
 
 
 # ------------------------------------------------------------------------------------------------- dettaglio
+def _tracciatura_o_404(request: HttpRequest, qs, pk: int) -> Tracciatura:  # type: ignore[no-untyped-def]
+    """Solo se è dell'intera azienda o di un committente che l'utente può vedere (con «Tutti»)."""
+    ids = list(committenti.accessibili(request.user).values_list("pk", flat=True))
+    return get_object_or_404(servizi.visibili(qs, ids), pk=pk)
+
+
 @richiede_permesso(F.TRACCIATURA_VEDERE)
 def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
-    t = get_object_or_404(Tracciatura.objects.select_related("modello", "operatore", "ordine", "ddt"), pk=pk)
+    t = _tracciatura_o_404(request, Tracciatura.objects.select_related("modello", "operatore", "ordine", "ddt"), pk)
     if request.method == "POST":
         try:
             servizi.annulla(request.user, t.pk, request.POST.get("motivo", ""))
@@ -203,6 +217,7 @@ def dettaglio(request: HttpRequest, pk: int) -> HttpResponse:
 @richiede_permesso(F.TRACCIATURA_VEDERE)
 def file(request: HttpRequest, pk: int) -> HttpResponse:
     v = get_object_or_404(Valore, pk=pk)
+    _tracciatura_o_404(request, Tracciatura.objects.all(), v.tracciatura_id)
     if not v.file:
         raise Http404
     try:
@@ -228,13 +243,11 @@ def pannello(request: HttpRequest) -> HttpResponse:
     qs = Tracciatura.objects.select_related("modello", "operatore").filter(annullata_il__isnull=True)
     codici: list[str] = []
     if ordine_id.isdigit():
-        from metodo.committenti import servizi as committenti
-
         ordine = committenti.ordine_o_404(request, int(ordine_id))
         qs = qs.filter(ordine=ordine)
         codici = list(ordine.righe.values_list("articolo", flat=True))
     elif ddt_id.isdigit():
-        qs = qs.filter(ddt_id=int(ddt_id))
+        qs = qs.filter(ddt=committenti.oggetto_o_404(request, DDT.objects.defer("file_contenuto"), int(ddt_id)))
     else:
         raise Http404
     previsti = servizi.modelli_per(codici, solo_specifici=True) if codici else []

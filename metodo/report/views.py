@@ -8,6 +8,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from metodo.committenti import servizi as committenti
 from metodo.configurazione import servizi as config
 from metodo.core.permessi import F, ha_permesso, richiede_permesso
 from metodo.ordini.servizi import OperazioneNonConsentita
@@ -48,10 +49,19 @@ def _xlsx(nome: str, intestazione: list[str], righe: list[list[object]]) -> Http
     return resp
 
 
+def _ambito(request: HttpRequest) -> dict[str, object]:
+    """Per l'avviso nei report: il committente scelto, se l'utente ne vede più d'uno."""
+    return {"committente_filtrato": committenti.filtrato(request)}
+
+
 @require_GET
 @richiede_permesso(F.REPORT_DASHBOARD)
 def dashboard(request: HttpRequest) -> HttpResponse:
-    return render(request, "report/dashboard.html", servizi.dashboard())
+    return render(
+        request,
+        "report/dashboard.html",
+        {**servizi.dashboard(committenti=committenti.ids(request)), **_ambito(request)},
+    )
 
 
 @require_GET
@@ -59,7 +69,10 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 def produttivita(request: HttpRequest) -> HttpResponse:
     fino_a = _data(request.GET.get("fino_a")) or timezone.localdate()
     settimane = servizi.settimane_indietro(_numero_settimane(request), fino_a)
-    dati = servizi.produttivita(settimane)
+    ambito = _ambito(request)
+    dati = servizi.produttivita(
+        settimane, committenti.ids(request), parziale=ambito["committente_filtrato"] is not None
+    )
     if request.GET.get("formato") == "xlsx":
         righe = [
             [
@@ -97,8 +110,13 @@ def produttivita(request: HttpRequest) -> HttpResponse:
             "categorie": servizi.CATEGORIE,
             "fino_a": fino_a,
             "n": len(settimane),
-            "dettaglio": servizi.produttivita_giornaliera(calendario.lunedi(giorno)) if giorno else None,
+            "dettaglio": (
+                servizi.produttivita_giornaliera(calendario.lunedi(giorno), committenti.ids(request))
+                if giorno
+                else None
+            ),
             "dettaglio_lunedi": calendario.lunedi(giorno) if giorno else None,
+            **ambito,
         },
     )
 
@@ -135,7 +153,9 @@ def ore_lavorate(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.REPORT_MATERIALE)
 def materiale(request: HttpRequest) -> HttpResponse:
     fino_a = _data(request.GET.get("fino_a")) or timezone.localdate()
-    righe, settimane = servizi.materiale_per_reparto(servizi.settimane_indietro(_numero_settimane(request), fino_a))
+    righe, settimane = servizi.materiale_per_reparto(
+        servizi.settimane_indietro(_numero_settimane(request), fino_a), committenti.ids(request)
+    )
     if request.GET.get("formato") == "xlsx":
         out = []
         for r in righe:
@@ -145,7 +165,7 @@ def materiale(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "report/materiale.html",
-        {"righe": righe, "settimane": settimane, "fino_a": fino_a, "n": len(settimane)},
+        {"righe": righe, "settimane": settimane, "fino_a": fino_a, "n": len(settimane), **_ambito(request)},
     )
 
 
@@ -163,6 +183,7 @@ def prezzi(request: HttpRequest) -> HttpResponse:
         numero_ddt=request.GET.get("ddt", ""),
         solo_differenze=request.GET.get("tutte") != "1",
         senza_riferimento=request.GET.get("senza_rif") == "1",
+        committenti=committenti.ids(request),
     )
     qs = servizi.controllo_prezzi(filtri)
     if request.GET.get("formato") == "xlsx":
@@ -206,6 +227,7 @@ def prezzi(request: HttpRequest) -> HttpResponse:
             "filtri": filtri,
             "pagina": Paginator(qs, 100).get_page(request.GET.get("pagina")),
             "totale": servizi.totale_differenze(qs),
+            **_ambito(request),
         },
     )
 
@@ -216,7 +238,7 @@ def settimane(request: HttpRequest) -> HttpResponse:
     """Dalla settimana corrente alle precedenti (quante: Configurazione → Produzione): ore in scadenza e consegnate."""
     fino_a = _data(request.GET.get("fino_a")) or timezone.localdate()
     n = _numero_settimane(request, default=min(int(config.leggi("produzione.report_settimane") or 9), 52))
-    dati = servizi.evaso_consegnato_per_settimana(servizi.settimane_indietro(n, fino_a))
+    dati = servizi.evaso_consegnato_per_settimana(servizi.settimane_indietro(n, fino_a), committenti.ids(request))
     if request.GET.get("formato") == "xlsx":
         intestazione = ["Settimana dal", "Al"]
         for rep in dati["reparti"]:
@@ -229,7 +251,7 @@ def settimane(request: HttpRequest) -> HttpResponse:
                 riga += [c["scadenza"], c["consegnato"]]
             out.append([*riga, r["tot_scadenza"], r["tot_consegnato"]])
         return _xlsx("EvasoConsegnatoPerSettimana.xlsx", intestazione, out)
-    return render(request, "report/settimane.html", {**dati, "fino_a": fino_a, "n": n})
+    return render(request, "report/settimane.html", {**dati, "fino_a": fino_a, "n": n, **_ambito(request)})
 
 
 # ------------------------------------------------------------------ controllo della produttività (settimanale)
@@ -261,7 +283,12 @@ def efficienza_reparti(request: HttpRequest) -> HttpResponse:
                 riga += [r["costo"], r["costo_ora_prodotta"]]
             out.append(riga)
         return _xlsx("EfficienzaPerReparto.xlsx", intestazione, out)
-    return render(request, "report/efficienza_reparti.html", {**dati, "fino_a": fino_a, "n": len(settimane)})
+    # Le ore timbrate sono di tutta l'azienda: il confronto si fa sempre su tutti i clienti committenti.
+    return render(
+        request,
+        "report/efficienza_reparti.html",
+        {**dati, "fino_a": fino_a, "n": len(settimane), "tutta_azienda": _ambito(request)["committente_filtrato"]},
+    )
 
 
 @require_GET
@@ -269,7 +296,7 @@ def efficienza_reparti(request: HttpRequest) -> HttpResponse:
 def puntualita(request: HttpRequest) -> HttpResponse:
     """Consegne puntuali o in ritardo e arretrato a fine settimana."""
     fino_a, settimane = _periodo(request)
-    righe = servizi.puntualita_arretrato(settimane)
+    righe = servizi.puntualita_arretrato(settimane, committenti.ids(request))
     if request.GET.get("formato") == "xlsx":
         return _xlsx(
             "PuntualitaArretrato.xlsx",
@@ -307,6 +334,7 @@ def puntualita(request: HttpRequest) -> HttpResponse:
             "fino_a": fino_a,
             "n": len(settimane),
             "resa_configurata": bool(config.leggi("produzione.prezzo_resa_oraria")),
+            **_ambito(request),
         },
     )
 

@@ -15,7 +15,7 @@ Le righe scorporate non si fatturano; le righe senza prezzo vanno corrette nell'
 {% for m in mesi %}
 <form method="post" class="card mb-3">{% csrf_token %}
   <div class="card-header d-flex flex-wrap align-items-center gap-2">
-    <span class="me-auto fw-semibold text-capitalize">{{ m.mese|date:"F Y" }}</span>
+    <span class="me-auto fw-semibold"><span class="text-capitalize">{{ m.mese|date:"F Y" }}</span>{% if committenti_utente %} · {% include "committenti/_badge.html" with c=m.committente %}{% endif %}</span>
     <span class="small {% if m.in_ritardo %}text-danger fw-semibold{% else %}text-muted{% endif %}">emettere entro il {{ m.termine|date:"d/m/Y" }}</span>
   </div>
   <div class="table-responsive"><table class="table table-sm mb-0 align-middle"><thead><tr>

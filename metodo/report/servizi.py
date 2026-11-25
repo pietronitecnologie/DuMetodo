@@ -52,19 +52,34 @@ def categoria(appendice: str) -> str:
 CATEGORIE = ("Pulsanti (T)", "Elettronica (R)", "Conto lavoro", "Ordini Cliente", "Altro")
 
 
+Committenti = list[int] | None  # id dei clienti committenti da considerare; None = tutti
+
+
+def _righe(committenti: Committenti) -> QuerySet[RigaOrdine]:
+    qs = RigaOrdine.objects.all()
+    return qs if committenti is None else qs.filter(ordine__committente__in=committenti)
+
+
+def _ordini(committenti: Committenti) -> QuerySet[Ordine]:
+    qs = Ordine.objects.all()
+    return qs if committenti is None else qs.filter(committente__in=committenti)
+
+
 def settimane_indietro(n: int, fino_a: dt.date | None = None) -> list[dt.date]:
     ultimo = calendario.lunedi(fino_a or timezone.localdate())
     return [ultimo - dt.timedelta(weeks=i) for i in range(n - 1, -1, -1)]
 
 
 # ----------------------------------------------------------------------------------------- dashboard
-def dashboard(oggi: dt.date | None = None) -> dict[str, Any]:
+def dashboard(oggi: dt.date | None = None, committenti: Committenti = None) -> dict[str, Any]:
     oggi = oggi or timezone.localdate()
-    per_stato = dict(Ordine.objects.filter(stato__in=APERTI).values_list("stato").annotate(n=Count("pk")))
-    in_ritardo = Ordine.objects.filter(stato__in=APERTI, data_scadenza__lt=oggi)
+    ordini = _ordini(committenti)
+    per_stato = dict(ordini.filter(stato__in=APERTI).values_list("stato").annotate(n=Count("pk")))
+    in_ritardo = ordini.filter(stato__in=APERTI, data_scadenza__lt=oggi)
     settimane = settimane_indietro(12, oggi)
     consegnate = (
-        RigaOrdine.objects.filter(bolla_emessa=True, data_consegna__gte=settimane[0])
+        _righe(committenti)
+        .filter(bolla_emessa=True, data_consegna__gte=settimane[0])
         .exclude(stato=StatoRiga.ANNULLATA)
         .values_list("data_consegna", "qta", "prezzo_unitario")
     )
@@ -75,16 +90,16 @@ def dashboard(oggi: dt.date | None = None) -> dict[str, Any]:
         pezzi[lun] += qta
         valore[lun] += qta * (prezzo or 0)
     massimo = max(pezzi.values(), default=ZERO) or Decimal(1)
-    p = piano.calcola()
+    p = piano.calcola(committenti=committenti)
     carico = sum((r.settimane[0].ore for r in p.righe), ZERO) if p.righe else ZERO
     capacita = sum((r.settimane[0].capacita or ZERO for r in p.righe), ZERO)
     return {
         "per_stato": [(StatoOrdine(s).label, per_stato.get(s, 0)) for s in APERTI],
         "in_ritardo": in_ritardo.count(),
-        "prossime": Ordine.objects.filter(stato__in=APERTI, data_scadenza__gte=oggi).order_by("data_scadenza")[:10],
+        "prossime": ordini.filter(stato__in=APERTI, data_scadenza__gte=oggi).order_by("data_scadenza")[:10],
         "ritardi": in_ritardo.order_by("data_scadenza")[:10],
-        "da_consegnare": ordini_da_consegnare().count(),
-        "senza_ddt": RigaConsegnata.objects.filter(ddt__isnull=True).count(),
+        "da_consegnare": ordini_da_consegnare().filter(pk__in=ordini.values("pk")).count(),
+        "senza_ddt": RigaConsegnata.objects.filter(ddt__isnull=True, riga__in=_righe(committenti)).count(),
         "problemi_importazione": ProblemaImportazione.objects.filter(gestito=False).count(),
         "email_in_errore": EmailInUscita.objects.filter(stato__in=[StatoEmail.ERRORE, StatoEmail.FALLITA]).count(),
         "settimane": [
@@ -109,6 +124,8 @@ class SettimanaProduttivita:
     pezzi: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: ZERO))
     valore: Decimal = ZERO
     ore_lavorate: Decimal | None = None
+    # Con un solo committente le ore lavorate (di tutta l'azienda) non sono confrontabili con i suoi pezzi.
+    parziale: bool = False
 
     @property
     def per_categoria(self) -> list[Decimal]:
@@ -124,26 +141,35 @@ class SettimanaProduttivita:
 
     @property
     def pezzi_ora(self) -> Decimal | None:
-        return (self.pezzi_totali / self.ore_lavorate).quantize(Decimal("0.01")) if self.ore_lavorate else None
+        if self.parziale or not self.ore_lavorate:
+            return None
+        return (self.pezzi_totali / self.ore_lavorate).quantize(Decimal("0.01"))
 
     @property
     def efficienza(self) -> Decimal | None:
         """Ore teoriche consegnate / ore lavorate."""
         t = self.ore_teoriche
+        if self.parziale:
+            return None
         return (t / self.ore_lavorate * 100).quantize(Decimal("0.1")) if t is not None and self.ore_lavorate else None
 
 
-def _righe_consegnate(dal: dt.date, al: dt.date) -> QuerySet[RigaOrdine]:
+def _righe_consegnate(dal: dt.date, al: dt.date, committenti: Committenti = None) -> QuerySet[RigaOrdine]:
     """Righe consegnate nel periodo; escluse annullate e scorporate (come l'analisi di Metodo)."""
-    return RigaOrdine.objects.filter(bolla_emessa=True, data_consegna__range=(dal, al), scorporata=False).exclude(
-        stato=StatoRiga.ANNULLATA
+    return (
+        _righe(committenti)
+        .filter(bolla_emessa=True, data_consegna__range=(dal, al), scorporata=False)
+        .exclude(stato=StatoRiga.ANNULLATA)
     )
 
 
-def produttivita(settimane: list[dt.date]) -> list[SettimanaProduttivita]:
-    risultato = {s: SettimanaProduttivita(s) for s in settimane}
+def produttivita(
+    settimane: list[dt.date], committenti: Committenti = None, parziale: bool = False
+) -> list[SettimanaProduttivita]:
+    """``parziale``: i committenti sono solo una parte dell'azienda (niente efficienza né pezzi/ora)."""
+    risultato = {s: SettimanaProduttivita(s, parziale=parziale) for s in settimane}
     dal, al = settimane[0], settimane[-1] + dt.timedelta(days=6)
-    for data, qta, prezzo, appendice in _righe_consegnate(dal, al).values_list(
+    for data, qta, prezzo, appendice in _righe_consegnate(dal, al, committenti).values_list(
         "data_consegna", "qta", "prezzo_unitario", "ordine__appendice"
     ):
         s = risultato[calendario.lunedi(data)]
@@ -154,9 +180,9 @@ def produttivita(settimane: list[dt.date]) -> list[SettimanaProduttivita]:
     return list(risultato.values())
 
 
-def produttivita_giornaliera(lunedi: dt.date) -> list[dict[str, Any]]:
+def produttivita_giornaliera(lunedi: dt.date, committenti: Committenti = None) -> list[dict[str, Any]]:
     giorni = {lunedi + dt.timedelta(days=i): defaultdict(lambda: ZERO) for i in range(7)}
-    for data, qta, appendice in _righe_consegnate(lunedi, lunedi + dt.timedelta(days=6)).values_list(
+    for data, qta, appendice in _righe_consegnate(lunedi, lunedi + dt.timedelta(days=6), committenti).values_list(
         "data_consegna", "qta", "ordine__appendice"
     ):
         giorni[data][categoria(appendice)] += qta
@@ -188,7 +214,9 @@ def salva_ore_lavorate(lunedi: dt.date, ore: str, utente: Any, note: str = "") -
 
 
 # ----------------------------------------------------------------------------------------- materiale
-def materiale_per_reparto(settimane: list[dt.date]) -> tuple[list[dict[str, Any]], list[dt.date]]:
+def materiale_per_reparto(
+    settimane: list[dt.date], committenti: Committenti = None
+) -> tuple[list[dict[str, Any]], list[dt.date]]:
     """Per reparto e settimana: ore 'a scadenza' (righe con scadenza nella settimana) e ore 'consegnate'
     (righe consegnate nella settimana). Righe annullate/sostituite escluse."""
     dal, al = settimane[0], settimane[-1] + dt.timedelta(days=6)
@@ -196,7 +224,7 @@ def materiale_per_reparto(settimane: list[dt.date]) -> tuple[list[dict[str, Any]
     dati: dict[str, dict[dt.date, dict[str, Decimal]]] = defaultdict(
         lambda: {s: {"scadenza": ZERO, "consegnato": ZERO} for s in settimane}
     )
-    righe = RigaOrdine.objects.filter(stato=StatoRiga.ATTIVA).exclude(prezzo_unitario=None)
+    righe = _righe(committenti).filter(stato=StatoRiga.ATTIVA).exclude(prezzo_unitario=None)
     for art, qta, prezzo, data in righe.filter(data_scadenza__range=(dal, al)).values_list(
         "articolo", "qta", "prezzo_unitario", "data_scadenza"
     ):
@@ -219,11 +247,11 @@ def materiale_per_reparto(settimane: list[dt.date]) -> tuple[list[dict[str, Any]
     return righe_out, settimane
 
 
-def evaso_consegnato_per_settimana(settimane: list[dt.date]) -> dict[str, Any]:
+def evaso_consegnato_per_settimana(settimane: list[dt.date], committenti: Committenti = None) -> dict[str, Any]:
     """Una riga per settimana (dalla più recente) e una colonna per reparto: ore in scadenza e ore consegnate.
 
     Stessi dati di ``materiale_per_reparto``, girati: ore = valore / resa oraria."""
-    per_reparto, _ = materiale_per_reparto(settimane)
+    per_reparto, _ = materiale_per_reparto(settimane, committenti)
     reparti = [r["reparto"] for r in per_reparto]
     righe = []
     for i, lunedi in reversed(list(enumerate(settimane))):
@@ -263,6 +291,7 @@ class FiltriPrezzi:
     numero_ddt: str = ""
     solo_differenze: bool = True
     senza_riferimento: bool = False
+    committenti: list[int] | None = None
 
 
 def controllo_prezzi(f: FiltriPrezzi) -> QuerySet[RigaOrdine]:
@@ -272,7 +301,7 @@ def controllo_prezzi(f: FiltriPrezzi) -> QuerySet[RigaOrdine]:
     - lavorazione: righe non ancora in bolla di ordini aperti (Inserito, Lavorato, In spedizione, Parziale),
       per accorgersi di un prezzo sbagliato PRIMA che vada in bolla (in Metodo era un report separato)."""
     rif = Articolo.objects.filter(codice=OuterRef("articolo")).values("prezzo_riferimento")[:1]
-    qs = RigaOrdine.objects.filter(stato=StatoRiga.ATTIVA).select_related("ordine")
+    qs = _righe(f.committenti).filter(stato=StatoRiga.ATTIVA).select_related("ordine")
     if f.origine == "lavorazione":
         qs = qs.filter(bolla_emessa=False, ordine__stato__in=APERTI)
         campo_data = "data_scadenza"
@@ -403,7 +432,7 @@ def efficienza_reparti(settimane: list[dt.date], con_costi: bool = False) -> dic
     }
 
 
-def puntualita_arretrato(settimane: list[dt.date]) -> list[dict[str, Any]]:
+def puntualita_arretrato(settimane: list[dt.date], committenti: Committenti = None) -> list[dict[str, Any]]:
     """Per settimana: righe consegnate entro la scadenza o in ritardo (con il ritardo medio in giorni) e
     arretrato a fine settimana (righe già scadute e non ancora consegnate a quella data)."""
     from django.db.models import DecimalField, ExpressionWrapper
@@ -419,7 +448,8 @@ def puntualita_arretrato(settimane: list[dt.date]) -> list[dict[str, Any]]:
         puntuali = ritardo = 0
         giorni_ritardo = 0
         for consegna, scadenza in (
-            RigaOrdine.objects.filter(bolla_emessa=True, data_consegna__range=(lun, dom))
+            _righe(committenti)
+            .filter(bolla_emessa=True, data_consegna__range=(lun, dom))
             .exclude(stato=StatoRiga.ANNULLATA)
             .values_list("data_consegna", "data_scadenza")
         ):
@@ -435,7 +465,8 @@ def puntualita_arretrato(settimane: list[dt.date]) -> list[dict[str, Any]]:
             timezone.now() if riferimento >= oggi else timezone.make_aware(dt.datetime.combine(riferimento, dt.time()))
         )
         arretrato = (
-            RigaOrdine.objects.filter(stato=StatoRiga.ATTIVA, data_scadenza__lt=riferimento, creato_il__lt=fine)
+            _righe(committenti)
+            .filter(stato=StatoRiga.ATTIVA, data_scadenza__lt=riferimento, creato_il__lt=fine)
             .filter(Q(bolla_emessa=False) | Q(data_consegna__gte=riferimento))
             .aggregate(n=Count("pk"), valore=Sum(valore))
         )

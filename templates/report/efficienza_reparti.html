@@ -2,6 +2,7 @@
 {% block titolo %}Efficienza per reparto{% endblock %}
 {% block contenuto %}
 <h1 class="h4">Efficienza per reparto</h1>
+{% if tutta_azienda %}<div class="alert alert-info py-2 small">Questo report è sempre dell'intera azienda (tutti i clienti committenti): le ore timbrate non sono divise per cliente.</div>{% endif %}
 <p class="small text-muted">Per ogni settimana, dalla più recente: <strong>ore timbrate</strong> nel reparto (Timbrature) e <strong>ore prodotte</strong>,
 cioè il valore delle righe consegnate di articoli del reparto diviso la resa oraria. <strong>Efficienza</strong> = ore prodotte / ore timbrate:
 verde da 95%, giallo da 80%, rosso sotto. Le ore timbrate fuori da ogni reparto e le consegne di articoli senza reparto contano solo nel totale.</p>

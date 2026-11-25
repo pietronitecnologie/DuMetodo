@@ -136,7 +136,7 @@ def seleziona(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.ORDINI_VEDERE)
 def vai(request: HttpRequest) -> HttpResponse:
     """Ricerca rapida della barra in alto: apre l'ordine scelto."""
-    campo = selezione.CampoOrdine(required=False)
+    campo = selezione.CampoOrdine(required=False, base=committenti.filtra(Ordine.objects.all(), request))
     try:
         ordine = campo.clean(campo.widget.value_from_datadict(request.GET, None, "ordine"))
     except forms.ValidationError:

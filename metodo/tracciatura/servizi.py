@@ -282,8 +282,10 @@ def registra(
     valori: Mapping[str, Any],
     files: Mapping[str, UploadedFile] | None = None,
     note: str = "",
+    committenti: list[int] | None = None,
 ) -> Tracciatura:
-    """Registra una tracciatura. ``valori`` e ``files`` hanno chiave ``campo_<id>``; ``collegamenti`` ha
+    """Registra una tracciatura. ``committenti``: i clienti committenti di cui si possono collegare ordini e DDT
+    (``None`` = tutti). ``valori`` e ``files`` hanno chiave ``campo_<id>``; ``collegamenti`` ha
     ``ordine`` (Ordine o pk), ``ddt`` (numero/anno), ``componente``, ``articolo``, ``lotto``, ``riferimento``."""
     _richiedi(utente, F.TRACCIATURA_REGISTRA)
     modello = Modello.objects.get(pk=modello_id)
@@ -314,6 +316,11 @@ def registra(
         presente = getattr(t, c.value) not in (None, "")
         if uso == "O" and not presente:
             errori.append(f"{c.label}: obbligatorio per «{modello}».")
+    di = {x.committente_id for x in (t.ordine, t.ddt) if x is not None}
+    if committenti is not None and di - set(committenti):
+        errori.append("L'ordine o il DDT indicato non è di un cliente committente che puoi vedere.")
+    elif len(di) > 1:
+        errori.append("Ordine e DDT sono di clienti committenti diversi.")
     codici = [t.componente, t.articolo]
     if t.ordine is not None and not any(codici):
         codici = list(t.ordine.righe.values_list("articolo", flat=True))
@@ -371,8 +378,20 @@ def annulla(utente: Any, tracciatura_id: int, motivo: str) -> Tracciatura:
 
 
 # --------------------------------------------------------------------------------------------------- ricerca
-def cerca(filtri: Mapping[str, str]) -> QuerySet[Tracciatura]:
-    qs = Tracciatura.objects.select_related("modello", "operatore", "ordine", "ddt")
+def visibili(qs: QuerySet[Tracciatura], committenti: list[int] | None) -> QuerySet[Tracciatura]:
+    """Tracciature di ordini e DDT dei committenti indicati, più quelle non legate a un cliente (materiali in
+    ingresso, lotti, riferimenti liberi), che sono dell'intera azienda. ``None`` = tutte."""
+    if committenti is None:
+        return qs
+    return qs.filter(
+        Q(ordine__committente__in=committenti)
+        | Q(ddt__committente__in=committenti)
+        | Q(ordine__isnull=True, ddt__isnull=True)
+    )
+
+
+def cerca(filtri: Mapping[str, str], committenti: list[int] | None = None) -> QuerySet[Tracciatura]:
+    qs = visibili(Tracciatura.objects.select_related("modello", "operatore", "ordine", "ddt"), committenti)
     f = {k: (v or "").strip() for k, v in filtri.items()}
     if f.get("modello", "").isdigit():
         qs = qs.filter(modello_id=int(f["modello"]))

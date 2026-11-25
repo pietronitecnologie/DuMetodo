@@ -74,6 +74,42 @@ def filtra(qs: QuerySet[Any], request: Any, campo: str = "committente") -> Query
     return qs.filter(**{f"{campo}__in": accessibili(request.user)})
 
 
+def ids(request: Any) -> list[int]:
+    """Gli id dei committenti da mostrare: il corrente, oppure (con «Tutti») tutti quelli dell'utente.
+
+    È la forma che i servizi (report, piano, gestionale) ricevono al posto della richiesta."""
+    c = corrente(request)
+    return [c.pk] if c is not None else list(accessibili(request.user).values_list("pk", flat=True))
+
+
+def filtrato(request: Any) -> Committente | None:
+    """Il committente scelto dal selettore, solo se l'utente ne vede più d'uno (i dati mostrati sono parziali)."""
+    c = corrente(request)
+    return c if c is not None and accessibili(request.user).count() > 1 else None
+
+
+def limita(qs: QuerySet[Any], committenti: Any, campo: str = "committente") -> QuerySet[Any]:
+    """Filtro dei servizi: ``committenti`` è una lista di id (da ``ids``) oppure ``None`` = nessun filtro."""
+    if committenti is None:
+        return qs
+    return qs.filter(**{f"{campo}__in": list(committenti)})
+
+
+def oggetto_o_404(request: Any, qs: QuerySet[Any], pk: int, campo: str = "committente") -> Any:
+    """Un oggetto legato a un committente (DDT, fattura…), solo se l'utente può vedere quel committente."""
+    from django.shortcuts import get_object_or_404
+
+    return get_object_or_404(qs.filter(**{f"{campo}__in": accessibili(request.user)}), pk=pk)
+
+
+def controlla_ids(request: Any, qs: QuerySet[Any], ids: list[int], campo: str = "committente") -> list[int]:
+    """Gli id inviati da un modulo, solo se sono tutti di committenti che l'utente può vedere."""
+    visibili = set(qs.filter(pk__in=ids, **{f"{campo}__in": accessibili(request.user)}).values_list("pk", flat=True))
+    if len(visibili) != len(set(ids)):
+        raise OperazioneNonConsentita("Alcuni elementi selezionati non sono disponibili: ricarica la pagina.")
+    return ids
+
+
 def puo_vedere(request: Any, committente_id: int) -> bool:
     return accessibili(request.user).filter(pk=committente_id).exists()
 

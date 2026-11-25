@@ -49,7 +49,7 @@ def aggiorna_soglia(reparto_id: int, valore: str, utente: Any) -> Reparto:
 
 
 # ----------------------------------------------------------------------------------------- commesse bloccate
-def commesse_bloccate() -> list[dict[str, object]]:
+def commesse_bloccate(committenti: list[int] | None = None) -> list[dict[str, object]]:
     parole = [p.strip().lower() for p in config.leggi("pianificazione.parole_bloccanti").split(",") if p.strip()]
     if not parole:
         return []
@@ -72,6 +72,8 @@ def commesse_bloccate() -> list[dict[str, object]]:
         .annotate(pezzi=Subquery(pezzi))
         .order_by("data_scadenza", "anno", "serie", "numero", "appendice")
     )
+    if committenti is not None:
+        ordini = ordini.filter(committente__in=committenti)
     testi: dict[int, list[str]] = defaultdict(list)
     for ordine_id, testo in note.filter(ordine__in=ordini).order_by("creata_il").values_list("ordine_id", "testo"):
         testi[ordine_id].append(testo)
@@ -88,9 +90,11 @@ def commesse_bloccate() -> list[dict[str, object]]:
     ]
 
 
-def genera_xlsx(adesso: dt.datetime | None = None) -> tuple[str, bytes, piano.Piano]:
-    p = piano.calcola(adesso)
-    return f"pianificazione_{p.generato_il:%Y%m%d}.xlsx", report_xlsx.genera(p, commesse_bloccate()), p
+def genera_xlsx(
+    adesso: dt.datetime | None = None, committenti: list[int] | None = None
+) -> tuple[str, bytes, piano.Piano]:
+    p = piano.calcola(adesso, committenti)
+    return f"pianificazione_{p.generato_il:%Y%m%d}.xlsx", report_xlsx.genera(p, commesse_bloccate(committenti)), p
 
 
 # ----------------------------------------------------------------------------------------- report email
@@ -240,9 +244,13 @@ def _voci(righe: QuerySet[RigaOrdine]) -> tuple[list[VoceTabulato], Decimal]:
     return voci, totale
 
 
-def tabulato_settimanale(reparto: Reparto, lunedi: dt.date) -> tuple[list[VoceTabulato], Decimal]:
+def tabulato_settimanale(
+    reparto: Reparto, lunedi: dt.date, committenti: list[int] | None = None
+) -> tuple[list[VoceTabulato], Decimal]:
     dal, al = calendario.settimana(lunedi)
     ordini = _ordini_tabulato(dal, al, (StatoOrdine.INSERITO, StatoOrdine.EVASIONE_PARZIALE))
+    if committenti is not None:
+        ordini = ordini.filter(committente__in=committenti)
     righe = RigaOrdine.objects.attive().filter(
         ordine__in=ordini,
         bolla_emessa=False,

@@ -463,6 +463,10 @@ def crea_fatture_differite(
     ddts = list(DDT.objects.select_for_update().filter(pk__in=ids).order_by("data", "progressivo", "numero"))
     if len(ddts) != len(ids) or any(d.annullato for d in ddts):
         raise OperazioneNonConsentita("Alcuni DDT non esistono più o sono annullati: ricarica la pagina.")
+    if len({d.committente_id for d in ddts}) > 1:
+        raise OperazioneNonConsentita(
+            "I DDT selezionati sono di più clienti committenti: una fattura è di un solo cliente."
+        )
     mesi = {(d.data.year, d.data.month) for d in ddts}
     if len(mesi) > 1:
         raise OperazioneNonConsentita("La fattura differita raccoglie i DDT di un solo mese: selezionali per mese.")
@@ -520,7 +524,9 @@ def crea_fatture_differite(
 
 def _crea_bozza(utente: Any, data: dt.date, voci: list[tuple[DDT, RigaConsegnata]]) -> Fattura:
     aliquota, natura = _iva()
-    fattura = Fattura.objects.create(tipo="TD24", data=data, anno=data.year, creata_da=utente)
+    fattura = Fattura.objects.create(
+        tipo="TD24", data=data, anno=data.year, creata_da=utente, committente_id=voci[0][0].committente_id
+    )
     articoli = _descrizione_articoli({rc.riga.articolo for _, rc in voci})
     for n, (ddt, rc) in enumerate(voci, start=1):
         r = rc.riga
@@ -714,6 +720,7 @@ def nota_di_credito(utente: Any, fattura_id: int) -> Fattura:
         data=oggi,
         anno=oggi.year,
         fattura_collegata=origine,
+        committente_id=origine.committente_id,
         causale=f"Storno fattura n. {origine.numero} del {origine.data:%d/%m/%Y}",
         creata_da=utente,
     )

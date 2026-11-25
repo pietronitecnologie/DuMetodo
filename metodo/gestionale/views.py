@@ -7,16 +7,17 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Count
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
+from metodo.committenti import servizi as committenti
 from metodo.configurazione import servizi as config
 from metodo.configurazione.forms import ParametriGruppoForm
 from metodo.configurazione.models import ValoreParametro
 from metodo.configurazione.registro import GRUPPI_GESTIONALE
-from metodo.consegne.models import DDT, OrigineDDT
+from metodo.consegne.models import DDT, OrigineDDT, RigaConsegnata
 from metodo.core.permessi import F, ha_permesso, richiede_permesso
 from metodo.ordini.servizi import OperazioneNonConsentita
 
@@ -48,22 +49,36 @@ def _permessi(request: HttpRequest) -> dict[str, bool]:
     }
 
 
+def _ddt(request: HttpRequest, qs: Any = None) -> Any:
+    """DDT del committente corrente (o di tutti quelli dell'utente)."""
+    return committenti.filtra(qs if qs is not None else DDT.objects.all(), request)
+
+
+def _fatture(request: HttpRequest) -> Any:
+    return committenti.filtra(Fattura.objects.all(), request)
+
+
+def _righe_da_emettere(request: HttpRequest) -> Any:
+    return committenti.filtra(servizi.righe_da_emettere(), request, "riga__ordine__committente")
+
+
 @require_GET
 @richiede_permesso(F.GESTIONALE_VEDERE)
 def indice(request: HttpRequest) -> HttpResponse:
     anno = timezone.localdate().year
+    fatture = _fatture(request)
     return render(
         request,
         "gestionale/indice.html",
         {
             **_permessi(request),
-            "righe_da_emettere": servizi.righe_da_emettere().count(),
-            "ddt_da_fatturare": servizi.ddt_da_fatturare().count(),
-            "bozze": Fattura.objects.filter(stato=StatoFattura.BOZZA).count(),
-            "da_inviare": Fattura.objects.filter(stato=StatoFattura.EMESSA, stato_sdi=StatoSdI.DA_INVIARE).count(),
-            "scartate": Fattura.objects.filter(stato_sdi=StatoSdI.SCARTATA).count(),
-            "ddt_anno": DDT.objects.filter(origine=OrigineDDT.INTERNO, anno=anno, annullato_il=None).count(),
-            "fatture_anno": Fattura.objects.filter(stato=StatoFattura.EMESSA, anno=anno).exclude(tipo="TD04").count(),
+            "righe_da_emettere": _righe_da_emettere(request).count(),
+            "ddt_da_fatturare": _ddt(request, servizi.ddt_da_fatturare()).count(),
+            "bozze": fatture.filter(stato=StatoFattura.BOZZA).count(),
+            "da_inviare": fatture.filter(stato=StatoFattura.EMESSA, stato_sdi=StatoSdI.DA_INVIARE).count(),
+            "scartate": fatture.filter(stato_sdi=StatoSdI.SCARTATA).count(),
+            "ddt_anno": _ddt(request).filter(origine=OrigineDDT.INTERNO, anno=anno, annullato_il=None).count(),
+            "fatture_anno": fatture.filter(stato=StatoFattura.EMESSA, anno=anno).exclude(tipo="TD04").count(),
             "anno": anno,
             "problemi_ddt": servizi.problemi_dati_ddt(),
             "problemi_fatture": servizi.problemi_dati_fattura(),
@@ -79,7 +94,7 @@ def ddt_emetti(request: HttpRequest) -> HttpResponse:
         valori, d = emetti_da_richiesta(request)
         if d is not None:
             return redirect("gestionale:ddt", d.pk)
-    righe = list(servizi.righe_da_emettere())
+    righe = list(_righe_da_emettere(request))
     gruppi = [(o, list(rr)) for o, rr in groupby(righe, key=lambda rc: rc.riga.ordine)]
     return render(
         request,
@@ -109,7 +124,12 @@ def emetti_da_richiesta(request: HttpRequest) -> tuple[dict[str, Any], Any]:
         data = _data(p.get("data", ""))
         colli = int(p["colli"]) if p.get("colli", "").strip() else None
         peso = Decimal(p["peso_kg"].replace(",", ".")) if p.get("peso_kg", "").strip() else None
-        ids = [int(i) for i in p.getlist("riga") if i.isdigit()]
+        ids = committenti.controlla_ids(
+            request,
+            RigaConsegnata.objects.all(),
+            [int(i) for i in p.getlist("riga") if i.isdigit()],
+            "riga__ordine__committente",
+        )
         d = servizi.emetti_ddt(
             request.user, ids, data, {**valori, "colli": colli, "peso_kg": peso}, _numerazione(request)
         )
@@ -147,12 +167,18 @@ def contesto_trasporto(valori: dict[str, Any]) -> dict[str, Any]:
 def ddt_lista(request: HttpRequest) -> HttpResponse:
     anno = request.GET.get("anno", "")
     origine = request.GET.get("origine", "")
-    qs = DDT.objects.defer("file_contenuto").annotate(n_righe=Count("righe")).order_by("-anno", "-data", "-id")
+    qs = (
+        _ddt(request)
+        .select_related("committente")
+        .defer("file_contenuto")
+        .annotate(n_righe=Count("righe"))
+        .order_by("-anno", "-data", "-id")
+    )
     if anno.isdigit():
         qs = qs.filter(anno=int(anno))
     if origine in OrigineDDT.values:
         qs = qs.filter(origine=origine)
-    anni = DDT.objects.values_list("anno", flat=True).distinct().order_by("-anno")
+    anni = _ddt(request).values_list("anno", flat=True).distinct().order_by("-anno")
     return render(
         request,
         "gestionale/ddt_lista.html",
@@ -169,7 +195,7 @@ def ddt_lista(request: HttpRequest) -> HttpResponse:
 
 @richiede_permesso(F.GESTIONALE_VEDERE)
 def ddt(request: HttpRequest, pk: int) -> HttpResponse:
-    d = get_object_or_404(DDT.objects.defer("file_contenuto"), pk=pk)
+    d = committenti.oggetto_o_404(request, DDT.objects.defer("file_contenuto"), pk)
     if request.method == "POST":
         try:
             servizi.annulla_ddt(request.user, d.pk, request.POST.get("motivo", ""))
@@ -197,7 +223,7 @@ def ddt(request: HttpRequest, pk: int) -> HttpResponse:
 @require_GET
 @richiede_permesso(F.GESTIONALE_VEDERE, F.DDT)  # la stampa accompagna la merce: serve anche in Spedizioni
 def ddt_stampa(request: HttpRequest, pk: int) -> HttpResponse:
-    d = get_object_or_404(DDT.objects.defer("file_contenuto"), pk=pk, origine=OrigineDDT.INTERNO)
+    d = committenti.oggetto_o_404(request, DDT.objects.defer("file_contenuto").filter(origine=OrigineDDT.INTERNO), pk)
     return render(request, "gestionale/ddt_stampa.html", {"d": d, "doc": d.documento})
 
 
@@ -211,7 +237,9 @@ def da_fatturare(request: HttpRequest) -> HttpResponse:
             tipo_data = p.get("tipo_data", "scelta")
             data = _data(p.get("data", "")) if tipo_data == "scelta" else None
             max_righe = int(p["max_righe"]) if p.get("max_righe", "").strip() else None
-            ids = [int(i) for i in p.getlist("ddt") if i.isdigit()]
+            ids = committenti.controlla_ids(
+                request, DDT.objects.all(), [int(i) for i in p.getlist("ddt") if i.isdigit()]
+            )
             bozze = servizi.crea_fatture_differite(
                 request.user,
                 ids,
@@ -234,15 +262,22 @@ def da_fatturare(request: HttpRequest) -> HttpResponse:
                 "controllale ed emettile (anche tutte insieme, in ordine di data).",
             )
             return redirect(f"{reverse('gestionale:fatture')}?stato=BOZ")
-    ddts = list(servizi.ddt_da_fatturare().annotate(n_righe=Count("righe")))
+    ddts = list(
+        _ddt(request, servizi.ddt_da_fatturare()).select_related("committente").annotate(n_righe=Count("righe"))
+    )
+    # Una fattura è di un solo cliente committente: i gruppi sono per committente e mese.
+    ddts.sort(key=lambda d: (d.committente.nome, d.committente_id, d.data.year, d.data.month))
     mesi = []
-    for (anno, mese), gruppo in groupby(ddts, key=lambda d: (d.data.year, d.data.month)):
+    for (_, committente_id, anno, mese), gruppo in groupby(
+        ddts, key=lambda d: (d.committente.nome, d.committente_id, d.data.year, d.data.month)
+    ):
         lista = list(gruppo)
         ultimo = max(d.data for d in lista)
         termine = servizi.scadenza_fattura_differita(ultimo)
         mesi.append(
             {
-                "chiave": f"{anno}-{mese:02d}",
+                "chiave": f"{committente_id}-{anno}-{mese:02d}",
+                "committente": lista[0].committente,
                 "anno": anno,
                 "mese": dt.date(anno, mese, 1),
                 "ddt": lista,
@@ -261,8 +296,10 @@ def da_fatturare(request: HttpRequest) -> HttpResponse:
 @richiede_permesso(F.GESTIONALE_VEDERE)
 def fatture(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
-        ids = [int(i) for i in request.POST.getlist("bozza") if i.isdigit()]
         try:
+            ids = committenti.controlla_ids(
+                request, Fattura.objects.all(), [int(i) for i in request.POST.getlist("bozza") if i.isdigit()]
+            )
             emesse, problema = servizi.emetti_bozze(request.user, ids, _numerazione(request))
         except OperazioneNonConsentita as exc:
             messages.error(request, str(exc))
@@ -274,7 +311,7 @@ def fatture(request: HttpRequest) -> HttpResponse:
             if problema:
                 messages.error(request, f"Emissione interrotta. {problema}")
         return redirect(request.get_full_path())
-    qs = Fattura.objects.select_related("fattura_collegata").order_by("-anno", "-progressivo", "-id")
+    qs = _fatture(request).select_related("fattura_collegata", "committente").order_by("-anno", "-progressivo", "-id")
     anno, stato, sdi = request.GET.get("anno", ""), request.GET.get("stato", ""), request.GET.get("sdi", "")
     if anno.isdigit():
         qs = qs.filter(anno=int(anno))
@@ -287,7 +324,7 @@ def fatture(request: HttpRequest) -> HttpResponse:
         "gestionale/fatture.html",
         {
             "pagina": Paginator(qs, 50).get_page(request.GET.get("pagina")),
-            "anni": Fattura.objects.values_list("anno", flat=True).distinct().order_by("-anno"),
+            "anni": _fatture(request).values_list("anno", flat=True).distinct().order_by("-anno"),
             "anno": anno,
             "stato": stato,
             "sdi": sdi,
@@ -301,7 +338,9 @@ def fatture(request: HttpRequest) -> HttpResponse:
 
 @richiede_permesso(F.GESTIONALE_VEDERE)
 def fattura(request: HttpRequest, pk: int) -> HttpResponse:
-    f = get_object_or_404(Fattura.objects.select_related("fattura_collegata", "creata_da", "emessa_da"), pk=pk)
+    f = committenti.oggetto_o_404(
+        request, Fattura.objects.select_related("fattura_collegata", "creata_da", "emessa_da", "committente"), pk
+    )
     if request.method == "POST":
         azione = request.POST.get("azione", "")
         try:
@@ -358,7 +397,7 @@ def fattura(request: HttpRequest, pk: int) -> HttpResponse:
 @require_GET
 @richiede_permesso(F.GESTIONALE_VEDERE)
 def fattura_xml(request: HttpRequest, pk: int) -> HttpResponse:
-    f = get_object_or_404(Fattura, pk=pk, stato=StatoFattura.EMESSA)
+    f = committenti.oggetto_o_404(request, Fattura.objects.filter(stato=StatoFattura.EMESSA), pk)
     r = HttpResponse(f.xml.encode("utf-8"), content_type="application/xml; charset=utf-8")
     r["Content-Disposition"] = f'attachment; filename="{f.xml_nome}"'
     return r
@@ -367,7 +406,7 @@ def fattura_xml(request: HttpRequest, pk: int) -> HttpResponse:
 @require_GET
 @richiede_permesso(F.GESTIONALE_VEDERE)
 def fattura_stampa(request: HttpRequest, pk: int) -> HttpResponse:
-    f = get_object_or_404(Fattura.objects.select_related("fattura_collegata"), pk=pk)
+    f = committenti.oggetto_o_404(request, Fattura.objects.select_related("fattura_collegata"), pk)
     righe = list(f.righe.select_related("ddt"))
     doc = servizi.documento(f, numero=f.numero or "bozza", progressivo_invio=f.progressivo_invio or "00000")
     return render(

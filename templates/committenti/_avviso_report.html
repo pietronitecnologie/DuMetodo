@@ -1,0 +1,1 @@
+{% if committente_filtrato %}<div class="alert alert-info py-2 small">Dati dei soli ordini di <b>{% include "committenti/_nome.html" with c=committente_filtrato %}</b>{% if nota %}. {{ nota }}{% endif %}. Scegli «Tutti i clienti» in alto per i dati dell'intera azienda.</div>{% endif %}

@@ -2,6 +2,7 @@
 {% block titolo %}Controllo prezzi{% endblock %}
 {% block contenuto %}
 <h1 class="h4">Controllo prezzi</h1>
+{% include "committenti/_avviso_report.html" %}
 <ul class="nav nav-tabs mb-2">
   <li class="nav-item"><a class="nav-link {% if filtri.origine == 'bolle' %}active{% endif %}" href="?origine=bolle">Su bolle (consegnato)</a></li>
   <li class="nav-item"><a class="nav-link {% if filtri.origine == 'lavorazione' %}active{% endif %}" href="?origine=lavorazione">Ordini in lavorazione</a></li>

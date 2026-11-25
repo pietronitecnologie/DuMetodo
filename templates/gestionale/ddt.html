@@ -11,6 +11,7 @@
 {% if d.annullato %}<div class="alert alert-secondary py-2 small">Annullato il {{ d.annullato_il|date:"d/m/Y H:i" }}{% if d.annullato_da %} da {{ d.annullato_da }}{% endif %}: {{ d.motivo_annullamento }}. Il numero resta consumato.</div>{% endif %}
 <div class="row g-3">
   <div class="col-lg-4"><div class="card"><div class="card-body small">
+    {% if committenti_utente %}<div><span class="text-muted">Cliente committente:</span> {% include "committenti/_nome.html" with c=d.committente %}</div>{% endif %}
     <div><span class="text-muted">Origine:</span> {{ d.get_origine_display }}</div>
     {% if d.emesso_da_metodo %}
     <div><span class="text-muted">Destinatario:</span> {{ d.documento.destinatario.denominazione }}</div>

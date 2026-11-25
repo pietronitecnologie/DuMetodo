@@ -117,6 +117,7 @@ def consegna(
 
     c = Consegna.objects.create(
         creata_da=utente,
+        committente_id=blocchi[0][0].committente_id,
         selezione=selezione,
         tracciato=tracciato.nome[:100],
         file_nome=file.nome,
@@ -208,7 +209,16 @@ def crea_ddt(numero: str, data: dt.date, righe_ids: Sequence[int], utente: Any, 
     righe = list(RigaConsegnata.objects.select_for_update().filter(pk__in=ids, ddt__isnull=True))
     if len(righe) != len(ids):
         raise OperazioneNonConsentita("Alcune righe sono già state assegnate a un altro DDT: ricarica la pagina.")
-    ddt = DDT.objects.create(numero=numero, anno=data.year, data=data, creato_da=utente, **campi)
+    committenti = set(
+        RigaConsegnata.objects.filter(pk__in=ids).values_list("riga__ordine__committente_id", flat=True).distinct()
+    )
+    if len(committenti) > 1:
+        raise OperazioneNonConsentita(
+            "Le righe selezionate sono di più clienti committenti: un DDT è di un solo cliente."
+        )
+    ddt = DDT.objects.create(
+        numero=numero, anno=data.year, data=data, creato_da=utente, committente_id=committenti.pop(), **campi
+    )
     RigaConsegnata.objects.filter(pk__in=ids).update(ddt=ddt)
     righe = list(
         RigaConsegnata.objects.filter(ddt=ddt)

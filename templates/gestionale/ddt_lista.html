@@ -9,10 +9,10 @@
   <button class="btn btn-sm btn-outline-primary">Filtra</button>
 </form>
 <div class="table-responsive"><table class="table table-sm bg-white align-middle"><thead><tr>
-  <th>DDT</th><th>Data</th><th>Origine</th><th>Causale</th><th class="text-end">Righe</th><th>Colli / peso</th><th></th></tr></thead><tbody>
+  <th>DDT</th>{% if committenti_utente %}<th>Cliente</th>{% endif %}<th>Data</th><th>Origine</th><th>Causale</th><th class="text-end">Righe</th><th>Colli / peso</th><th></th></tr></thead><tbody>
 {% for d in pagina %}<tr class="{% if d.annullato %}text-muted{% endif %}">
   <td><a href="{% url 'gestionale:ddt' d.pk %}" class="fw-semibold">{{ d.numero }}/{{ d.anno }}</a>{% if d.annullato %} <span class="badge text-bg-secondary">annullato</span>{% endif %}</td>
-  <td>{{ d.data|date:"d/m/Y" }}</td><td class="small">{{ d.get_origine_display }}</td><td>{{ d.causale|default:"—" }}</td>
+  {% if committenti_utente %}<td>{% include "committenti/_badge.html" with c=d.committente %}</td>{% endif %}<td>{{ d.data|date:"d/m/Y" }}</td><td class="small">{{ d.get_origine_display }}</td><td>{{ d.causale|default:"—" }}</td>
   <td class="text-end">{{ d.n_righe }}</td><td class="small">{% if d.colli %}{{ d.colli }} colli{% endif %}{% if d.peso_kg %} · {{ d.peso_kg }} kg{% endif %}</td>
   <td class="text-end">{% if d.emesso_da_metodo %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'gestionale:ddt_stampa' d.pk %}" target="_blank">Stampa</a>{% endif %}</td></tr>
 {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Nessun DDT.</td></tr>{% endfor %}
