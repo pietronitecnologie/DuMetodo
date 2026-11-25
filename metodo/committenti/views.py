@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from metodo.core.permessi import F, richiede_permesso
+from metodo.core.permessi import F, ha_permesso, richiede_permesso
 from metodo.ordini.servizi import OperazioneNonConsentita
 
 from . import servizi
@@ -88,3 +88,61 @@ def scegli(request: HttpRequest) -> HttpResponse:
     ):
         torna = "/"
     return redirect(torna)
+
+
+def _gruppi_impostazioni(request: HttpRequest, c: Committente) -> list:  # type: ignore[type-arg]
+    """Gruppi di parametri per committente che l'utente può modificare (i dati fiscali: solo con il permesso
+    delle impostazioni del Gestionale). La casella del predefinito è quella di Configurazione."""
+    from metodo.configurazione.registro import GRUPPI_GESTIONALE, PARAMETRI, Gruppo
+
+    gruppi = []
+    for g in Gruppo:
+        if not any(p.gruppo == g and p.per_committente for p in PARAMETRI):
+            continue
+        if g in GRUPPI_GESTIONALE and not ha_permesso(request.user, F.GESTIONALE_IMPOSTAZIONI):
+            continue
+        if g == Gruppo.CASELLA and c.predefinito:
+            continue
+        gruppi.append(g)
+    return gruppi
+
+
+@richiede_permesso(F.COMMITTENTI)
+def impostazioni(request: HttpRequest, pk: int) -> HttpResponse:
+    """Parametri propri del committente: dati fiscali, pagamento, DDT, tracciati, email, casella ordini."""
+    from django.core.exceptions import ValidationError
+
+    from metodo.configurazione import servizi as config
+    from metodo.configurazione.forms import ParametriCommittenteForm
+
+    c = get_object_or_404(Committente, pk=pk)
+    attivo = request.POST.get("gruppo") if request.method == "POST" else None
+    forms_ = []
+    for g in _gruppi_impostazioni(request, c):
+        if attivo == g.name:
+            form = ParametriCommittenteForm(g, c, request.POST)
+            if form.is_valid():
+                try:
+                    config.scrivi_committente(
+                        c, {p.chiave: form.cleaned_data[p.chiave] for p in form.parametri}, request.user
+                    )
+                except ValidationError as exc:
+                    messages.error(request, " ".join(exc.messages))
+                else:
+                    for chiave in form.segreti_impostati:
+                        if form.cleaned_data.get(f"{chiave}__cancella"):
+                            config.cancella_segreto_committente(c, chiave, request.user)
+                    messages.success(request, f"{g.value}: impostazioni di {c.nome} salvate.")
+                    return redirect(
+                        f"{reverse('committenti:impostazioni', args=[c.pk])}?aperto={g.name}#gruppo-{g.name}"
+                    )
+            else:
+                messages.error(request, "Correggi gli errori evidenziati: nessun valore è stato salvato.")
+        else:
+            form = ParametriCommittenteForm(g, c)
+        forms_.append(form)
+    return render(
+        request,
+        "committenti/impostazioni.html",
+        {"c": c, "forms": forms_, "aperto": request.GET.get("aperto", "")},
+    )

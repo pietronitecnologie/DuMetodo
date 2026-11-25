@@ -11,6 +11,8 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
+from metodo.committenti.models import predefinito_id
+
 
 class StatoCasella(models.Model):
     """Cursore della casella IMAP (ex chiave ``ID_EMAIL`` della tabella Configuration).
@@ -79,6 +81,15 @@ class StatoFile(models.TextChoices):
 class FileImportato(models.Model):
     nome = models.CharField(max_length=255)
     origine = models.CharField(max_length=4, choices=OrigineFile.choices)
+    # Metodo v3: gli ordini del file sono di questo cliente committente (dalla casella o dal mittente dell'email,
+    # oppure scelto da chi carica il file).
+    committente = models.ForeignKey(
+        "committenti.Committente",
+        on_delete=models.PROTECT,
+        related_name="file_importati",
+        default=predefinito_id,
+        verbose_name="cliente committente",
+    )
     contenuto = models.BinaryField("contenuto originale")
     sha256 = models.CharField(max_length=64, db_index=True)
     messaggio = models.ForeignKey(MessaggioEmail, on_delete=models.SET_NULL, null=True, blank=True, related_name="file")

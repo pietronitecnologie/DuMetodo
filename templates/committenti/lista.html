@@ -13,7 +13,8 @@ profilo; gli utenti interni tutti, salvo che ne abbiano alcuni assegnati.</p>
     <td>{{ c.nome }}</td><td class="text-end">{{ c.n_ordini }}</td>
     <td>{% if c.attivo %}<span class="badge text-bg-success">attivo</span>{% else %}<span class="badge text-bg-secondary">disattivato</span>{% endif %}
       {% if c.predefinito %}<span class="badge text-bg-primary">predefinito</span>{% endif %}</td>
-    <td class="text-end">{% if not c.predefinito and c.attivo %}<form method="post" class="d-inline">{% csrf_token %}
+    <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="{% url 'committenti:impostazioni' c.pk %}">Impostazioni</a>
+      {% if not c.predefinito and c.attivo %}<form method="post" class="d-inline">{% csrf_token %}
       <button class="btn btn-sm btn-outline-primary" name="predefinito" value="{{ c.pk }}">Rendi predefinito</button></form>{% endif %}</td></tr>
   {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Nessun committente.</td></tr>{% endfor %}</tbody>
 </table></div>

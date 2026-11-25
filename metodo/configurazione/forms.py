@@ -82,3 +82,74 @@ class ParametriGruppoForm(forms.Form):
             except forms.ValidationError as exc:
                 self.add_error(p.chiave, exc)
         return dati
+
+
+class ParametriCommittenteForm(forms.Form):
+    """Valori propri di un cliente committente per un gruppo di parametri (vuoto = nessun valore suo)."""
+
+    def __init__(self, gruppo: Gruppo, committente: Any, *args: Any, **kwargs: Any) -> None:
+        self.gruppo, self.committente = gruppo, committente
+        self.parametri = [p for p in PARAMETRI if p.gruppo == gruppo and p.per_committente]
+        initial: dict[str, Any] = {}
+        for p in self.parametri:
+            if p.tipo == Tipo.SEGRETO or not servizi.ha_valore_proprio(p.chiave, committente):
+                continue
+            v = servizi.leggi(p.chiave, committente)
+            initial[p.chiave] = ("1" if v else "0") if p.tipo == Tipo.BOOLEANO else p.come_testo(v)
+        super().__init__(*args, initial=initial, prefix=gruppo.name.lower(), **kwargs)
+        self.segreti_impostati: set[str] = set()
+        # Cosa vale se il campo resta vuoto: il valore generale oppure niente (parametri PROPRI).
+        self.se_vuoto: dict[str, str] = {}
+        for p in self.parametri:
+            eredita = servizi.eredita_generale(p.chiave, committente)
+            # Vuoto: il valore generale, oppure (parametri propri del cliente) il valore predefinito del parametro.
+            generale = servizi.leggi(p.chiave) if eredita else p.valore_default()
+            vuoto = "Come il generale" if eredita else "Non impostato"
+            if p.tipo == Tipo.SEGRETO:
+                testo = "quella generale" if eredita and generale else ""
+            elif p.tipo == Tipo.SCELTA:
+                testo = p.etichetta_scelta(generale) if generale not in (None, "") else ""
+            else:
+                testo = p.come_testo(generale) if generale is not None else ""
+            if p.tipo == Tipo.BOOLEANO:
+                campo: forms.Field = forms.ChoiceField(
+                    label=p.etichetta,
+                    help_text=p.descrizione,
+                    required=False,
+                    choices=[("", f"{vuoto} ({testo or 'No'})"), ("1", "Sì"), ("0", "No")],
+                )
+            elif p.tipo == Tipo.SCELTA:
+                campo = forms.ChoiceField(
+                    label=p.etichetta,
+                    help_text=p.descrizione,
+                    required=False,
+                    choices=[("", f"{vuoto} ({testo})" if testo else "—"), *p.scelte],
+                )
+            else:
+                campo = _campo(p)
+                campo.widget.attrs["placeholder"] = (
+                    f"{vuoto}: {testo[:80]}" if testo and p.tipo != Tipo.TRACCIATO else "non impostato"
+                )
+            self.fields[p.chiave] = campo
+            self.se_vuoto[p.chiave] = testo
+            if p.tipo == Tipo.SEGRETO and servizi.ha_valore_proprio(p.chiave, committente):
+                self.segreti_impostati.add(p.chiave)
+                campo.widget.attrs["placeholder"] = "•••••••• impostata: lascia vuoto per non cambiarla"
+                self.fields[f"{p.chiave}__cancella"] = forms.BooleanField(
+                    label=f"Cancella {p.etichetta.lower()}", required=False
+                )
+
+    def clean(self) -> dict[str, Any]:
+        dati = super().clean()
+        for p in self.parametri:
+            if p.chiave in self.errors:
+                continue
+            grezzo = dati.get(p.chiave)
+            if grezzo in (None, "") or (isinstance(grezzo, str) and not grezzo.strip()):
+                dati[p.chiave] = None
+                continue
+            try:
+                dati[p.chiave] = p.converti(grezzo == "1" if p.tipo == Tipo.BOOLEANO else grezzo)
+            except forms.ValidationError as exc:
+                self.add_error(p.chiave, exc)
+        return dati

@@ -1,6 +1,8 @@
 <div class="col-xl-4"><div class="card"><div class="card-header">Dati del trasporto</div><div class="card-body row g-2">
-  <div class="col-12 small"><span class="text-muted">Destinatario:</span> {{ destinatario.denominazione|default:"—" }}<br>
+  {% if destinatario %}<div class="col-12 small"><span class="text-muted">Destinatario:</span> {{ destinatario.denominazione|default:"—" }}<br>
     <span class="text-muted">Destinazione:</span> {{ destinazione|default:"sede del destinatario" }}</div>
+  {% else %}<div class="col-12 small text-muted">Destinatario e destinazione sono quelli del cliente committente delle righe selezionate
+    (Clienti committenti → Impostazioni). Scegli il cliente in alto per vederli qui.</div>{% endif %}
   {% if prossimi|length > 1 %}<div class="col-12"><label class="form-label" for="numerazione">Numerazione</label>
     <select class="form-select form-select-sm" id="numerazione" name="numerazione">{% for n, prossimo in prossimi %}<option value="{{ n.pk }}">{{ n.nome }} — prossimo n. {{ prossimo }}</option>{% endfor %}</select></div>
   {% elif prossimi %}<div class="col-12 small"><span class="text-muted">Numero del DDT:</span> <b>{{ prossimi.0.1 }}</b> <span class="text-muted">(automatico, numerazione «{{ prossimi.0.0.nome }}»)</span></div>

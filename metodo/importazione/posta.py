@@ -70,10 +70,11 @@ def _lock_esclusivo() -> Iterator[bool]:
                 cur.execute("SELECT pg_advisory_unlock(%s)", [_LOCK_ID])
 
 
-def parametri_casella(modulo: dict[str, Any] | None = None) -> dict[str, Any]:
+def parametri_casella(modulo: dict[str, Any] | None = None, committente: Any = None) -> dict[str, Any]:
     """Dati della casella ordini: quelli di Configurazione se il server è impostato, altrimenti il file .env.
 
     ``modulo``: valori non ancora salvati (pulsante "Prova connessione"); password vuota = quella salvata.
+    ``committente``: la casella propria di un cliente committente (Clienti committenti → Impostazioni).
     """
     m = modulo or {}
 
@@ -83,10 +84,12 @@ def parametri_casella(modulo: dict[str, Any] | None = None) -> dict[str, Any]:
             try:
                 return p.converti(m.get(f"casella.{chiave}"))
             except ValidationError:
-                return config.leggi(f"casella.{chiave}")
-        return config.leggi(f"casella.{chiave}")
+                return config.leggi(f"casella.{chiave}", committente)
+        return config.leggi(f"casella.{chiave}", committente)
 
     server = (valore("server") or "").strip()
+    if not server and committente is not None:
+        return {"HOST": "", "PORT": 993, "SSL": True, "USER": "", "PASSWORD": "", "FOLDER": "INBOX", "MITTENTI": []}
     if not server:
         return {**settings.ORDINI_IMAP, "MITTENTI": config.leggi("casella.mittenti_ammessi"), "ORIGINE": ".env"}
     return {
@@ -94,16 +97,64 @@ def parametri_casella(modulo: dict[str, Any] | None = None) -> dict[str, Any]:
         "PORT": valore("porta") or 993,
         "SSL": bool(valore("ssl")),
         "USER": (valore("utente") or "").strip(),
-        "PASSWORD": (m.get("casella.password") or "") or config.leggi("casella.password") or "",
+        "PASSWORD": (m.get("casella.password") or "") or config.leggi("casella.password", committente) or "",
         "FOLDER": (valore("cartella") or "INBOX").strip(),
         "MITTENTI": valore("mittenti_ammessi") or [],
         "ORIGINE": "Configurazione",
     }
 
 
-def casella_configurata() -> bool:
-    c = parametri_casella()
+def _configurata(c: dict[str, Any]) -> bool:
     return bool(c["HOST"] and c["USER"] and c["PASSWORD"])
+
+
+def caselle() -> list[tuple[Any, dict[str, Any]]]:
+    """Le caselle da leggere: quella generale (committente ``None``) e quelle proprie dei committenti attivi
+    non predefiniti. Il predefinito usa la casella generale."""
+    from metodo.committenti.models import Committente
+
+    elenco: list[tuple[Any, dict[str, Any]]] = []
+    generale = parametri_casella()
+    if _configurata(generale):
+        elenco.append((None, generale))
+    for c in Committente.objects.filter(attivo=True, predefinito=False).order_by("nome"):
+        propria = parametri_casella(committente=c)
+        if _configurata(propria):
+            elenco.append((c, propria))
+    return elenco
+
+
+def casella_configurata() -> bool:
+    return bool(caselle())
+
+
+def instradamento_generale() -> Any:
+    """Per la casella generale: dal mittente al committente.
+
+    I mittenti indicati nelle impostazioni di un committente portano a lui; gli altri vanno al predefinito,
+    se ammessi dalla Configurazione (elenco vuoto = tutti); altrimenti il messaggio è scartato (``None``)."""
+    from metodo.committenti.models import Committente, predefinito_id
+
+    per_mittente: dict[str, int] = {}
+    for c in Committente.objects.filter(attivo=True, predefinito=False):
+        if config.ha_valore_proprio("casella.mittenti_ammessi", c):
+            for m in config.leggi("casella.mittenti_ammessi", c) or []:
+                per_mittente.setdefault(m.strip().lower(), c.pk)
+    ammessi = {m.strip().lower() for m in (config.leggi("casella.mittenti_ammessi") or [])}
+    predefinito = predefinito_id()
+
+    def committente_di(mittente: str) -> int | None:
+        if mittente in per_mittente:
+            return per_mittente[mittente]
+        return predefinito if not ammessi or mittente in ammessi else None
+
+    return committente_di
+
+
+def instradamento_proprio(committente: Any, mittenti: Any) -> Any:
+    """Per la casella di un committente: tutto a lui, dai mittenti indicati (elenco vuoto = tutti)."""
+    ammessi = {m.strip().lower() for m in (mittenti or [])}
+    return lambda mittente: committente.pk if not ammessi or mittente in ammessi else None
 
 
 def _client(c: dict[str, Any] | None = None) -> Any:
@@ -144,16 +195,34 @@ def prova_connessione(c: dict[str, Any], *, client_factory: Any = None) -> Esito
 def leggi_casella(*, client_factory: Any = None) -> EsitoLetturaCasella:
     if not config.leggi("importazione.lettura_mail_attiva"):
         return EsitoLetturaCasella(False, motivo="lettura automatica disattivata")
-    if not casella_configurata():
+    elenco = caselle()
+    if not elenco:
         return EsitoLetturaCasella(False, motivo="casella IMAP non configurata")
     with _lock_esclusivo() as ottenuto:
         if not ottenuto:
             return EsitoLetturaCasella(False, motivo="lettura già in corso")
-        return _leggi(client_factory or _client)
+        totale = EsitoLetturaCasella(True)
+        errori = []
+        for committente, c in elenco:
+            instrada = (
+                instradamento_generale() if committente is None else instradamento_proprio(committente, c["MITTENTI"])
+            )
+            try:
+                esito = _leggi((lambda c=c: _client(c)) if client_factory is None else client_factory, c, instrada)
+            except Exception as exc:  # una casella in errore non ferma le altre
+                if len(elenco) == 1:
+                    raise
+                logger.exception("Lettura della casella %s non riuscita", c["HOST"])
+                errori.append(f"{c['USER']}@{c['HOST']}: {type(exc).__name__}")
+                continue
+            totale.messaggi += esito.messaggi
+            totale.file += esito.file
+        totale.motivo = "; ".join(errori)
+        return totale
 
 
-def _leggi(client_factory: Any) -> EsitoLetturaCasella:
-    c = parametri_casella()
+def _leggi(client_factory: Any, c: dict[str, Any] | None = None, instrada: Any = None) -> EsitoLetturaCasella:
+    c = c or parametri_casella()
     nome_casella = f"{c['USER']}@{c['HOST']}/{c['FOLDER']}"
     stato, _ = StatoCasella.objects.get_or_create(casella=nome_casella)
     esito = EsitoLetturaCasella(True)
@@ -182,7 +251,14 @@ def _leggi(client_factory: Any) -> EsitoLetturaCasella:
             else:
                 corpo = client.fetch([uid], ["BODY.PEEK[]"])[uid][b"BODY[]"]
                 esito.file += _elabora_messaggio(
-                    nome_casella, uidvalidity, uid, corpo, dati.get(b"INTERNALDATE"), max_byte, c["MITTENTI"]
+                    nome_casella,
+                    uidvalidity,
+                    uid,
+                    corpo,
+                    dati.get(b"INTERNALDATE"),
+                    max_byte,
+                    c["MITTENTI"],
+                    instrada=instrada,
                 )
             esito.messaggi += 1
             stato.ultimo_uid = uid
@@ -225,11 +301,27 @@ def _mittente(msg: Any) -> str:
 
 
 def _elabora_messaggio(
-    casella: str, uidvalidity: int, uid: int, raw: bytes, ricevuto: Any, max_byte: int, mittenti: Any = ()
+    casella: str,
+    uidvalidity: int,
+    uid: int,
+    raw: bytes,
+    ricevuto: Any,
+    max_byte: int,
+    mittenti: Any = (),
+    *,
+    instrada: Any = None,
 ) -> int:
+    """``instrada``: dal mittente al committente degli ordini (``None`` = scartato); senza, vale l'elenco
+    ``mittenti`` e gli ordini sono del committente predefinito."""
     msg = email.message_from_bytes(raw, policy=email.policy.default)
-    ammessi = {m.strip().lower() for m in (mittenti or [])}
-    if ammessi and _mittente(msg) not in ammessi:
+    if instrada is None:
+        from metodo.committenti.models import predefinito_id
+
+        ammessi = {m.strip().lower() for m in (mittenti or [])}
+        committente_id = predefinito_id() if not ammessi or _mittente(msg) in ammessi else None
+    else:
+        committente_id = instrada(_mittente(msg))
+    if committente_id is None:
         _registra(
             casella, uidvalidity, uid, msg, ricevuto, EsitoMessaggio.SCARTATO, f"mittente non ammesso: {_mittente(msg)}"
         )
@@ -261,7 +353,12 @@ def _elabora_messaggio(
             else (EsitoMessaggio.SCARTATO if problemi else EsitoMessaggio.SENZA_ALLEGATI),
             "\n".join(problemi),
         )
-        files = [servizi.registra_file(f.nome, f.contenuto, OrigineFile.EMAIL, messaggio=registrato) for f in estratti]
+        files = [
+            servizi.registra_file(
+                f.nome, f.contenuto, OrigineFile.EMAIL, messaggio=registrato, committente=committente_id
+            )
+            for f in estratti
+        ]
     for f in files:
         servizi.importa(f)
     return len(files)

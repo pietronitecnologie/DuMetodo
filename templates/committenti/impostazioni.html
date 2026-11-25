@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load metodo %}
+{% block titolo %}Impostazioni di {{ c.nome }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <a href="{% url 'committenti:lista' %}" class="btn btn-sm btn-outline-secondary">← Clienti committenti</a>
+  <h1 class="h4 me-auto mb-0">{% include "committenti/_nome.html" with c=c %} · impostazioni</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'committenti:modifica' c.pk %}">Codice, nome e colore</a>
+</div>
+<div class="alert alert-info small py-2">
+  Qui si impostano i valori <b>propri di {{ c.nome }}</b>. Un campo lasciato vuoto usa il valore generale (Configurazione o
+  Gestionale → Impostazioni), indicato nel campo.
+  {% if not c.predefinito %}Fanno eccezione i dati che appartengono solo a un cliente — dati fiscali, indirizzi email,
+  codice fornitore sulle etichette e casella ordini: se restano vuoti, per {{ c.nome }} non valgono quelli generali.{% else %}
+  {{ c.nome }} è il committente <b>predefinito</b>: i valori generali sono i suoi.{% endif %}
+</div>
+<div class="row g-2 align-items-start">
+{% for form in forms %}
+  <div class="col-lg-6">
+    <details class="card dm-config" id="gruppo-{{ form.gruppo.name }}"{% if form.errors or aperto == form.gruppo.name %} open{% endif %}>
+    <summary class="card-header">{{ form.gruppo.value }}{% if form.errors %} <span class="badge text-bg-danger ms-1">da correggere</span>{% endif %}</summary>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="gruppo" value="{{ form.gruppo.name }}">
+      <div class="card-body">
+        {% if form.gruppo.name == "CASELLA" %}<p class="small text-muted">Due modi per ricevere gli ordini di {{ c.nome }}:
+          <b>una casella sua</b> (compila server, utente e password) oppure la <b>casella generale</b>, indicando qui sotto solo gli
+          indirizzi dei suoi mittenti: le email che arrivano da loro diventano ordini di {{ c.nome }}.</p>{% endif %}
+        {% for e in form.non_field_errors %}<div class="alert alert-danger py-1">{{ e }}</div>{% endfor %}
+        {% for campo in form %}{% include "_campo.html" %}
+          {% if "tracciato" in campo.name and form.se_vuoto|get_item:campo.name %}
+          <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onclick="document.getElementById('{{ campo.id_for_label }}').value = document.getElementById('generale-{{ campo.id_for_label }}').content.textContent">Parti dal tracciato generale</button>
+            <template id="generale-{{ campo.id_for_label }}">{{ form.se_vuoto|get_item:campo.name }}</template>
+            <a class="btn btn-sm btn-link" href="{% url 'configurazione:guida_tracciati' %}" target="_blank">Guida al linguaggio</a>
+          </div>
+          <div class="form-text mb-2">Vuoto = il tracciato generale di Configurazione.</div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="card-footer text-end"><button class="btn btn-sm btn-primary">Salva {{ form.gruppo.value|lower }}</button></div>
+    </form>
+    </details>
+  </div>
+{% empty %}<p class="text-muted">Non hai i permessi per modificare impostazioni di questo committente.</p>
+{% endfor %}
+</div>
+<script>document.querySelectorAll('details.dm-config input:not([type=hidden]), details.dm-config textarea, details.dm-config select').forEach(e => { if (e.type === 'checkbox') e.classList.add('form-check-input'); else if (e.tagName === 'SELECT') e.classList.add('form-select', 'form-select-sm'); else e.classList.add('form-control', 'form-control-sm'); });</script>
+{% endblock %}

@@ -59,10 +59,10 @@ def aggiungi_nota(ordine: Ordine, utente: Any, testo: str, visibilita: str = Vis
 
 def _accoda_notifica(nota: Nota) -> None:
     """Il Fornitore scrive -> avvisa il Cliente e viceversa. Rispondi-a = il lato di chi ha scritto."""
-    fornitore, cliente = config.leggi("email.fornitore"), config.leggi("email.cliente")
+    fornitore, cliente = config.leggi("email.fornitore"), config.leggi("email.cliente", nota.ordine.committente_id)
     destinatari, rispondi_a = (cliente, fornitore) if nota.lato == Lato.FORNITORE else (fornitore, cliente)
     mittente = config.leggi("email.mittente") or settings.DEFAULT_FROM_EMAIL
-    lato = config.leggi("azienda.nome_cliente" if nota.lato == Lato.CLIENTE else "azienda.nome_fornitore")
+    lato = nota.ordine.committente.nome if nota.lato == Lato.CLIENTE else config.leggi("azienda.nome_fornitore")
     contesto = {
         "nota": nota,
         "ordine": nota.ordine,

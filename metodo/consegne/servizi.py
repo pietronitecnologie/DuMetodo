@@ -66,9 +66,10 @@ def ordini_da_consegnare(serie: Sequence[str] = (), ordini_ids: Sequence[int] = 
     return qs.order_by("serie", "numero", "appendice", "anno")
 
 
-def _tracciato(chiave: str) -> linguaggio.Tracciato:
+def _tracciato(chiave: str, committente: Any = None) -> linguaggio.Tracciato:
+    """Il tracciato del committente, se ne ha uno suo, altrimenti quello generale."""
     try:
-        return linguaggio.compila(config.leggi(chiave))
+        return linguaggio.compila(config.leggi(chiave, committente))
     except linguaggio.ErroreTracciato as exc:  # non dovrebbe succedere: è validato al salvataggio
         raise OperazioneNonConsentita(f"Il tracciato configurato non è valido: {exc}") from exc
 
@@ -104,7 +105,7 @@ def consegna(
             "Scegli il committente dal selettore in alto."
         )
 
-    tracciato = _tracciato("consegna.tracciato_bolla")
+    tracciato = _tracciato("consegna.tracciato_bolla", blocchi[0][0].committente_id)
     selezione = _nome_selezione(serie, [o for o, _ in blocchi])
     try:
         file = linguaggio.genera(
@@ -158,7 +159,7 @@ def _raggruppa_per_ordine(righe: Iterable[RigaConsegnata]) -> list[tuple[Ordine,
 
 
 def _file_tecnico(ddt: DDT, righe: list[RigaConsegnata], utente: Any) -> linguaggio.FileGenerato:
-    tracciato = _tracciato("consegna.tracciato_file_tecnico_ddt")
+    tracciato = _tracciato("consegna.tracciato_file_tecnico_ddt", ddt.committente_id)
     try:
         return linguaggio.genera(
             tracciato,
@@ -178,7 +179,7 @@ def _accoda_file_tecnico(ddt: DDT) -> Any:
         oggetto=f"File tecnico DDT {ddt.numero} del {ddt.data:%d/%m/%Y}",
         corpo_testo=f"In allegato il file tecnico del DDT n. {ddt.numero} del {ddt.data:%d/%m/%Y}.\n",
         mittente=mittente,
-        destinatari=config.leggi("email.file_tecnico"),
+        destinatari=config.leggi("email.file_tecnico", ddt.committente_id),
         rispondi_a=[mittente],
         riferimento=f"ddt:{ddt.pk}",
         allegati=[(ddt.file_nome, bytes(ddt.file_contenuto), "text/plain")],
@@ -239,7 +240,9 @@ def reinvia_file_tecnico(ddt_id: int, utente: Any) -> DDT:
     ddt = DDT.objects.select_for_update().get(pk=ddt_id)
     ddt.email = _accoda_file_tecnico(ddt)
     if ddt.email is None:
-        raise OperazioneNonConsentita("Nessun destinatario configurato per il file tecnico (Configurazione).")
+        raise OperazioneNonConsentita(
+            "Nessun destinatario configurato per il file tecnico (Configurazione, o le impostazioni del committente)."
+        )
     ddt.save(update_fields=["email"])
     return ddt
 
@@ -262,8 +265,11 @@ def etichette_xlsx(ordini: Iterable[Ordine]) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = "Etichette"
-    codice = config.leggi("consegna.codice_fornitore_etichette") or ""
+    codici: dict[int, str] = {}  # il codice fornitore cambia con il cliente committente
     for o in ordini:
+        if o.committente_id not in codici:
+            codici[o.committente_id] = config.leggi("consegna.codice_fornitore_etichette", o.committente_id) or ""
+        codice = codici[o.committente_id]
         ws.append(
             [
                 o.numero.lstrip("0") or "0",

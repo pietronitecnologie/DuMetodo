@@ -76,9 +76,15 @@ def dati_fornitore() -> dict[str, str]:
     return d
 
 
-def dati_cliente() -> dict[str, str]:
-    d = {c: str(config.leggi(f"gestionale.cliente_{c}") or "").strip() for c in CAMPI_CLIENTE}
-    d["denominazione"] = d["denominazione"] or str(config.leggi("azienda.nome_cliente") or "")
+def dati_cliente(committente: Any = None) -> dict[str, str]:
+    """Cessionario e destinatario: i dati fiscali del cliente committente (Clienti committenti → Impostazioni);
+    per il predefinito, o senza committente, quelli di Gestionale → Impostazioni."""
+    d = {c: str(config.leggi(f"gestionale.cliente_{c}", committente) or "").strip() for c in CAMPI_CLIENTE}
+    if not d["denominazione"]:
+        from metodo.committenti.models import Committente
+
+        c = Committente.objects.filter(pk=getattr(committente, "pk", committente)).first() if committente else None
+        d["denominazione"] = c.nome if c else str(config.leggi("azienda.nome_cliente") or "")
     d["codice_destinatario"] = d["codice_destinatario"].upper()
     return d
 
@@ -88,10 +94,10 @@ def indirizzo_completo(s: dict[str, str]) -> str:
     return f"{s.get('indirizzo', '')}, {s.get('cap', '')} {s.get('comune', '')}{prov}".strip(" ,")
 
 
-def problemi_dati_ddt() -> list[str]:
+def problemi_dati_ddt(committente: Any = None) -> list[str]:
     """Il DDT deve riportare mittente e destinatario (DPR 472/1996)."""
     p = []
-    for chi, d in (("Fornitore", dati_fornitore()), ("Cliente", dati_cliente())):
+    for chi, d in (("Fornitore", dati_fornitore()), ("Cliente", dati_cliente(committente))):
         if not d["denominazione"]:
             p.append(f"{chi}: ragione sociale mancante.")
         if not (d["indirizzo"] and d["comune"]):
@@ -101,28 +107,28 @@ def problemi_dati_ddt() -> list[str]:
     return p
 
 
-def problemi_dati_fattura() -> list[str]:
+def problemi_dati_fattura(committente: Any = None) -> list[str]:
     """Controlli dei dati fiscali con un documento di prova (gli stessi che farà l'emissione)."""
-    prova = _documento_prova()
+    prova = _documento_prova(committente)
     return fatturapa.controlla(prova)
 
 
-def _documento_prova() -> fatturapa.Documento:
-    aliquota, natura = _iva()
+def _documento_prova(committente: Any = None) -> fatturapa.Documento:
+    aliquota, natura = _iva(committente)
     return fatturapa.Documento(
         tipo="TD01",
         numero="1",
         data=timezone.localdate(),
         cedente=fatturapa.Soggetto.da_dict(dati_fornitore()),
-        cessionario=fatturapa.Soggetto.da_dict(dati_cliente()),
+        cessionario=fatturapa.Soggetto.da_dict(dati_cliente(committente)),
         linee=[fatturapa.Linea(1, "Prova", Decimal(1), Decimal(1), aliquota, natura=natura)],
         progressivo_invio="00001",
     )
 
 
-def _iva() -> tuple[Decimal, str]:
-    aliquota = Decimal(config.leggi("gestionale.aliquota_iva") or 0)
-    natura = (config.leggi("gestionale.natura_iva") or "") if aliquota == 0 else ""
+def _iva(committente: Any = None) -> tuple[Decimal, str]:
+    aliquota = Decimal(config.leggi("gestionale.aliquota_iva", committente) or 0)
+    natura = (config.leggi("gestionale.natura_iva", committente) or "") if aliquota == 0 else ""
     return aliquota, natura
 
 
@@ -266,15 +272,28 @@ def righe_da_emettere() -> QuerySet[RigaConsegnata]:
     return consegne.righe_senza_ddt()
 
 
-def valori_predefiniti_ddt() -> dict[str, Any]:
+def valori_predefiniti_ddt(committente: Any = None) -> dict[str, Any]:
+    def v(chiave: str) -> Any:
+        return config.leggi(f"gestionale.{chiave}", committente)
+
     return {
-        "causale": config.leggi("gestionale.ddt_causale") or "Vendita",
-        "aspetto_beni": config.leggi("gestionale.ddt_aspetto_beni") or "",
-        "trasporto_a_cura": config.leggi("gestionale.ddt_trasporto_a_cura") or "Mittente",
-        "porto": config.leggi("gestionale.ddt_porto") or "Franco",
-        "vettore": config.leggi("gestionale.ddt_vettore") or "",
-        "vettore_indirizzo": config.leggi("gestionale.ddt_vettore_indirizzo") or "",
+        "causale": v("ddt_causale") or "Vendita",
+        "aspetto_beni": v("ddt_aspetto_beni") or "",
+        "trasporto_a_cura": v("ddt_trasporto_a_cura") or "Mittente",
+        "porto": v("ddt_porto") or "Franco",
+        "vettore": v("ddt_vettore") or "",
+        "vettore_indirizzo": v("ddt_vettore_indirizzo") or "",
     }
+
+
+def committente_delle_righe(righe_ids: Sequence[int]) -> int | None:
+    """Il cliente committente delle righe consegnate (``None`` se nessuna riga o se sono di più committenti)."""
+    ids = set(
+        RigaConsegnata.objects.filter(pk__in=righe_ids)
+        .values_list("riga__ordine__committente_id", flat=True)
+        .distinct()
+    )
+    return ids.pop() if len(ids) == 1 else None
 
 
 def _descrizione_articoli(codici: set[str]) -> dict[str, Articolo]:
@@ -309,7 +328,8 @@ def emetti_ddt(
     Lo emette chi gestisce i DDT in Gestionale oppure chi registra i DDT in Spedizioni."""
     if not ha_permesso(utente, F.GESTIONALE_DDT, F.DDT):
         raise OperazioneNonConsentita("Non hai i permessi per questa operazione.")
-    problemi = problemi_dati_ddt()
+    committente_id = committente_delle_righe(righe_ids)
+    problemi = problemi_dati_ddt(committente_id)
     if problemi:
         raise OperazioneNonConsentita("Completa i dati fiscali (Gestionale → Impostazioni): " + " ".join(problemi))
     if data > timezone.localdate():
@@ -352,11 +372,10 @@ def emetti_ddt(
         )
     )
     articoli = _descrizione_articoli({rc.riga.articolo for rc in righe})
-    cliente = dati_cliente()
     ddt.documento = {
         "mittente": dati_fornitore(),
-        "destinatario": cliente,
-        "destinazione": config.leggi("gestionale.cliente_destinazione") or "",
+        "destinatario": dati_cliente(ddt.committente_id),
+        "destinazione": config.leggi("gestionale.cliente_destinazione", ddt.committente_id) or "",
         "righe": [_riga_documento(rc, articoli) for rc in righe],
     }
     ddt.save(update_fields=["documento"])
@@ -523,7 +542,7 @@ def crea_fatture_differite(
 
 
 def _crea_bozza(utente: Any, data: dt.date, voci: list[tuple[DDT, RigaConsegnata]]) -> Fattura:
-    aliquota, natura = _iva()
+    aliquota, natura = _iva(voci[0][0].committente_id)
     fattura = Fattura.objects.create(
         tipo="TD24", data=data, anno=data.year, creata_da=utente, committente_id=voci[0][0].committente_id
     )
@@ -578,7 +597,7 @@ def _ricalcola(fattura: Fattura) -> None:
 def documento(f: Fattura, *, numero: str, progressivo_invio: str) -> fatturapa.Documento:
     righe = list(f.righe.select_related("ddt"))
     cedente = f.cedente or dati_fornitore()
-    cessionario = f.cessionario or dati_cliente()
+    cessionario = f.cessionario or dati_cliente(f.committente_id)
     rif: dict[int, fatturapa.RiferimentoDDT] = {}
     for r in righe:
         if r.ddt_id is not None:
@@ -609,8 +628,8 @@ def documento(f: Fattura, *, numero: str, progressivo_invio: str) -> fatturapa.D
             for r in righe
         ],
         progressivo_invio=progressivo_invio,
-        esigibilita=config.leggi("gestionale.esigibilita_iva") or "I",
-        riferimento_normativo=config.leggi("gestionale.riferimento_normativo") or "",
+        esigibilita=config.leggi("gestionale.esigibilita_iva", f.committente_id) or "I",
+        riferimento_normativo=config.leggi("gestionale.riferimento_normativo", f.committente_id) or "",
         causali=causali,
         ddt=list(rif.values()),
         fattura_collegata=collegata,
@@ -649,12 +668,12 @@ def emetti_fattura(utente: Any, fattura_id: int, numerazione_id: int | None = No
             f"L'ultima fattura «{numerazione}» emessa (n. {ultima.numero}) ha data {ultima.data:%d/%m/%Y}: "
             "la numerazione deve seguire le date. Cambia la data della bozza."
         )
-    f.cedente, f.cessionario = dati_fornitore(), dati_cliente()
+    f.cedente, f.cessionario = dati_fornitore(), dati_cliente(f.committente_id)
     if not f.is_nota_di_credito:
-        giorni = int(config.leggi("gestionale.pagamento_giorni") or 0)
-        f.scadenza = scadenza(f.data, giorni, bool(config.leggi("gestionale.pagamento_fine_mese")))
+        giorni = int(config.leggi("gestionale.pagamento_giorni", f.committente_id) or 0)
+        f.scadenza = scadenza(f.data, giorni, bool(config.leggi("gestionale.pagamento_fine_mese", f.committente_id)))
         f.pagamento = {
-            "modalita": config.leggi("gestionale.pagamento_modalita") or "MP05",
+            "modalita": config.leggi("gestionale.pagamento_modalita", f.committente_id) or "MP05",
             "scadenza": f.scadenza.isoformat(),
             "iban": config.leggi("gestionale.pagamento_iban") or "",
             "banca": config.leggi("gestionale.pagamento_banca") or "",

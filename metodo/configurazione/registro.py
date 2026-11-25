@@ -20,7 +20,7 @@ Aggiungere un parametro = aggiungere una voce a ``PARAMETRI``. Nessuna migrazion
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from typing import Any
@@ -78,6 +78,8 @@ class Parametro:
     minimo: Decimal | int | None = None
     legacy: tuple[str, ...] = field(default=())
     scelte: tuple[tuple[str, str], ...] = field(default=())
+    # Metodo v3: il parametro si può impostare per un cliente committente (vedi PER_COMMITTENTE).
+    per_committente: str = ""  # "" = solo generale | EREDITA | PROPRIO
 
     # --- conversioni ---------------------------------------------------------------
     def converti(self, valore: Any) -> Any:
@@ -731,7 +733,47 @@ PARAMETRI_GESTIONALE: tuple[Parametro, ...] = (
 )
 PARAMETRI = PARAMETRI + PARAMETRI_GESTIONALE
 
+# ------------------------------------------------------------------------------------------ per committente
+# Parametri che ogni cliente committente può avere diversi (Clienti committenti → Impostazioni).
+# EREDITA: se il committente non ha un valore suo vale quello generale (es. il tracciato della bolla).
+# PROPRIO: il valore generale vale solo per il committente predefinito; gli altri devono impostare il loro
+#          (es. ragione sociale e partita IVA: ABB non deve mai ricevere i dati fiscali di DMG).
+EREDITA, PROPRIO = "eredita", "proprio"
+PER_COMMITTENTE: dict[str, str] = {
+    **{f"casella.{c}": PROPRIO for c in ("server", "porta", "ssl", "utente", "password", "cartella")},
+    "casella.mittenti_ammessi": PROPRIO,
+    "importazione.notifica_errori": EREDITA,
+    "email.cliente": PROPRIO,
+    "email.file_tecnico": PROPRIO,
+    "consegna.tracciato_bolla": EREDITA,
+    "consegna.tracciato_file_tecnico_ddt": EREDITA,
+    "consegna.codice_fornitore_etichette": PROPRIO,
+    **{p.chiave: PROPRIO for p in PARAMETRI_GESTIONALE if p.gruppo == Gruppo.GESTIONALE_CLIENTE},
+    **{
+        f"gestionale.{c}": EREDITA
+        for c in (
+            "aliquota_iva",
+            "natura_iva",
+            "riferimento_normativo",
+            "esigibilita_iva",
+            "pagamento_modalita",
+            "pagamento_giorni",
+            "pagamento_fine_mese",
+            "ddt_causale",
+            "ddt_aspetto_beni",
+            "ddt_trasporto_a_cura",
+            "ddt_porto",
+            "ddt_vettore",
+            "ddt_vettore_indirizzo",
+        )
+    },
+}
+PARAMETRI = tuple(
+    replace(p, per_committente=PER_COMMITTENTE[p.chiave]) if p.chiave in PER_COMMITTENTE else p for p in PARAMETRI
+)
+
 REGISTRO: dict[str, Parametro] = {p.chiave: p for p in PARAMETRI}
+assert set(PER_COMMITTENTE) <= set(REGISTRO), "PER_COMMITTENTE: chiavi sconosciute"
 assert len(REGISTRO) == len(PARAMETRI), "chiavi duplicate nel registro parametri"
 
 # Chiavi della vecchia tabella che NON devono finire nel database.

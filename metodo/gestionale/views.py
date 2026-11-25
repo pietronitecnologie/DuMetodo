@@ -80,8 +80,8 @@ def indice(request: HttpRequest) -> HttpResponse:
             "ddt_anno": _ddt(request).filter(origine=OrigineDDT.INTERNO, anno=anno, annullato_il=None).count(),
             "fatture_anno": fatture.filter(stato=StatoFattura.EMESSA, anno=anno).exclude(tipo="TD04").count(),
             "anno": anno,
-            "problemi_ddt": servizi.problemi_dati_ddt(),
-            "problemi_fatture": servizi.problemi_dati_fattura(),
+            "problemi_ddt": servizi.problemi_dati_ddt(committenti.corrente(request)),
+            "problemi_fatture": servizi.problemi_dati_fattura(committenti.corrente(request)),
         },
     )
 
@@ -89,7 +89,7 @@ def indice(request: HttpRequest) -> HttpResponse:
 # ------------------------------------------------------------------------------------------------ DDT
 @richiede_permesso(F.GESTIONALE_DDT)
 def ddt_emetti(request: HttpRequest) -> HttpResponse:
-    valori = servizi.valori_predefiniti_ddt()
+    valori = servizi.valori_predefiniti_ddt(committenti.corrente(request))
     if request.method == "POST":
         valori, d = emetti_da_richiesta(request)
         if d is not None:
@@ -99,7 +99,7 @@ def ddt_emetti(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "gestionale/ddt_emetti.html",
-        {"gruppi": gruppi, "n_righe": len(righe), **contesto_trasporto(valori)},
+        {"gruppi": gruppi, "n_righe": len(righe), **contesto_trasporto(valori, request)},
     )
 
 
@@ -144,8 +144,12 @@ def emetti_da_richiesta(request: HttpRequest) -> tuple[dict[str, Any], Any]:
     return valori, None
 
 
-def contesto_trasporto(valori: dict[str, Any]) -> dict[str, Any]:
-    """Dati per il riquadro «Dati del trasporto» (gestionale/_dati_trasporto.html)."""
+def contesto_trasporto(valori: dict[str, Any], request: HttpRequest) -> dict[str, Any]:
+    """Dati per il riquadro «Dati del trasporto» (gestionale/_dati_trasporto.html).
+
+    Destinatario e controlli sono quelli del committente scelto in alto; con «Tutti i clienti» dipendono dalle
+    righe selezionate e si vedono nel DDT emesso."""
+    c = committenti.corrente(request)
     oggi = timezone.localdate()
     numerazioni = list(servizi.numerazioni(TipoNumerazione.DDT))
     return {
@@ -154,11 +158,11 @@ def contesto_trasporto(valori: dict[str, Any]) -> dict[str, Any]:
         "causali": CAUSALI_TRASPORTO,
         "trasporti": TRASPORTO_A_CURA,
         "porti": PORTI,
-        "problemi": servizi.problemi_dati_ddt(),
+        "problemi": servizi.problemi_dati_ddt(c) if c is not None else [],
         "numerazioni": numerazioni,
         "prossimi": [(n, n.numero(servizi.prossimo_previsto(n, oggi.year), oggi.year)) for n in numerazioni],
-        "destinatario": servizi.dati_cliente(),
-        "destinazione": config.leggi("gestionale.cliente_destinazione") or "",
+        "destinatario": servizi.dati_cliente(c) if c is not None else None,
+        "destinazione": (config.leggi("gestionale.cliente_destinazione", c) or "") if c is not None else "",
     }
 
 
@@ -416,7 +420,7 @@ def fattura_stampa(request: HttpRequest, pk: int) -> HttpResponse:
             "f": f,
             "righe": righe,
             "cedente": f.cedente or servizi.dati_fornitore(),
-            "cessionario": f.cessionario or servizi.dati_cliente(),
+            "cessionario": f.cessionario or servizi.dati_cliente(f.committente_id),
             "riepiloghi": servizi.fatturapa.riepiloghi(doc),
             "ddt": sorted({r.ddt for r in righe if r.ddt}, key=lambda d: (d.data, d.pk)),
             "bollo": servizi.fatturapa.bollo_dovuto(doc),

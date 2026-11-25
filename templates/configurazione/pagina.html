@@ -6,7 +6,9 @@
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'configurazione:storico' %}">Storico modifiche</a></div>
 <div class="alert alert-info small py-2">Parametri di funzionamento, controllati e storicizzati. Le <strong>password</strong>
 (casella ordini) sono salvate cifrate, non vengono mai mostrate e non finiscono nello storico. La <strong>capacità
-settimanale</strong> di ogni reparto si imposta nella scheda del reparto.</div>
+settimanale</strong> di ogni reparto si imposta nella scheda del reparto.{% if committenti_utente %} Con più clienti committenti, i valori qui sono
+quelli <strong>generali</strong>: casella e mittenti degli ordini, indirizzi email, tracciati e codice fornitore si possono impostare per
+ogni cliente in <a href="{% url 'committenti:lista' %}">Clienti committenti</a> → Impostazioni.{% endif %}</div>
 <div class="d-flex gap-2 mb-2 small">
   <button type="button" class="btn btn-sm btn-link p-0" onclick="document.querySelectorAll('details.dm-config').forEach(d => d.open = true)">Espandi tutto</button>
   <span class="text-muted">·</span>

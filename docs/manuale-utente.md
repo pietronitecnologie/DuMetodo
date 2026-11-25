@@ -839,6 +839,22 @@ L'anagrafica è in **Amministrazione → Clienti committenti** (permesso *Gestir
   senza DDT (materiali in ingresso, lotti, riferimenti liberi) sono dell'intera azienda e si vedono sempre.
 - **Magazzino e timbrature** sono dell'intera azienda: componenti, distinte, inventario e presenze non
   cambiano con il selettore.
+- **Impostazioni del cliente** (**Clienti committenti → Impostazioni**): ogni committente può avere valori
+  suoi. Un campo vuoto usa il valore generale, scritto in grigio nel campo.
+  - *Casella ordini*: una casella propria del cliente (server, utente, password), oppure la casella generale
+    con i **mittenti** del cliente: le email che arrivano da quegli indirizzi diventano ordini di quel cliente.
+    Gli altri mittenti ammessi in Configurazione portano al predefinito.
+  - *Importazione*: chi avvisare per gli errori.
+  - *Indirizzi email*: indirizzi del cliente per le note e destinatari del file tecnico dei DDT.
+  - *Consegna*: tracciato della bolla, tracciato del file tecnico, codice fornitore sulle etichette.
+  - *Dati fiscali del Cliente*, *IVA, pagamento e DDT*: solo per chi ha le impostazioni del Gestionale.
+  - Ragione sociale, partita IVA, indirizzi email, codice fornitore e casella **appartengono a un solo
+    cliente**: per un committente diverso dal predefinito, se restano vuoti non valgono quelli generali.
+    Così ABB non riceve mai i dati fiscali o le email di DMG; senza i suoi dati fiscali, DDT e fatture di
+    ABB non si emettono.
+  - Il predefinito usa i valori generali (Configurazione e Gestionale → Impostazioni).
+- **Caricamento manuale degli ordini**: con più committenti, nella pagina Importazione si sceglie di quale
+  cliente sono gli ordini del file. Lo stesso file caricato per due clienti crea ordini distinti.
 - **Codici d'ordine uguali**: se un codice letto da un codice a barre esiste per due committenti, si apre
   quello del committente scelto in alto (con *Tutti i clienti*, quello del predefinito).
 

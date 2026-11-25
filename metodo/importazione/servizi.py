@@ -66,9 +66,10 @@ class _Conteggi:
 
 
 def registra_file(
-    nome: str, contenuto: bytes, origine: str, *, utente: Any = None, messaggio: Any = None
+    nome: str, contenuto: bytes, origine: str, *, utente: Any = None, messaggio: Any = None, committente: Any = None
 ) -> FileImportato:
     return FileImportato.objects.create(
+        committente_id=getattr(committente, "pk", committente) or predefinito_id(),
         nome=nome[:255],
         contenuto=contenuto,
         sha256=hashlib.sha256(contenuto).hexdigest(),
@@ -81,7 +82,11 @@ def registra_file(
 def importa(file: FileImportato, *, forza: bool = False) -> FileImportato:
     """Elabora un ``FileImportato``. Ritorna il file aggiornato con stato e conteggi."""
     gia_importato = (
-        FileImportato.objects.filter(sha256=file.sha256, stato__in=[StatoFile.IMPORTATO, StatoFile.CON_AVVISI])
+        FileImportato.objects.filter(
+            sha256=file.sha256,
+            committente_id=file.committente_id,
+            stato__in=[StatoFile.IMPORTATO, StatoFile.CON_AVVISI],
+        )
         .exclude(pk=file.pk)
         .exists()
     )
@@ -170,7 +175,7 @@ def _chiudi(file: FileImportato, stato: str, c: _Conteggi, *, righe_lette: int) 
 
 
 def _notifica_errori(file: FileImportato) -> None:
-    destinatari = config.leggi("importazione.notifica_errori")
+    destinatari = config.leggi("importazione.notifica_errori", file.committente_id)
     if not destinatari:
         return
     contesto = {
@@ -213,8 +218,7 @@ def _applica_ordine(file: FileImportato, chiave: ChiaveOrdine, righe: list[RigaF
     clienti = Counter(r.cliente for r in righe if r.cliente)
     cliente = clienti.most_common(1)[0][0] if clienti else ""
 
-    # Metodo v3: per ora gli ordini importati sono del committente predefinito (formati per cliente: fase 3).
-    committente_id = predefinito_id()
+    committente_id = file.committente_id  # dalla casella o dal mittente, oppure scelto nel caricamento
     ordine = (
         Ordine.objects.select_for_update()
         .filter(
@@ -417,6 +421,6 @@ def _aggiorna_riga(
     return True
 
 
-def importa_caricamento(nome: str, contenuto: bytes, utente: Any) -> FileImportato:
-    file = registra_file(nome, contenuto, OrigineFile.CARICAMENTO, utente=utente)
+def importa_caricamento(nome: str, contenuto: bytes, utente: Any, committente: Any = None) -> FileImportato:
+    file = registra_file(nome, contenuto, OrigineFile.CARICAMENTO, utente=utente, committente=committente)
     return importa(file)

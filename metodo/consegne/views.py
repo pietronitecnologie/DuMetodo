@@ -139,7 +139,7 @@ def ddt(request: HttpRequest) -> HttpResponse:
     from metodo.gestionale.views import contesto_trasporto, emetti_da_richiesta
 
     oggi = dt.date.today()
-    valori = gestionale.valori_predefiniti_ddt()
+    valori = gestionale.valori_predefiniti_ddt(committenti.corrente(request))
     if request.method == "POST" and request.POST.get("azione") == "crea":
         valori, d = emetti_da_richiesta(request)
         if d is not None:
@@ -173,7 +173,7 @@ def ddt(request: HttpRequest) -> HttpResponse:
         request,
         "consegne/ddt.html",
         {
-            **contesto_trasporto(valori),
+            **contesto_trasporto(valori, request),
             "righe": righe,
             "n_righe": len(righe),
             "manuale": request.method == "POST" and request.POST.get("azione") != "crea",

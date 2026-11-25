@@ -130,6 +130,9 @@ def imposta_predefinito(utente: Any, committente_id: int) -> Committente:
     Committente.objects.filter(predefinito=True).exclude(pk=c.pk).update(predefinito=False)
     c.predefinito = True
     c.save(update_fields=["predefinito", "aggiornato_il"])
+    from metodo.configurazione import servizi as config
+
+    transaction.on_commit(config.invalida_cache)  # cambia di chi sono i valori generali
     return c
 
 

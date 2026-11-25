@@ -26,6 +26,15 @@ from metodo.utilita import servizi as utilita
 from .test_gestionale import dati_fiscali  # noqa: F401  (fixture)
 
 OGGI = timezone.localdate()
+DATI_ABB = {
+    "gestionale.cliente_denominazione": "ABB S.p.A.",
+    "gestionale.cliente_partita_iva": "09876543217",
+    "gestionale.cliente_indirizzo": "Via Vittor Pisani 16",
+    "gestionale.cliente_cap": "20124",
+    "gestionale.cliente_comune": "Milano",
+    "gestionale.cliente_provincia": "MI",
+    "gestionale.cliente_codice_destinatario": "ABC1234",
+}
 
 
 @pytest.fixture
@@ -82,7 +91,11 @@ def test_ddt_e_fattura_di_un_solo_committente(ufficio, dmg, abb, dati_fiscali): 
         gestionale.crea_fattura_differita(ufficio, [d_dmg.pk, d_abb.pk], OGGI)
     f = gestionale.crea_fattura_differita(ufficio, [d_abb.pk], OGGI)
     assert f.committente == abb
+    with pytest.raises(OperazioneNonConsentita, match="Cliente"):  # ABB non riceve mai i dati fiscali di DMG
+        gestionale.emetti_fattura(ufficio, f.pk)
+    config.scrivi_committente(abb, DATI_ABB)
     f = gestionale.emetti_fattura(ufficio, f.pk)
+    assert f.cessionario["denominazione"] == "ABB S.p.A."
     assert gestionale.nota_di_credito(ufficio, f.pk).committente == abb
 
 

@@ -3,6 +3,9 @@
 {% block contenuto %}
 <h1 class="h4 mb-1">Dati fiscali e impostazioni</h1>
 <p class="small text-muted mb-2">Usati su DDT e fatture. Ogni documento fotografa i dati al momento dell'emissione: cambiarli non modifica i documenti già emessi.</p>
+{% if committenti_utente %}<div class="alert alert-info small py-2">Con più clienti committenti, i <b>dati fiscali del Cliente</b> qui sotto sono
+quelli del committente <b>predefinito</b>. Gli altri clienti hanno i loro (obbligatori per emettere DDT e fatture), e possono avere IVA,
+pagamento e valori dei DDT diversi: <a href="{% url 'committenti:lista' %}">Clienti committenti</a> → Impostazioni.</div>{% endif %}
 {% include "gestionale/_avvisi_dati.html" %}
 <div class="row g-2 align-items-start">
 {% for form in forms %}
