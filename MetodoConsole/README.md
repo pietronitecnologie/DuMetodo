@@ -40,6 +40,7 @@ Poi controlla la configurazione e, in Metodo v2, imposta chi riceve gli avvisi:
 
 | Comando | Cosa fa |
 |---|---|
+| `metodoconsole pannello` (o solo `metodoconsole`) | Pannello a schermo intero, anche via SSH (vedi sotto) |
 | `metodoconsole stato` | Servizi in esecuzione e ultimo backup |
 | `metodoconsole diagnostica` | Controllo completo (vedi sotto). Uscita: 0 tutto ok, 1 attenzione, 2 errore. `--json` per altri strumenti di monitoraggio |
 | `metodoconsole backup` | Backup completo, verificato. `--nota testo` per un backup da conservare (es. prima di una modifica importante), `--solo-database` |
@@ -55,6 +56,34 @@ Poi controlla la configurazione e, in Metodo v2, imposta chi riceve gli avvisi:
 
 Dove serve un `NOME` di backup basta l'inizio (`20261120`), una parte della nota (`prima-di-abc1234`) oppure
 `ultimo`.
+
+## Pannello
+
+`metodoconsole` da solo (o `metodoconsole pannello`) apre un pannello a schermo intero nel terminale, anche via
+SSH (`ssh -t server metodoconsole`). Non serve installare niente: usa `curses` di Python.
+
+- Elenco dei container di Metodo v2 con stato e salute (● acceso, ◐ in avvio, ✖ errore, ○ fermo), porte e, con
+  `s`, CPU e memoria. Si aggiorna da solo ogni 3 secondi.
+- In fondo, gli **altri container del server**: per esempio quelli di una vecchia installazione (`dumetodo-…`).
+  Se sono accesi sulla stessa porta di Metodo v2, il riepilogo in alto lo segnala: fermali con `f`.
+- Tasti principali:
+
+| Tasto | Cosa fa |
+|---|---|
+| ↑ ↓ | Scegli un container |
+| Invio | Log del container: `f` segue in tempo reale, `e` solo errori, `/` cerca, `q` torna |
+| `a` / `f` / `r` | Avvia, ferma (chiede conferma), riavvia il container scelto |
+| `c` | Console (shell) dentro il container scelto |
+| `A` / `F` / `R` | Avvia, ferma, riavvia tutto Metodo v2 |
+| `d` | Diagnostica completa |
+| `b` | Backup (chiede conferma e una nota facoltativa) |
+| `u` | Aggiornamento |
+| `p` | Stato e log del prelievo da Metodo |
+| `o` | Mostra o nasconde gli altri container |
+| `?` | Aiuto |
+| `q` | Esci |
+
+Avvio, arresto di tutto, backup e aggiornamento escono dal pannello e mostrano l'output normale; con Invio si torna.
 
 ## Prelievo dei dati da Metodo
 

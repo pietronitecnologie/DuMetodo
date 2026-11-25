@@ -9,6 +9,7 @@ caricati, aggiornamento, avvisi via email. Solo libreria standard di Python (3.1
     metodoconsole backup [--nota TESTO]
     metodoconsole ripristina NOME
     metodoconsole prelievo avvia    (dati da Metodo: verifica | avvia | stato | log | ferma)
+    metodoconsole pannello          (controllo a schermo intero, anche via SSH; o solo «metodoconsole»)
     metodoconsole --help            (tutti i comandi)
 
 Configurazione: /etc/metodoconsole/metodoconsole.conf (vedi metodoconsole.conf.example).
@@ -973,6 +974,16 @@ def cmd_psql(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     return subprocess.run(dc.base() + ["exec", "db", "psql", "-U", conf.db_utente, "-d", conf.db_nome]).returncode
 
 
+def cmd_pannello(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
+    """Pannello a schermo intero (curses): il modulo pannello.py sta accanto a questo file."""
+    cartella = str(Path(__file__).resolve().parent)
+    if cartella not in sys.path:
+        sys.path.insert(0, cartella)
+    import pannello
+
+    return pannello.avvia(conf, dc, sys.modules[__name__])
+
+
 def cmd_versione(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     info(f"MetodoConsole {VERSIONE} — Metodo v2 {versione_codice(conf)} in {conf.cartella}")
     return 0
@@ -1224,11 +1235,15 @@ def parser() -> argparse.ArgumentParser:
     x.add_argument("--senza-backup", action="store_true", help="avvia senza il backup di sicurezza")
     x.add_argument("-f", "--segui", action="store_true", help="con «log»: segue l'avanzamento")
     x.add_argument("-n", "--righe", type=int, default=50, help="con «log»: righe da mostrare")
+    sub("pannello", cmd_pannello, "pannello a schermo intero per controllare Docker (anche via SSH)")
     sub("versione", cmd_versione, "versione di MetodoConsole e di Metodo v2")
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv and sys.stdin.isatty() and sys.stdout.isatty():
+        argv = ["pannello"]  # «metodoconsole» da solo, in un terminale, apre il pannello
     a = parser().parse_args(argv)
     try:
         conf = leggi_conf(a.conf)
