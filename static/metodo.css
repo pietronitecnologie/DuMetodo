@@ -424,3 +424,15 @@ tr.dm-marcata > td { background-color: #fff3b0 !important; }
 tr.dm-marcata > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
 tr.dm-marcata .dm-marca, .card-agenda.dm-marcata .dm-marca { opacity: 1; filter: none; }
 .card-agenda.dm-marcata { background-color: #fff3b0 !important; box-shadow: 0 0 0 2px #e0a800; }
+
+/* Ticket: stato e priorità */
+.dm-ticket-stato, .dm-ticket-prio { display: inline-block; padding: .1rem .45rem; border-radius: .35rem; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.dm-ticket-stato-APE { background: #e1ebff; color: #1450bd; }
+.dm-ticket-stato-LAV { background: #fff0d1; color: #8a4f00; }
+.dm-ticket-stato-ATT { background: #eceff3; color: #3f4a5a; }
+.dm-ticket-stato-CHI { background: #dff3e7; color: #12693b; }
+.dm-ticket-prio-1 { background: #f1f3f5; color: #5c6773; }
+.dm-ticket-prio-2 { background: #e8f0fe; color: #2a5bb8; }
+.dm-ticket-prio-3 { background: #ffe6c7; color: #9a4300; }
+.dm-ticket-prio-4 { background: #fde3e5; color: #b01f28; }
+.dm-ore-in-corso { font-size: .8em; opacity: .7; }

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titolo %}Nuovo ticket{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  {% if ordine %}{% include "_indietro.html" with url=ordine.get_absolute_url etichetta="Ordine" %}{% else %}{% url 'ticket:lista' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Ticket" %}{% endif %}
+  <h1 class="h4 mb-0 me-auto">Nuovo ticket{% if ordine %} sull'ordine {{ ordine.codice_breve }}{% endif %}</h1>
+</div>
+<form method="post" class="card" style="max-width: 48rem">{% csrf_token %}
+  <div class="card-body">
+    {% for e in form.non_field_errors %}<div class="alert alert-danger py-1">{{ e }}</div>{% endfor %}
+    {% include "_campo.html" with campo=form.titolo %}
+    <div class="row g-2">
+      <div class="col-md-6">{% include "_campo.html" with campo=form.categoria %}</div>
+      <div class="col-md-6">{% include "_campo.html" with campo=form.priorita %}</div>
+      <div class="col-md-6">{% include "_campo.html" with campo=form.ordine %}</div>
+      <div class="col-md-6">{% if form.fields.riga.queryset.exists %}{% include "_campo.html" with campo=form.riga %}{% else %}<input type="hidden" name="riga" value="">{% endif %}</div>
+    </div>
+    {% include "_campo.html" with campo=form.descrizione %}
+    <div class="row g-2"><div class="col-md-6">{% include "_campo.html" with campo=form.assegnato_a %}</div></div>
+    <p class="small text-muted mb-0">Le ore si contano da adesso fino alla chiusura del ticket.</p>
+  </div>
+  <div class="card-footer d-flex gap-2"><button class="btn btn-primary">Apri il ticket</button></div>
+</form>
+{% endblock %}

@@ -247,6 +247,35 @@ settimana.
 - **Tabulato settimanale**: articoli da produrre in una settimana per un reparto, con ore totali. Scegli reparto e
   settimana (‹ precedente / successiva ›), poi **Stampa** o **Excel**.
 
+### Ticket
+
+**Produzione → Ticket** raccoglie le segnalazioni da seguire fino alla soluzione: un problema di qualità, un
+materiale mancante, una macchina ferma, un disegno da chiarire, una richiesta del cliente.
+
+- **Aprire un ticket**: dalla pagina di un **ordine** con **+ Ticket** in alto (o **+ Apri ticket** nel riquadro
+  *Ticket* dell'ordine), oppure da **+ Nuovo ticket** nell'elenco. Scrivi titolo, categoria, priorità, una
+  descrizione; puoi indicare la **riga** dell'ordine interessata e a chi **assegnarlo**.
+- **Stati**: *Aperto* → *In lavorazione* (chi lo prende in carico ne diventa l'assegnatario) → *In attesa* (di
+  materiale, del cliente…: scrivi di cosa) → *Chiuso*. Per chiudere serve la **soluzione**. Un ticket chiuso si può
+  **riaprire**.
+- **Ore**: Metodo v2 conta le ore dall'apertura alla chiusura (⏱ = ancora aperto, le ore salgono):
+  - **dall'apertura**: tutte le ore passate;
+  - **in attesa**: le ore passate *In attesa* (e da chiuso, se riaperto);
+  - **effettive**: dall'apertura meno l'attesa;
+  - **presa in carico dopo**: quanto è passato prima che qualcuno lo prendesse in carico.
+- **Ritardo**: ogni priorità ha delle **ore massime** effettive (Configurazione → *Ticket*; di base urgente 4,
+  alta 24, normale 72, bassa 168). Oltre, il ticket è segnato *in ritardo* in rosso; da tre quarti in su è
+  arancione.
+- In cima all'elenco: i ticket non chiusi, quanti sono **in ritardo** (clic per vederli), quanti se ne sono chiusi
+  negli ultimi 30 giorni con le **ore medie**, anche per categoria. Filtri per testo, ordine, stato, categoria,
+  priorità e *Assegnati a me*; **Excel** scarica l'elenco con tutte le ore.
+- Ogni ticket ha la sua **cronologia** (commenti, cambi di stato, assegnazioni, priorità).
+
+Chi può fare cosa (Utenti e permessi → Produzione): *Vedere i ticket*; *Aprire e seguire i ticket* (aprire,
+commentare, lavorare e chiudere quelli aperti da sé o assegnati a sé); *Gestire tutti i ticket* (assegnare,
+cambiare priorità, chiudere e riaprire qualunque ticket). Chi vede gli ordini riceve i primi due, i capireparto
+anche il terzo.
+
 ## Spedizioni
 
 ### Consegna

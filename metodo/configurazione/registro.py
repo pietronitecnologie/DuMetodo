@@ -57,6 +57,7 @@ class Gruppo(StrEnum):
     PIANIFICAZIONE = "Pianificazione e tabulati"
     CLIENT = "Client desktop"
     MAGAZZINO = "Magazzino"
+    TICKET = "Ticket"
     # Sezione Gestionale (permessi riservati): si modificano da Gestionale → Impostazioni, non da Configurazione.
     GESTIONALE_FORNITORE = "Dati fiscali del Fornitore (cedente)"
     GESTIONALE_CLIENTE = "Dati fiscali del Cliente (cessionario e destinatario)"
@@ -260,6 +261,43 @@ PARAMETRI: tuple[Parametro, ...] = (
         "Quante settimane mostra il report, contando la corrente (9 = la corrente e le 8 precedenti). "
         "Nella pagina si può comunque cambiare di volta in volta.",
         default=9,
+        minimo=1,
+    ),
+    # --- Ticket -----------------------------------------------------------------------
+    Parametro(
+        "ticket.ore_massime_urgente",
+        Tipo.INTERO,
+        Gruppo.TICKET,
+        "Ore massime per chiudere un ticket «Urgente»",
+        "Oltre queste ore (dall'apertura, senza il tempo «in attesa») il ticket è segnalato in rosso come in ritardo.",
+        default=4,
+        minimo=1,
+    ),
+    Parametro(
+        "ticket.ore_massime_alta",
+        Tipo.INTERO,
+        Gruppo.TICKET,
+        "Ore massime per chiudere un ticket «Alta»",
+        "Oltre queste ore (dall'apertura, senza il tempo «in attesa») il ticket è segnalato in rosso come in ritardo.",
+        default=24,
+        minimo=1,
+    ),
+    Parametro(
+        "ticket.ore_massime_normale",
+        Tipo.INTERO,
+        Gruppo.TICKET,
+        "Ore massime per chiudere un ticket «Normale»",
+        "Oltre queste ore (dall'apertura, senza il tempo «in attesa») il ticket è segnalato in rosso come in ritardo.",
+        default=72,
+        minimo=1,
+    ),
+    Parametro(
+        "ticket.ore_massime_bassa",
+        Tipo.INTERO,
+        Gruppo.TICKET,
+        "Ore massime per chiudere un ticket «Bassa»",
+        "Oltre queste ore (dall'apertura, senza il tempo «in attesa») il ticket è segnalato in rosso come in ritardo.",
+        default=168,
         minimo=1,
     ),
     # --- Ordini -----------------------------------------------------------------------

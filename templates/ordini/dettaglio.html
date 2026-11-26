@@ -5,6 +5,7 @@
   {% url 'ordini:lista' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Ordini" classi="dm-az dm-az-testata dm-az-annulla" %}
   <h1 class="h4 mb-0 me-auto" data-dm-menu="ordine" data-dm-id="{{ ordine.pk }}" data-dm-codice="{{ ordine.codice_breve }}">Ordine {{ ordine.codice_breve }}
     <span class="align-middle dm-stato dm-stato-{{ ordine.stato }}">{{ ordine.get_stato_display }}</span></h1>
+  {% if perms.core.ticket_aprire or perms.core.ticket_gestire %}<a class="btn btn-sm dm-az dm-az-testata" href="{% url 'ticket:nuovo' %}?ordine={{ ordine.pk }}" title="Apri un ticket su questo ordine">+ Ticket</a>{% endif %}
   {% for t in transizioni %}
   <form method="post" action="{% url 'ordini:cambia_stato' ordine.pk %}"
         onsubmit="return confirm('Confermi: {{ t.etichetta|escapejs }}?')">{% csrf_token %}
@@ -88,6 +89,7 @@
       </div>
       {% endif %}
     </div>
+    {% if perms.core.ticket_vedere or perms.core.ticket_gestire %}<div hx-get="{% url 'ticket:pannello_ordine' ordine.pk %}" hx-trigger="load" hx-swap="outerHTML"></div>{% endif %}
     {% if perms.core.tracciatura_vedere %}<div hx-get="{% url 'tracciatura:pannello' %}?ordine={{ ordine.pk }}" hx-trigger="load" hx-swap="outerHTML"></div>{% endif %}
   </div>
 

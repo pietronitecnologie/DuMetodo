@@ -1,0 +1,5 @@
+{# Ore di un ticket: effettive (senza attesa) rispetto alla soglia della priorità. #}
+<span class="text-nowrap {% if o.in_ritardo %}text-danger fw-semibold{% elif o.frazione >= 0.75 and o.in_corso %}text-warning-emphasis{% endif %}"
+      title="Totali {{ o.testo_totali }} · in attesa {{ o.testo_attesa }}{% if o.soglia %} · massimo {{ o.soglia }} h{% endif %}">
+  {{ o.testo_effettive }}{% if o.in_corso %} <span class="dm-ore-in-corso" title="ancora aperto: le ore salgono">⏱</span>{% endif %}{% if o.in_ritardo %} <span class="badge text-bg-danger">in ritardo</span>{% endif %}
+</span>

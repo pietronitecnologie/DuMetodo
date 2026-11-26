@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "metodo.gestionale",
     "metodo.timbrature",
     "metodo.tracciatura",
+    "metodo.ticket",
     "metodo.magazzino",
     "metodo.tracciabilita",
     "metodo.chat",

@@ -1,0 +1,19 @@
+<div class="d-flex align-items-center gap-2 mb-1 small">
+  <span class="me-auto">{{ pagina.paginator.count }} ticket</span>
+  <a class="btn btn-sm btn-outline-secondary" href="?{{ request.GET.urlencode }}&formato=xlsx">Excel</a>
+</div>
+<div class="table-responsive"><table class="table table-sm table-hover bg-white align-middle">
+  <thead><tr><th>N°</th><th>Titolo</th><th>Ordine</th><th>Categoria</th><th>Priorità</th><th>Stato</th><th>Aperto</th><th>Assegnato a</th><th class="text-end">Ore</th></tr></thead>
+  <tbody>{% for t in pagina %}<tr>
+    <td class="text-nowrap"><a href="{{ t.get_absolute_url }}">#{{ t.pk }}</a></td>
+    <td><a class="text-body" href="{{ t.get_absolute_url }}">{{ t.titolo }}</a></td>
+    <td class="text-nowrap">{% if t.ordine %}<a href="{{ t.ordine.get_absolute_url }}">{{ t.ordine.codice_breve }}</a>{% if t.riga %} <span class="text-muted">r. {{ t.riga.n_riga }}</span>{% endif %}{% else %}—{% endif %}</td>
+    <td class="small">{{ t.get_categoria_display }}</td>
+    <td><span class="dm-ticket-prio dm-ticket-prio-{{ t.priorita }}">{{ t.get_priorita_display }}</span></td>
+    <td><span class="dm-ticket-stato dm-ticket-stato-{{ t.stato }}">{{ t.get_stato_display }}</span></td>
+    <td class="small text-nowrap">{{ t.aperto_il|date:"d/m/Y H:i" }}<div class="text-muted">{{ t.aperto_da.get_full_name|default:t.aperto_da.username }}</div></td>
+    <td class="small">{% if t.assegnato_a %}{{ t.assegnato_a.get_full_name|default:t.assegnato_a.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+    <td class="text-end">{% include "ticket/_ore.html" with o=t.ore %}</td>
+  </tr>{% empty %}<tr><td colspan="9" class="text-center text-muted py-4">Nessun ticket.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% include "_paginazione_filtri.html" %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block titolo %}Ticket #{{ t.pk }}{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  {% url 'ticket:lista' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Ticket" %}
+  <h1 class="h4 mb-0 me-auto">#{{ t.pk }} {{ t.titolo }}
+    <span class="align-middle dm-ticket-stato dm-ticket-stato-{{ t.stato }}">{{ t.get_stato_display }}</span>
+    <span class="align-middle dm-ticket-prio dm-ticket-prio-{{ t.priorita }}">{{ t.get_priorita_display }}</span></h1>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body py-2"><div class="row dm-dati">
+      <div class="col-6 col-md-3"><div class="text-muted">Ordine</div>{% if t.ordine %}<a href="{{ t.ordine.get_absolute_url }}">{{ t.ordine.codice_breve }}</a>{% if t.riga %} · riga {{ t.riga.n_riga }} <span class="text-muted">({{ t.riga.articolo }})</span>{% endif %}{% else %}—{% endif %}</div>
+      <div class="col-6 col-md-3"><div class="text-muted">Categoria</div>{{ t.get_categoria_display }}</div>
+      <div class="col-6 col-md-3"><div class="text-muted">Aperto</div>{{ t.aperto_il|date:"d/m/Y H:i" }}<div class="small">{{ t.aperto_da.get_full_name|default:t.aperto_da.username }}</div></div>
+      <div class="col-6 col-md-3"><div class="text-muted">Assegnato a</div>{% if t.assegnato_a %}{{ t.assegnato_a.get_full_name|default:t.assegnato_a.username }}{% else %}—{% endif %}</div>
+      <div class="col-6 col-md-3"><div class="text-muted">Preso in carico</div>{{ t.preso_in_carico_il|date:"d/m/Y H:i"|default:"—" }}</div>
+      <div class="col-6 col-md-3"><div class="text-muted">Chiuso</div>{% if t.chiuso_il %}{{ t.chiuso_il|date:"d/m/Y H:i" }}<div class="small">{{ t.chiuso_da.get_full_name|default:t.chiuso_da.username }}</div>{% else %}—{% endif %}</div>
+    </div></div></div>
+
+    <div class="card mb-3"><div class="card-header"><strong>Ore</strong>{% if t.ore.in_corso %} <span class="small text-muted">— il ticket è aperto: le ore salgono</span>{% endif %}</div>
+      <div class="card-body py-2"><div class="row dm-dati">
+        <div class="col-6 col-md-3"><div class="text-muted">Dall'apertura</div><span class="fs-5">{{ t.ore.testo_totali }}</span></div>
+        <div class="col-6 col-md-3"><div class="text-muted">In attesa</div><span class="fs-5">{{ t.ore.testo_attesa }}</span></div>
+        <div class="col-6 col-md-3"><div class="text-muted">Effettive</div><span class="fs-5 {% if t.ore.in_ritardo %}text-danger fw-semibold{% endif %}">{{ t.ore.testo_effettive }}</span></div>
+        <div class="col-6 col-md-3"><div class="text-muted">Presa in carico dopo</div><span class="fs-5">{{ t.ore.testo_risposta }}</span></div>
+      </div>
+      {% if t.ore.soglia %}<div class="progress mt-2" style="height: 6px" title="{{ t.ore.testo_effettive }} su {{ t.ore.soglia }} h massime">
+        <div class="progress-bar {% if t.ore.in_ritardo %}bg-danger{% elif t.ore.frazione >= 0.75 %}bg-warning{% else %}bg-success{% endif %}" style="width: {% widthratio t.ore.effettive t.ore.soglia 100 %}%"></div></div>
+      <div class="small text-muted mt-1">Massimo per la priorità {{ t.get_priorita_display|lower }}: {{ t.ore.soglia }} h effettive{% if t.ore.in_ritardo %} — <span class="text-danger fw-semibold">in ritardo</span>{% endif %}.</div>{% endif %}
+      </div></div>
+
+    {% if t.descrizione %}<div class="card mb-3"><div class="card-header"><strong>Descrizione</strong></div><div class="card-body" style="white-space: pre-wrap">{{ t.descrizione }}</div></div>{% endif %}
+    {% if t.soluzione %}<div class="card mb-3 border-success"><div class="card-header"><strong>Soluzione</strong></div><div class="card-body" style="white-space: pre-wrap">{{ t.soluzione }}</div></div>{% endif %}
+
+    <div class="card mb-3"><div class="card-header"><strong>Cronologia</strong></div>
+      <ul class="list-group list-group-flush small">
+        {% for e in eventi %}<li class="list-group-item{% if e.tipo != 'COM' %} text-muted{% endif %}">
+          <div class="d-flex"><strong class="me-auto">{{ e.autore.get_full_name|default:e.autore.username|default:"—" }}{% if e.tipo != 'COM' %} · {{ e.get_tipo_display|lower }}{% endif %}</strong><span>{{ e.momento|date:"d/m/Y H:i" }}</span></div>
+          {% if e.testo %}<div style="white-space: pre-wrap">{{ e.testo }}</div>{% endif %}</li>{% endfor %}
+      </ul>
+      {% if puo_commentare %}<div class="card-body border-top">
+        <form method="post" action="{% url 'ticket:azione' t.pk %}">{% csrf_token %}<input type="hidden" name="azione" value="commenta">
+          {{ commento.testo }}<button class="btn btn-sm btn-primary mt-2">Aggiungi commento</button></form></div>{% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    {% if puo_lavorare or puo_prendere or puo_riaprire %}<div class="card mb-3"><div class="card-header"><strong>Stato</strong></div><div class="card-body d-grid gap-2">
+      {% if puo_prendere %}<form method="post" action="{% url 'ticket:azione' t.pk %}">{% csrf_token %}<input type="hidden" name="azione" value="stato"><input type="hidden" name="stato" value="LAV">
+        <button class="btn btn-sm btn-primary w-100">{% if t.assegnato_a_id %}Metti in lavorazione{% else %}Prendi in carico{% endif %}</button></form>
+      {% elif puo_lavorare and not t.is_chiuso and t.stato != 'LAV' %}<form method="post" action="{% url 'ticket:azione' t.pk %}">{% csrf_token %}<input type="hidden" name="azione" value="stato"><input type="hidden" name="stato" value="LAV">
+        <button class="btn btn-sm btn-primary w-100">Metti in lavorazione</button></form>{% endif %}
+      {% if puo_lavorare and not t.is_chiuso %}
+        {% if t.stato != 'ATT' %}<form method="post" action="{% url 'ticket:azione' t.pk %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="azione" value="stato"><input type="hidden" name="stato" value="ATT">
+          <input class="form-control form-control-sm" name="nota" placeholder="In attesa di… (facoltativo)"><button class="btn btn-sm btn-outline-warning text-nowrap">In attesa</button></form>{% endif %}
+        <form method="post" action="{% url 'ticket:azione' t.pk %}">{% csrf_token %}<input type="hidden" name="azione" value="stato"><input type="hidden" name="stato" value="CHI">
+          <textarea class="form-control form-control-sm mb-1" name="nota" rows="3" required placeholder="Soluzione (obbligatoria per chiudere)"></textarea>
+          <button class="btn btn-sm btn-success w-100">Chiudi il ticket</button></form>
+      {% endif %}
+      {% if puo_riaprire %}<form method="post" action="{% url 'ticket:azione' t.pk %}">{% csrf_token %}<input type="hidden" name="azione" value="stato"><input type="hidden" name="stato" value="APE">
+        <input class="form-control form-control-sm mb-1" name="nota" placeholder="Perché si riapre (facoltativo)">
+        <button class="btn btn-sm btn-outline-secondary w-100">Riapri</button></form>{% endif %}
+    </div></div>{% endif %}
+    {% if puo_gestire and not t.is_chiuso %}<div class="card mb-3"><div class="card-header"><strong>Gestione</strong></div><div class="card-body">
+      <form method="post" action="{% url 'ticket:azione' t.pk %}" class="d-flex gap-1 mb-2">{% csrf_token %}<input type="hidden" name="azione" value="assegna">
+        <select class="form-select form-select-sm" name="utente" aria-label="Assegna a"><option value="">— nessuno —</option>
+          {% for u in incaricabili %}<option value="{{ u.pk }}" {% if u.pk == t.assegnato_a_id %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}</select>
+        <button class="btn btn-sm btn-outline-primary">Assegna</button></form>
+      <form method="post" action="{% url 'ticket:azione' t.pk %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="azione" value="priorita">
+        <select class="form-select form-select-sm" name="priorita" aria-label="Priorità">{% for v, l in priorita %}<option value="{{ v }}" {% if v == t.priorita %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <button class="btn btn-sm btn-outline-primary">Priorità</button></form>
+    </div></div>{% endif %}
+  </div>
+</div>
+{% endblock %}
