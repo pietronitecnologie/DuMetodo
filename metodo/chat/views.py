@@ -8,10 +8,29 @@ from metodo.core.permessi import F, richiede_permesso
 
 from . import servizi
 
+# Pannello chat prima dell'accesso. Il client desktop lo tiene aperto, nascosto, insieme alla scheda visibile.
+# Se qui comparisse la pagina di accesso, le due pagine creerebbero due cookie CSRF diversi nello stesso momento e
+# il login nella scheda visibile potrebbe fallire («CSRF token from POST incorrect»). Questa pagina non crea
+# cookie e si ricarica da sola: appena l'utente entra in una scheda, mostra la chat.
+IN_ATTESA = (
+    '<!doctype html><html lang="it"><head><meta charset="utf-8">'
+    '<meta http-equiv="refresh" content="5"><title>Chat</title></head>'
+    '<body style="font-family:system-ui,sans-serif;color:#5b6573;padding:1rem">'
+    "La chat si apre dopo l'accesso.</body></html>"
+)
+
 
 @require_GET
-@richiede_permesso(F.CHAT)
 def pannello(request: HttpRequest) -> HttpResponse:
+    if not request.user.is_authenticated:
+        r = HttpResponse(IN_ATTESA)
+        r["Cache-Control"] = "no-store"
+        return r
+    return _pannello(request)
+
+
+@richiede_permesso(F.CHAT)
+def _pannello(request: HttpRequest) -> HttpResponse:
     return render(request, "chat/pannello.html")
 
 

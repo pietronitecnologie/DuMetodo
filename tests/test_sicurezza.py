@@ -15,6 +15,7 @@ PUBBLICHE = {
     "timbrature:postazione",
     "timbrature:postazione_identifica",
     "timbrature:postazione_timbra",
+    "chat:pannello",  # prima dell'accesso: pagina d'attesa senza dati (vedi test sotto); dopo, chiede il permesso
 }
 # Solo login: servono a ogni utente collegato e restituiscono dati già filtrati per i suoi permessi.
 SOLO_LOGIN = {
@@ -60,3 +61,10 @@ def test_anonimo_e_utente_senza_permessi(client, db, nome, url):
 
 def test_le_rotte_sono_state_trovate():
     assert len(ROTTE) > 80
+
+
+def test_pannello_chat_senza_dati_prima_dell_accesso_e_con_permesso_dopo(client, db):
+    r = client.get("/chat/")
+    assert r.status_code == 200 and "dopo l'accesso" in r.content.decode() and len(r.content) < 600
+    client.force_login(User.objects.create_user("nessuno"))
+    assert client.get("/chat/").status_code == 403

@@ -18,6 +18,11 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
+# Nomi propri dei cookie: sullo stesso dominio può esserci un'altra applicazione Django (es. il Metodo precedente,
+# con csrftoken e sessionid validi per tutto il dominio). Con gli stessi nomi il browser manderebbe due cookie e il
+# login fallirebbe con «CSRF token from POST incorrect».
+CSRF_COOKIE_NAME = "metodo_csrftoken"
+SESSION_COOKIE_NAME = "metodo_sessione"
 
 INSTALLED_APPS = [
     "django.contrib.admin",

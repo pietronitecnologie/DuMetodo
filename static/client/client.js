@@ -39,7 +39,7 @@
     });
 
   const csrf = () => {
-    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    const m = document.cookie.match(/(?:^|;\s*)metodo_csrftoken=([^;]+)/);
     if (m) return decodeURIComponent(m[1]);
     try { return JSON.parse(document.body.getAttribute("hx-headers") || "{}")["X-CSRFToken"] || ""; } catch (e) { return ""; }
   };
