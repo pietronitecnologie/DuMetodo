@@ -186,10 +186,29 @@ def test_allinea_non_riuscito_e_avvisa(tmp_path, monkeypatch):
     assert avvisi == ["Allineamento con Metodo NON riuscito"]
 
 
-def test_allinea_automatico_serve_root(monkeypatch):
+def test_allinea_automatico_all_orario_scelto(tmp_path, monkeypatch):
+    comandi = []
+    monkeypatch.setattr(
+        mc, "esegui", lambda cmd, **kw: comandi.append(cmd) or mc.subprocess.CompletedProcess(cmd, 0, "", "")
+    )
+    monkeypatch.setattr(mc, "SYSTEMD", tmp_path)
     monkeypatch.setattr(mc, "root", lambda: False)
     with pytest.raises(mc.Errore, match="Serve root"):
-        mc.cmd_allinea(None, None, mc.parser().parse_args(["allinea", "--automatico", "on"]))
+        mc.cmd_allinea(None, None, mc.parser().parse_args(["allinea", "--automatico", "03:15"]))
+    monkeypatch.setattr(mc, "root", lambda: True)
+    assert mc.cmd_allinea(None, None, mc.parser().parse_args(["allinea", "--automatico", "3:15"])) == 0
+    timer = (tmp_path / mc.TIMER_ALLINEA).read_text()
+    assert "OnCalendar=*-*-* 03:15:00 Europe/Rome" in timer and "Persistent=true" in timer
+    assert (tmp_path / "metodoconsole-allinea.service").exists()
+    assert ["systemctl", "enable", mc.TIMER_ALLINEA] in comandi
+    mc.cmd_allinea(None, None, mc.parser().parse_args(["allinea", "--automatico", "13:30, 06:00"]))
+    timer = (tmp_path / mc.TIMER_ALLINEA).read_text()
+    assert timer.index("06:00:00") < timer.index("13:30:00")
+    for sbagliato in ("25:00", "3", "ogni ora", "on"):
+        with pytest.raises(mc.Errore, match="Orario non valido"):
+            mc.orari_allinea(sbagliato)
+    mc.cmd_allinea(None, None, mc.parser().parse_args(["allinea", "--automatico", "off"]))
+    assert ["systemctl", "disable", "--now", mc.TIMER_ALLINEA] in comandi
 
 
 def test_prelievo_nella_diagnostica():
