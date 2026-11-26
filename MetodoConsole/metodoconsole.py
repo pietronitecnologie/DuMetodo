@@ -28,6 +28,7 @@ import getpass
 import hashlib
 import json
 import os
+import re
 import shutil
 import socket
 import ssl
@@ -1142,9 +1143,9 @@ def cmd_allinea(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     """Allinea Metodo v2 con Metodo (che resta in uso): record nuovi + ordini vivi e le loro righe riletti.
 
     Rispetto a «prelievo avvia» resta in primo piano e finisce in pochi minuti: è pensato per essere lanciato
-    spesso, anche in automatico (--automatico on: ogni 30 minuti)."""
+    spesso, anche in automatico ogni giorno a un orario scelto (--automatico 03:15)."""
     if a.automatico:
-        return _allinea_automatico(a.automatico == "on")
+        return _allinea_automatico(a.automatico)
     st = stato_container(nome_prelievo(conf))
     if st and st.get("Running"):
         raise Errore("È in corso un prelievo completo: aspetta che finisca (metodoconsole prelievo stato).")
@@ -1183,22 +1184,65 @@ def cmd_allinea(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     return 0
 
 
-def _allinea_automatico(acceso: bool) -> int:
+SYSTEMD = Path("/etc/systemd/system")
+# Gli orari sono quelli italiani (come in Metodo v2), anche se il server è in UTC: systemd li converte da sé.
+FUSO_ORARIO = "Europe/Rome"
+ORARIO = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)$")
+
+
+def orari_allinea(testo: str) -> list[str]:
+    """«3:15» → ["03:15"]; «06:00,13:30» → ["06:00", "13:30"] (più volte al giorno). Errore se non valido."""
+    orari = []
+    for parte in testo.replace(" ", "").split(","):
+        m = ORARIO.match(parte)
+        if not m:
+            raise Errore(f"Orario non valido: «{parte}». Scrivilo come HH:MM, es. 03:15 (o più orari: 06:00,13:30).")
+        orari.append(f"{int(m.group(1)):02d}:{m.group(2)}")
+    return sorted(set(orari))
+
+
+def timer_allinea(orari: list[str]) -> str:
+    calendari = "\n".join(f"OnCalendar=*-*-* {o}:00 {FUSO_ORARIO}" for o in orari)
+    return (
+        "[Unit]\n"
+        f"Description=MetodoConsole: allineamento con Metodo ogni giorno alle {', '.join(orari)} (ora italiana)\n\n"
+        "[Timer]\n"
+        f"{calendari}\n"
+        "# Se il server era spento a quell'ora, l'allineamento parte appena si riaccende.\n"
+        "Persistent=true\n\n"
+        "[Install]\n"
+        "WantedBy=timers.target\n"
+    )
+
+
+def _allinea_automatico(scelta: str) -> int:
+    scelta = scelta.strip().lower()
+    if scelta == "stato":
+        r = esegui(["systemctl", "list-timers", TIMER_ALLINEA, "--all", "--no-pager"], controlla=False, timeout=30)
+        attivo = esegui(["systemctl", "is-active", TIMER_ALLINEA], controlla=False, timeout=30).stdout.strip()
+        info(f"Allineamento automatico: {'acceso' if attivo == 'active' else 'spento'}")
+        if attivo == "active":
+            info(r.stdout.rstrip())
+        return 0
     if not root():
-        raise Errore("Serve root: sudo metodoconsole allinea --automatico on|off")
-    if acceso:
-        sorgente = Path(__file__).resolve().parent / "systemd"
-        for nome in ("metodoconsole-allinea.service", TIMER_ALLINEA):
-            if (sorgente / nome).exists():
-                shutil.copy(sorgente / nome, Path("/etc/systemd/system") / nome)
-        esegui(["systemctl", "daemon-reload"], timeout=60)
-        esegui(["systemctl", "enable", "--now", TIMER_ALLINEA], timeout=60)
-        info(tinta("Allineamento automatico acceso: ogni 30 minuti.", OK))
-        info("  Prossime esecuzioni: systemctl list-timers metodoconsole-allinea.timer")
-        info("  Esito:                journalctl -u metodoconsole-allinea --since today")
-    else:
+        raise Errore("Serve root: sudo metodoconsole allinea --automatico HH:MM (oppure off)")
+    if scelta == "off":
         esegui(["systemctl", "disable", "--now", TIMER_ALLINEA], timeout=60, controlla=False)
         info("Allineamento automatico spento.")
+        return 0
+    orari = orari_allinea(scelta)
+    servizio = Path(__file__).resolve().parent / "systemd" / "metodoconsole-allinea.service"
+    if servizio.exists():
+        shutil.copy(servizio, SYSTEMD / servizio.name)
+    (SYSTEMD / TIMER_ALLINEA).write_text(timer_allinea(orari))
+    esegui(["systemctl", "daemon-reload"], timeout=60)
+    esegui(["systemctl", "enable", TIMER_ALLINEA], timeout=60)
+    esegui(["systemctl", "restart", TIMER_ALLINEA], timeout=60)  # riprende subito il nuovo orario
+    info(tinta(f"Allineamento automatico acceso: ogni giorno alle {', '.join(orari)} (ora italiana).", OK))
+    info("  Quando:  sudo metodoconsole allinea --automatico stato")
+    info("  Esito:   journalctl -u metodoconsole-allinea --since yesterday")
+    if "02:30" in orari:
+        info(tinta("  Alle 02:30 parte anche il backup notturno: meglio un altro orario.", ATTENZIONE))
     return 0
 
 
@@ -1377,7 +1421,11 @@ def parser() -> argparse.ArgumentParser:
     x.add_argument("--tentativi", type=int, help="tentativi se Metodo non risponde")
     x.add_argument("--durata-massima", type=int, default=120, help="minuti dopo cui interrompere (120)")
     x.add_argument("--avvisa", action="store_true", help="email agli amministratori se non riesce")
-    x.add_argument("--automatico", choices=("on", "off"), help="accende/spegne l'allineamento ogni 30 minuti")
+    x.add_argument(
+        "--automatico",
+        metavar="HH:MM|off|stato",
+        help="ogni giorno a quell'ora (es. 03:15; più orari: 06:00,13:30), off per spegnerlo, stato per vederlo",
+    )
     sub("pannello", cmd_pannello, "interfaccia a schermo intero: Docker, sicurezza, disco, backup (anche via SSH)")
     sub("versione", cmd_versione, "versione di MetodoConsole e di Metodo v2")
     return p

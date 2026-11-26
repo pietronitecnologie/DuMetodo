@@ -54,7 +54,7 @@ Poi controlla la configurazione e, in Metodo v2, imposta chi riceve gli avvisi:
 | `metodoconsole psql` | Console SQL del database |
 | `metodoconsole prelievo verifica` / `avvia` / `stato` / `log [-f]` / `ferma` | Preleva i dati dal Metodo in produzione (vedi sotto) |
 | `metodoconsole allinea [--giorni N] [--backup]` | Coesistenza: porta i dati nuovi e riallinea gli ordini vivi, subito (vedi sotto) |
-| `sudo metodoconsole allinea --automatico on` / `off` | Allineamento automatico ogni 30 minuti |
+| `sudo metodoconsole allinea --automatico 03:15` / `off` / `stato` | Allineamento automatico ogni giorno all'orario scelto |
 
 Dove serve un `NOME` di backup basta l'inizio (`20261120`), una parte della nota (`prima-di-abc1234`) oppure
 `ultimo`.
@@ -146,8 +146,12 @@ sudo systemctl enable --now metodoconsole-ponte-db.service
 Ascolta solo sull'indirizzo della rete di Docker (172.17.0.1:15432), non da fuori; a migrazione finita:
 `sudo systemctl disable --now metodoconsole-ponte-db.service`.
 
-Per farlo da solo ogni 30 minuti: `sudo metodoconsole allinea --automatico on` (spegnere: `--automatico off`;
-esito: `journalctl -u metodoconsole-allinea`); se non riesce manda un'email agli amministratori.
+Per farlo da solo **ogni giorno a un orario** (come un cron): `sudo metodoconsole allinea --automatico 03:15`.
+L'orario è quello **italiano** (ora legale compresa), anche se il server è in UTC.
+Più volte al giorno: `--automatico 06:00,13:30`; cambiare orario: rilancia con quello nuovo; vedere quando
+parte: `metodoconsole allinea --automatico stato`; spegnere: `--automatico off`; esito: `journalctl -u
+metodoconsole-allinea`. Se il server era spento a quell'ora parte alla riaccensione; se non riesce manda
+un'email agli amministratori. Evita le 02:30, quando parte il backup notturno.
 
 **Attenzione: durante la coesistenza vale Metodo.** Su un ordine arrivato da Metodo, quello che si cambia in
 Metodo v2 (stato, scadenze, righe) viene riportato al valore di Metodo dal successivo allineamento. Le cose che
