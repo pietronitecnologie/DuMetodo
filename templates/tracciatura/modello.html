@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titolo %}{{ m.nome }}{% endblock %}
 {% block contenuto %}
-<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciatura:modelli' %}">← Modelli</a>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">{% url 'tracciatura:modelli' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Modelli" classi="btn-outline-secondary" %}
   <h1 class="h4 mb-0 me-auto">{{ m.nome }}</h1>
   <a class="btn btn-sm btn-outline-primary" href="{% url 'tracciatura:nuova' %}?modello={{ m.pk }}">Prova il modulo</a></div>
 <div class="row g-3">

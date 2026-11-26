@@ -2,37 +2,6 @@
 {% block titolo %}Ordini{% endblock %}
 {% block contenuto %}
 <div class="d-flex align-items-center mb-2"><h1 class="h4 me-auto mb-0">Ordini</h1></div>
-<form class="card card-body mb-3 py-2" method="get" hx-get="{% url 'ordini:lista' %}" hx-target="#tabella-ordini"
-      hx-push-url="true" hx-indicator="#cerca-ordini">
-  <div class="row g-2 align-items-end">
-    <div class="col-6 col-md-2"><label class="form-label small mb-0">Ordine</label>
-      <input type="search" class="form-control form-control-sm" name="q" value="{{ form.q.value|default:'' }}"></div>
-    <div class="col-6 col-md-2"><label class="form-label small mb-0">Articolo</label>
-      <input type="search" class="form-control form-control-sm" name="articolo" value="{{ form.articolo.value|default:'' }}"></div>
-    <div class="col-4 col-md-1"><label class="form-label small mb-0">Anno</label>
-      <input type="number" class="form-control form-control-sm" name="anno" value="{{ form.anno.value|default:'' }}"></div>
-    <div class="col-8 col-md-2"><label class="form-label small mb-0">Categoria</label>
-      <select class="form-select form-select-sm" name="categoria">
-        {% for v, l in form.fields.categoria.choices %}<option value="{{ v }}" {% if form.categoria.value == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
-      </select></div>
-    <div class="col-6 col-md-2"><label class="form-label small mb-0">Scadenza dal</label>
-      <input type="date" class="form-control form-control-sm" name="scadenza_dal" value="{{ form.scadenza_dal.value|default:'' }}"></div>
-    <div class="col-6 col-md-2"><label class="form-label small mb-0">al</label>
-      <input type="date" class="form-control form-control-sm" name="scadenza_al" value="{{ form.scadenza_al.value|default:'' }}"></div>
-    <div class="col-12 col-md-1"><div class="form-check">
-      <input class="form-check-input" type="checkbox" name="aperti" id="aperti" {% if form.aperti.value %}checked{% endif %}>
-      <label class="form-check-label small" for="aperti">Solo aperti</label></div></div>
-  </div>
-  <div class="mt-2 small">
-    {% for v, l in form.fields.stato.choices %}
-    <label class="me-2"><input type="checkbox" name="stato" value="{{ v }}" {% if v in form.stato.value %}checked{% endif %}> {{ l }}</label>
-    {% endfor %}
-  </div>
-  <div class="d-flex align-items-center gap-2 mt-2">
-    <button id="cerca-ordini" class="btn btn-sm btn-primary px-3">Cerca</button>
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'ordini:lista' %}">Azzera</a>
-    <span class="small text-muted">Imposta i filtri e premi Cerca (o Invio).</span>
-  </div>
-</form>
+{% url 'ordini:lista' as azione %}{% include "ordini/_filtri.html" with azione=azione bersaglio="tabella-ordini" %}
 <div id="tabella-ordini">{% include "ordini/_tabella.html" %}</div>
 {% endblock %}

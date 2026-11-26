@@ -415,3 +415,11 @@ html:not(.dm-modo-reparto) .dm-contenuto .table .btn-sm { --bs-btn-padding-y: .2
 .dm-perc-medio { background: #fff0d1; color: #8a4f00; }
 .dm-perc-basso { background: #fde3e5; color: #b01f28; }
 .dm-perc-na { background: #eceff3; color: #3f4a5a; }
+
+/* Lista ordini: la riga «segnalibro» dove l'operatore è arrivato a controllare. */
+.dm-col-marca { width: 2.2rem; text-align: center; }
+.dm-marca { border: 0; background: none; padding: 0 .2rem; font-size: 1rem; line-height: 1; opacity: .18; cursor: pointer; filter: grayscale(1); }
+.dm-marca:hover, .dm-marca:focus-visible { opacity: .7; }
+tr.dm-marcata > td { background-color: #fff3b0 !important; }
+tr.dm-marcata > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
+tr.dm-marcata .dm-marca { opacity: 1; filter: none; }

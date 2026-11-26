@@ -2,7 +2,7 @@
 {% block titolo %}DDT {{ d.numero }}/{{ d.anno }}{% endblock %}
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-  <a href="{% url 'gestionale:ddt_lista' %}" class="btn btn-sm btn-outline-secondary">← DDT</a>
+  {% url 'gestionale:ddt_lista' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="DDT" classi="btn-outline-secondary" %}
   <h1 class="h4 me-auto mb-0">DDT n. {{ d.numero }}/{{ d.anno }} del {{ d.data|date:"d/m/Y" }}
     {% if d.annullato %}<span class="badge text-bg-secondary align-middle">annullato</span>{% endif %}</h1>
   {% if d.emesso_da_metodo %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:ddt_stampa' d.pk %}" target="_blank">Stampa</a>{% endif %}

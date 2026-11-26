@@ -26,6 +26,7 @@ SOLO_LOGIN = {
     "manuale",
     "manuale_md",
     "timbrature:timbra_qui",  # apre la postazione associata al PC (o torna alla home)
+    "indietro",  # pulsante «indietro»: rimanda solo a pagine di questo sito, ognuna con i suoi permessi
 }
 
 

@@ -50,6 +50,9 @@ def navigazione(request: HttpRequest) -> dict[str, object]:
             )
 
         contesto["vai_ordine"] = VaiOrdine()
+        from .cronologia import precedente
+
+        contesto["pagina_precedente"] = precedente(request)
         from .manuale import capitolo_per
 
         vista = getattr(getattr(request, "resolver_match", None), "view_name", None)

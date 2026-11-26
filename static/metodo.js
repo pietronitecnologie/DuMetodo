@@ -241,3 +241,27 @@
     if (box && e.target.type === "search") box.querySelector("[data-dm-ordine-valore]").value = "";
   });
 })();
+
+// Lista ordini: clic sul segnalibro di una riga = «sono arrivato qui» (resta finché si è collegati).
+document.addEventListener("click", function (ev) {
+  const btn = ev.target.closest(".dm-marca");
+  if (!btn) return;
+  ev.preventDefault();
+  const token = (document.body.getAttribute("hx-headers") || "").match(/"X-CSRFToken":\s*"([^"]+)"/);
+  fetch(btn.dataset.url, { method: "POST", headers: { "X-CSRFToken": token ? token[1] : "" }, credentials: "same-origin" })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (dati) {
+      if (!dati) return;
+      document.querySelectorAll("tr.dm-marcata").forEach(function (tr) { tr.classList.remove("dm-marcata"); });
+      if (dati.marcato) btn.closest("tr").classList.add("dm-marcata");
+    });
+});
+// All'apertura (e dopo i filtri HTMX) porta in vista la riga marcata.
+function dmVaiAllaMarcata() {
+  const tr = document.querySelector("tr.dm-marcata");
+  if (tr) tr.scrollIntoView({ block: "center" });
+}
+document.addEventListener("DOMContentLoaded", dmVaiAllaMarcata);
+document.addEventListener("htmx:afterSettle", function (ev) {
+  if (ev.target && ev.target.id === "tabella-ordini") dmVaiAllaMarcata();
+});

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titolo %}{% if lav %}{{ lav }}{% else %}Nuovo lavoratore{% endif %}{% endblock %}
 {% block contenuto %}
-<div class="d-flex align-items-center gap-2 mb-2"><a href="{% url 'timbrature:lavoratori' %}" class="btn btn-sm btn-outline-secondary">← Lavoratori</a>
+<div class="d-flex align-items-center gap-2 mb-2">{% url 'timbrature:lavoratori' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Lavoratori" classi="btn-outline-secondary" %}
   <h1 class="h4 mb-0">{% if lav %}{{ lav }}{% else %}Nuovo lavoratore{% endif %}</h1></div>
 {% if codice_mostrato %}<div class="alert alert-success"><div class="fw-semibold">Codice personale di {{ lav.nome }}</div>
   <code class="fs-2 px-2 bg-white border rounded user-select-all">{{ codice_mostrato }}</code>
