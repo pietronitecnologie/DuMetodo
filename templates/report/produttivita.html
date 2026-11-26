@@ -3,20 +3,23 @@
 {% block contenuto %}
 <h1 class="h4">Analisi produttività</h1>
 <p class="small text-muted">Pezzi consegnati per settimana (data di consegna; escluse righe annullate e scorporate), valore e ore teoriche
-(valore / resa oraria). Inserisci le <strong>ore lavorate</strong> per ottenere pezzi/ora ed efficienza (ore teoriche / ore lavorate).</p>
+(valore / resa oraria). Le <strong>ore lavorate</strong> arrivano dalle timbrature (presenza meno mensa e pausa, di tutti i lavoratori):
+da qui pezzi/ora ed efficienza (ore teoriche / ore lavorate). Una <strong>correzione</strong> scritta a mano prende il posto delle timbrature
+per quella settimana (es. settimane prima delle timbrature); vuota = si usano le timbrature.</p>
 {% include "report/_periodo.html" %}
 <form method="post" action="{% url 'report:ore_lavorate' %}">{% csrf_token %}
 <input type="hidden" name="settimane" value="{{ n }}"><input type="hidden" name="fino_a" value="{{ fino_a|date:'Y-m-d' }}">
 <div class="table-responsive"><table class="table table-sm bg-white align-middle text-end">
-  <thead><tr><th class="text-start">Settimana</th>{% for c in categorie %}<th>{{ c }}</th>{% endfor %}<th>Totale pezzi</th><th>Valore</th><th>Ore teoriche</th><th style="width:8rem">Ore lavorate</th><th>Pezzi/ora</th><th>Efficienza</th></tr></thead>
+  <thead><tr><th class="text-start">Settimana</th>{% for c in categorie %}<th>{{ c }}</th>{% endfor %}<th>Totale pezzi</th><th>Valore</th><th>Ore teoriche</th><th>Ore lavorate</th><th style="width:8rem">Correzione</th><th>Pezzi/ora</th><th>Efficienza</th></tr></thead>
   <tbody>{% for s in settimane %}<tr>
     <td class="text-start"><a href="?fino_a={{ fino_a|date:'Y-m-d' }}&settimane={{ n }}&dettaglio={{ s.lunedi|date:'Y-m-d' }}">{{ s.lunedi|date:"d/m/Y" }}</a></td>
     {% for v in s.per_categoria %}<td>{% if v %}{{ v|floatformat:"-3" }}{% endif %}</td>{% endfor %}
     <td><strong>{{ s.pezzi_totali|floatformat:"-3" }}</strong></td><td>{{ s.valore|floatformat:2 }}</td><td>{{ s.ore_teoriche|default_if_none:"—" }}</td>
-    <td>{% if perms.core.report_produttivita %}<input class="form-control form-control-sm text-end" name="ore_{{ s.lunedi|date:'Y-m-d' }}" value="{{ s.ore_lavorate|default_if_none:'' }}" inputmode="decimal">{% else %}{{ s.ore_lavorate|default_if_none:"—" }}{% endif %}</td>
+    <td class="text-nowrap">{{ s.ore_lavorate|default_if_none:"—" }}{% if s.fonte_ore %}<div class="small {% if s.ore_manuali is not None %}text-warning-emphasis{% else %}text-muted{% endif %}">{{ s.fonte_ore }}</div>{% endif %}</td>
+    <td>{% if perms.core.report_produttivita %}<input class="form-control form-control-sm text-end" name="ore_{{ s.lunedi|date:'Y-m-d' }}" value="{{ s.ore_manuali|default_if_none:'' }}" placeholder="{{ s.ore_timbrate|default_if_none:'' }}" inputmode="decimal" title="Vuoto = ore dalle timbrature">{% else %}{{ s.ore_manuali|default_if_none:"" }}{% endif %}</td>
     <td>{{ s.pezzi_ora|default_if_none:"—" }}</td><td>{% if s.efficienza is not None %}{{ s.efficienza }}%{% else %}—{% endif %}</td>
   </tr>{% endfor %}</tbody></table></div>
-<div class="text-end"><button class="btn btn-sm btn-primary">Salva ore lavorate</button></div>
+<div class="text-end"><button class="btn btn-sm btn-primary">Salva le correzioni</button></div>
 </form>
 {% if dettaglio %}<div class="card mt-3"><div class="card-header"><strong>Dettaglio giornaliero — settimana del {{ dettaglio_lunedi|date:"d/m/Y" }}</strong></div>
 <table class="table table-sm mb-0 text-end"><thead><tr><th class="text-start">Giorno</th>{% for c in categorie %}<th>{{ c }}</th>{% endfor %}<th>Totale</th></tr></thead><tbody>

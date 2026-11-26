@@ -68,6 +68,8 @@ def produttivita(request: HttpRequest) -> HttpResponse:
                 s.pezzi_totali,
                 s.valore,
                 s.ore_teoriche,
+                s.ore_timbrate,
+                s.ore_manuali,
                 s.ore_lavorate,
                 s.pezzi_ora,
                 s.efficienza,
@@ -82,7 +84,9 @@ def produttivita(request: HttpRequest) -> HttpResponse:
                 "Pezzi totali",
                 "Valore consegnato",
                 "Ore teoriche",
-                "Ore lavorate",
+                "Ore timbrate",
+                "Correzione a mano",
+                "Ore lavorate (usate)",
                 "Pezzi/ora",
                 "Efficienza %",
             ],
@@ -119,7 +123,7 @@ def ore_lavorate(request: HttpRequest) -> HttpResponse:
             errori += 1
             messages.error(request, f"{lunedi:%d/%m/%Y}: {exc}")
     if not errori:
-        messages.success(request, "Ore lavorate salvate.")
+        messages.success(request, "Correzioni salvate (dove sono vuote valgono le timbrature).")
     from django.urls import reverse
     from django.utils.http import urlencode
 
@@ -140,8 +144,12 @@ def materiale(request: HttpRequest) -> HttpResponse:
         out = []
         for r in righe:
             for s, c in zip(settimane, r["celle"], strict=True):
-                out.append([r["reparto"], s, c["scadenza"], c["consegnato"]])
-        return _xlsx("MaterialePerReparto.xlsx", ["Reparto", "Settimana", "Ore a scadenza", "Ore consegnate"], out)
+                out.append([r["reparto"], s, c["scadenza"], c["consegnato"], c["timbrate"]])
+        return _xlsx(
+            "MaterialePerReparto.xlsx",
+            ["Reparto", "Settimana", "Ore a scadenza", "Ore consegnate", "Ore timbrate"],
+            out,
+        )
     return render(
         request,
         "report/materiale.html",
@@ -220,14 +228,14 @@ def settimane(request: HttpRequest) -> HttpResponse:
     if request.GET.get("formato") == "xlsx":
         intestazione = ["Settimana dal", "Al"]
         for rep in dati["reparti"]:
-            intestazione += [f"{rep} – in scadenza (h)", f"{rep} – consegnate (h)"]
-        intestazione += ["Totale in scadenza (h)", "Totale consegnate (h)"]
+            intestazione += [f"{rep} – in scadenza (h)", f"{rep} – consegnate (h)", f"{rep} – timbrate (h)"]
+        intestazione += ["Totale in scadenza (h)", "Totale consegnate (h)", "Totale timbrate (h)"]
         out = []
         for r in dati["righe"]:
             riga = [r["lunedi"], r["domenica"]]
             for c in r["celle"]:
-                riga += [c["scadenza"], c["consegnato"]]
-            out.append([*riga, r["tot_scadenza"], r["tot_consegnato"]])
+                riga += [c["scadenza"], c["consegnato"], c["timbrate"]]
+            out.append([*riga, r["tot_scadenza"], r["tot_consegnato"], r["tot_timbrate"]])
         return _xlsx("EvasoConsegnatoPerSettimana.xlsx", intestazione, out)
     return render(request, "report/settimane.html", {**dati, "fino_a": fino_a, "n": n})
 

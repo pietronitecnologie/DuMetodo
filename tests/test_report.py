@@ -101,7 +101,7 @@ def test_evaso_consegnato_per_settimana(dati, client, analista, operatore):
     assert r["reparti"] == ["Pulsanti"]
     corrente = r["righe"][0]  # dalla settimana corrente
     assert corrente["lunedi"] == LUN and len(r["righe"]) == 9
-    assert corrente["celle"][0] == {"scadenza": Decimal("5.15"), "consegnato": Decimal("4.50")}
+    assert corrente["celle"][0] == {"scadenza": Decimal("5.15"), "consegnato": Decimal("4.50"), "timbrate": None}
     assert (corrente["tot_scadenza"], corrente["tot_consegnato"]) == (Decimal("5.15"), Decimal("4.50"))
     assert r["righe"][1]["celle"][0]["scadenza"] in (None, Decimal("0.00"))
     assert r["totale_scadenza"] == Decimal("5.15")

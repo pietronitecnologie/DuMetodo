@@ -4,18 +4,19 @@
 <h1 class="h4">In scadenza e consegnato per settimana e reparto</h1>
 <p class="small text-muted">Per ogni settimana, dalla più recente: ore delle righe <strong>in scadenza</strong> nella settimana (da evadere)
 e ore delle righe <strong>consegnate</strong> (messe in bolla) nella settimana, per reparto dell'articolo. Ore = valore / resa oraria;
-le righe senza prezzo non contano. In rosso le settimane con meno consegnato che in scadenza.</p>
+le righe senza prezzo non contano. In rosso le settimane con meno consegnato che in scadenza. <strong>Timbrate</strong>: ore lavorate nel
+reparto secondo le timbrature, da confrontare con le ore consegnate.</p>
 {% if not resa_configurata %}<div class="alert alert-warning py-2 small">La resa oraria non è configurata (Configurazione → Produzione): le ore non si possono calcolare.</div>{% endif %}
 {% include "report/_periodo.html" %}
 <div class="table-responsive"><table class="table table-sm table-bordered bg-white align-middle text-end small">
-  <thead><tr><th rowspan="2" class="text-start align-middle">Settimana</th>{% for rep in reparti %}<th colspan="2" class="text-center">{{ rep }}</th>{% endfor %}<th colspan="2" class="text-center">Totale</th></tr>
-    <tr>{% for rep in reparti %}<th class="fw-normal">in scad.</th><th class="fw-normal">consegn.</th>{% endfor %}<th class="fw-normal">in scad.</th><th class="fw-normal">consegn.</th></tr></thead>
+  <thead><tr><th rowspan="2" class="text-start align-middle">Settimana</th>{% for rep in reparti %}<th colspan="3" class="text-center">{{ rep }}</th>{% endfor %}<th colspan="3" class="text-center">Totale</th></tr>
+    <tr>{% for rep in reparti %}<th class="fw-normal">in scad.</th><th class="fw-normal">consegn.</th><th class="fw-normal">timbr.</th>{% endfor %}<th class="fw-normal">in scad.</th><th class="fw-normal">consegn.</th><th class="fw-normal">timbr.</th></tr></thead>
   <tbody>{% for r in righe %}<tr{% if forloop.first %} class="table-active"{% endif %}><td class="text-start text-nowrap">{{ r.lunedi|date:"d/m" }} – {{ r.domenica|date:"d/m/Y" }}{% if forloop.first %} <span class="badge text-bg-primary">corrente</span>{% endif %}</td>
-    {% for c in r.celle %}<td>{{ c.scadenza|default_if_none:"—" }}</td><td class="{% if c.scadenza and c.consegnato is not None and c.consegnato < c.scadenza %}text-danger{% endif %}">{{ c.consegnato|default_if_none:"—" }}</td>{% endfor %}
-    <td><strong>{{ r.tot_scadenza|default_if_none:"—" }}</strong></td><td class="{% if r.tot_scadenza and r.tot_consegnato is not None and r.tot_consegnato < r.tot_scadenza %}text-danger{% endif %}"><strong>{{ r.tot_consegnato|default_if_none:"—" }}</strong></td></tr>
+    {% for c in r.celle %}<td>{{ c.scadenza|default_if_none:"—" }}</td><td class="{% if c.scadenza and c.consegnato is not None and c.consegnato < c.scadenza %}text-danger{% endif %}">{{ c.consegnato|default_if_none:"—" }}</td><td class="text-muted">{{ c.timbrate|default_if_none:"—" }}</td>{% endfor %}
+    <td><strong>{{ r.tot_scadenza|default_if_none:"—" }}</strong></td><td class="{% if r.tot_scadenza and r.tot_consegnato is not None and r.tot_consegnato < r.tot_scadenza %}text-danger{% endif %}"><strong>{{ r.tot_consegnato|default_if_none:"—" }}</strong></td><td><strong>{{ r.tot_timbrate|default_if_none:"—" }}</strong></td></tr>
   {% empty %}<tr><td colspan="99" class="text-muted text-center">Nessun dato nel periodo.</td></tr>{% endfor %}</tbody>
   {% if righe and reparti %}<tfoot><tr class="fw-semibold"><td class="text-start">Totale periodo</td>
-    {% for t in totali %}<td>{{ t.scadenza|default_if_none:"—" }}</td><td>{{ t.consegnato|default_if_none:"—" }}</td>{% endfor %}
-    <td>{{ totale_scadenza|default_if_none:"—" }}</td><td>{{ totale_consegnato|default_if_none:"—" }}</td></tr></tfoot>{% endif %}
+    {% for t in totali %}<td>{{ t.scadenza|default_if_none:"—" }}</td><td>{{ t.consegnato|default_if_none:"—" }}</td><td>{{ t.timbrate|default_if_none:"—" }}</td>{% endfor %}
+    <td>{{ totale_scadenza|default_if_none:"—" }}</td><td>{{ totale_consegnato|default_if_none:"—" }}</td><td>{{ totale_timbrate|default_if_none:"—" }}</td></tr></tfoot>{% endif %}
 </table></div>
 {% endblock %}
