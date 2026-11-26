@@ -1,5 +1,6 @@
 """MetodoConsole: le parti che non richiedono Docker (rotazione, avvisi, backup su disco, configurazione)."""
 
+import contextlib
 import datetime as dt
 import importlib.util
 import json
@@ -197,3 +198,41 @@ def test_prelievo_nella_diagnostica():
     e = mc.descrivi_prelievo({"Running": False, "ExitCode": 1, "FinishedAt": "2026-11-22T21:00:00Z"})
     assert e.esito == mc.ATTENZIONE and "prelievo avvia" in e.dettaglio
     assert mc.descrivi_prelievo({"Running": False, "ExitCode": 0, "FinishedAt": "x"}).dettaglio == "completato il x"
+
+
+# --------------------------------------------------------------------- codice aggiornato, immagine vecchia
+def test_immagine_vecchia_spiegata(tmp_path, monkeypatch):
+    conf = _conf(tmp_path, "METODO_DB_URL='postgres://u:p@metodo/db'\n")
+    monkeypatch.setattr(mc, "stato_container", lambda nome: None)
+    monkeypatch.setattr(mc, "versione_codice", lambda c: "abc1234")
+    monkeypatch.setattr(mc, "versione_immagine", lambda: "0ld0000")
+    with pytest.raises(mc.Errore, match="metodoconsole aggiorna"):
+        mc.cmd_allinea(conf, _ComposeFinto(), mc.parser().parse_args(["allinea"]))
+    with pytest.raises(mc.Errore, match="ricostruiscilo"):
+        mc.cmd_prelievo(conf, _ComposeFinto(), mc.parser().parse_args(["prelievo", "avvia"]))
+    monkeypatch.setattr(mc, "versione_immagine", lambda: "abc1234")
+    mc.controlla_immagine(conf)  # stessa versione: va bene
+    monkeypatch.setattr(mc, "versione_immagine", lambda: None)
+    mc.controlla_immagine(conf)  # versione sconosciuta: non si blocca
+
+
+def test_aggiorna_ricostruisce_se_solo_l_immagine_e_vecchia(tmp_path, monkeypatch):
+    conf = _conf(tmp_path)
+    comandi = []
+
+    def esegui(cmd, **kw):
+        comandi.append(cmd)
+        uscita = "abc1234\n" if "rev-parse" in cmd else ""
+        return mc.subprocess.CompletedProcess(cmd, 0, uscita, "")
+
+    monkeypatch.setattr(mc, "esegui", esegui)
+    monkeypatch.setattr(mc, "versione_immagine", lambda: "0ld0000")
+    dc = _ComposeFinto()
+    a = mc.parser().parse_args(["aggiorna", "--senza-backup"])
+    with contextlib.suppress(Exception):  # la parte dopo la ricostruzione (attesa, diagnostica) qui non conta
+        mc.cmd_aggiorna(conf, dc, a)
+    assert any(c[0][:3] == ("up", "-d", "--build") for c in dc.chiamate)
+
+    dc = _ComposeFinto()
+    monkeypatch.setattr(mc, "versione_immagine", lambda: "abc1234")
+    assert mc.cmd_aggiorna(conf, dc, a) == 0 and not dc.chiamate  # davvero già aggiornato
