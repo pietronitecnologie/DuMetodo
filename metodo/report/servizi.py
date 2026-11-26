@@ -167,6 +167,13 @@ class SettimanaProduttivita:
         return (self.pezzi_totali / self.ore_lavorate).quantize(Decimal("0.01"))
 
     @property
+    def resa_oraria(self) -> Decimal | None:
+        """Resa oraria reale in €/ora: valore consegnato / ore lavorate (da confrontare con quella di riferimento)."""
+        if self.parziale or not self.ore_lavorate:
+            return None
+        return (self.valore / self.ore_lavorate).quantize(Decimal("0.01"))
+
+    @property
     def efficienza(self) -> Decimal | None:
         """Ore teoriche consegnate / ore lavorate."""
         t = self.ore_teoriche

@@ -59,6 +59,7 @@ def navigazione(request: HttpRequest) -> dict[str, object]:
         from .cronologia import precedente
 
         contesto["pagina_precedente"] = precedente(request)
+        contesto["ordini_marcati"] = set(request.session.get("ordini_marcati") or [])  # segnalibri 🔖
         from .manuale import capitolo_per
 
         vista = getattr(getattr(request, "resolver_match", None), "view_name", None)
