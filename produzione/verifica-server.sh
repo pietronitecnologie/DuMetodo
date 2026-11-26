@@ -13,7 +13,7 @@ PROVA=${2:-}
 USCITA="/tmp/verifica-metodo-$(date +%Y%m%d-%H%M).txt"
 
 maschera() {  # credenziali negli URL e parametri tipo password=…
-    sed -E 's#(://[^:/@ ]*):[^@ ]*@#\1:***@#g; s#((pass|password|pwd|secret|token|key)[A-Za-z_]*[=: ]+)[^ ;&"]+#\1***#Ig'
+    sed -E 's#(://[^:/@ ]*):[^@ ]*@#\1:***@#g; /proxy_pass/!s#((pass|password|pwd|secret|token|key)[A-Za-z_]*[=: ]+)[^ ;&"]+#\1***#Ig'
 }
 titolo() { printf '\n===== %s =====\n' "$1"; }
 c() { command -v "$1" >/dev/null 2>&1; }

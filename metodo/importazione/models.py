@@ -22,6 +22,10 @@ class StatoCasella(models.Model):
     casella = models.CharField(max_length=255, unique=True)
     uidvalidity = models.BigIntegerField(null=True, blank=True)
     ultimo_uid = models.BigIntegerField(default=0)
+    # Contatore a data: si leggono i messaggi arrivati da questo momento in poi (data di arrivo sul server di
+    # posta), qualunque sia la loro marca «letto/non letto». La stessa casella può essere letta anche da un altro
+    # programma (es. il Metodo precedente) che segna i messaggi come letti: non cambia niente.
+    letto_fino_al = models.DateTimeField("letti i messaggi arrivati fino al", null=True, blank=True)
     ultima_lettura_il = models.DateTimeField(null=True, blank=True)
     ultimo_errore = models.TextField(blank=True, default="")
 

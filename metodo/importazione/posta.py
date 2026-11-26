@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import contextlib
+import datetime as dt
 import email
 import email.policy
 import email.utils
@@ -217,8 +218,34 @@ def leggi_casella(*, client_factory: Any = None) -> EsitoLetturaCasella:
                 continue
             totale.messaggi += esito.messaggi
             totale.file += esito.file
+            if esito.motivo:
+                errori.append(esito.motivo if len(elenco) == 1 else f"{c['USER']}@{c['HOST']}: {esito.motivo}")
         totale.motivo = "; ".join(errori)
         return totale
+
+
+def _quando(valore: Any) -> dt.datetime | None:
+    """INTERNALDATE di IMAP (datetime, a volte senza fuso) → datetime con fuso."""
+    if not isinstance(valore, dt.datetime):
+        return None
+    return timezone.make_aware(valore) if timezone.is_naive(valore) else valore
+
+
+def _nuovi(client: Any, dal: dt.datetime) -> list[tuple[dt.datetime, int]]:
+    """(arrivo, UID) dei messaggi arrivati da «dal» in poi, dal più vecchio.
+
+    IMAP cerca per giorno (SINCE): si chiede dal giorno prima, per i fusi orari, e si filtra all'istante."""
+    giorno = (timezone.localtime(dal) - dt.timedelta(days=1)).date()
+    uids = client.search(["SINCE", giorno])
+    if not uids:
+        return []
+    dati = client.fetch(uids, ["INTERNALDATE"])
+    out = []
+    for uid in uids:
+        arrivo = _quando(dati.get(uid, {}).get(b"INTERNALDATE"))
+        if arrivo is not None and arrivo >= dal:
+            out.append((arrivo, uid))
+    return sorted(out)
 
 
 def _leggi(client_factory: Any, c: dict[str, Any] | None = None, instrada: Any = None) -> EsitoLetturaCasella:
@@ -226,43 +253,43 @@ def _leggi(client_factory: Any, c: dict[str, Any] | None = None, instrada: Any =
     nome_casella = f"{c['USER']}@{c['HOST']}/{c['FOLDER']}"
     stato, _ = StatoCasella.objects.get_or_create(casella=nome_casella)
     esito = EsitoLetturaCasella(True)
+    if stato.letto_fino_al is None:
+        # Casella mai letta da Metodo v2: i messaggi già presenti sono ordini vecchi (di solito importati dal
+        # Metodo precedente, che non li cancella); reimportarli riaprirebbe ordini chiusi. Si parte da adesso.
+        # Per leggere da una data precisa: manage.py casella_ordini --dal AAAA-MM-GG
+        stato.letto_fino_al, stato.ultima_lettura_il, stato.ultimo_errore = timezone.now(), timezone.now(), ""
+        stato.save()
+        logger.warning("Prima lettura di %s: si leggono i messaggi che arrivano da adesso", nome_casella)
+        esito.motivo = "prima lettura: si parte dai messaggi che arrivano da adesso"
+        return esito
     client = client_factory()
     try:
+        # Sola lettura e BODY.PEEK: Metodo v2 non cambia mai la marca «letto» dei messaggi.
         info = client.select_folder(c["FOLDER"], readonly=True)
         uidvalidity = int(info[b"UIDVALIDITY"])
-        if stato.uidvalidity != uidvalidity:
-            logger.warning("UIDVALIDITY cambiata per %s: rilettura completa (deduplica per Message-ID)", nome_casella)
-            stato.uidvalidity, stato.ultimo_uid = uidvalidity, 0
-            stato.save()
-        uids = sorted(u for u in client.search(["UID", f"{stato.ultimo_uid + 1}:*"]) if u > stato.ultimo_uid)
+        stato.uidvalidity = uidvalidity
+        nuovi = _nuovi(client, stato.letto_fino_al)
+        gia_letti = set(
+            MessaggioEmail.objects.filter(
+                casella=nome_casella, uidvalidity=uidvalidity, uid__in=[u for _, u in nuovi]
+            ).values_list("uid", flat=True)
+        )
         max_byte = config.leggi("importazione.dimensione_massima_allegato_mb") * 1024 * 1024
-        for uid in uids[:MESSAGGI_PER_GIRO]:
-            dati = client.fetch([uid], ["RFC822.SIZE", "INTERNALDATE"])[uid]
-            if dati[b"RFC822.SIZE"] > max_byte * 2:
-                _registra(
-                    nome_casella,
-                    uidvalidity,
-                    uid,
-                    None,
-                    dati.get(b"INTERNALDATE"),
-                    EsitoMessaggio.SCARTATO,
-                    "messaggio troppo grande",
-                )
-            else:
-                corpo = client.fetch([uid], ["BODY.PEEK[]"])[uid][b"BODY[]"]
-                esito.file += _elabora_messaggio(
-                    nome_casella,
-                    uidvalidity,
-                    uid,
-                    corpo,
-                    dati.get(b"INTERNALDATE"),
-                    max_byte,
-                    c["MITTENTI"],
-                    instrada=instrada,
-                )
-            esito.messaggi += 1
-            stato.ultimo_uid = uid
-            stato.save(update_fields=["ultimo_uid"])
+        for arrivo, uid in nuovi[:MESSAGGI_PER_GIRO]:
+            if uid not in gia_letti:  # già elaborato (stesso istante di arrivo o lettura ripetuta): si salta
+                dati = client.fetch([uid], ["RFC822.SIZE"])[uid]
+                if dati[b"RFC822.SIZE"] > max_byte * 2:
+                    _registra(
+                        nome_casella, uidvalidity, uid, None, arrivo, EsitoMessaggio.SCARTATO, "messaggio troppo grande"
+                    )
+                else:
+                    corpo = client.fetch([uid], ["BODY.PEEK[]"])[uid][b"BODY[]"]
+                    esito.file += _elabora_messaggio(
+                        nome_casella, uidvalidity, uid, corpo, arrivo, max_byte, c["MITTENTI"], instrada=instrada
+                    )
+                esito.messaggi += 1
+            stato.letto_fino_al, stato.ultimo_uid = arrivo, uid
+            stato.save(update_fields=["letto_fino_al", "ultimo_uid", "uidvalidity"])
         stato.ultima_lettura_il = timezone.now()
         stato.ultimo_errore = ""
         stato.save()
@@ -276,6 +303,17 @@ def _leggi(client_factory: Any, c: dict[str, Any] | None = None, instrada: Any =
         except Exception:
             logger.debug("logout IMAP non riuscito", exc_info=True)
     return esito
+
+
+def imposta_inizio(dal: dt.datetime | None = None) -> str:
+    """Da quando si leggono i messaggi: «dal» (es. una data scelta) oppure da adesso. Non si collega alla casella:
+    alla lettura successiva si prendono i messaggi arrivati da quel momento (quelli già elaborati si saltano)."""
+    c = parametri_casella()
+    nome_casella = f"{c['USER']}@{c['HOST']}/{c['FOLDER']}"
+    StatoCasella.objects.update_or_create(
+        casella=nome_casella, defaults={"letto_fino_al": dal or timezone.now(), "ultimo_errore": ""}
+    )
+    return nome_casella
 
 
 def _registra(

@@ -1,5 +1,6 @@
 """Metodo v3, fase 3: impostazioni proprie di ogni cliente committente."""
 
+import datetime as dt
 from decimal import Decimal
 from email.message import EmailMessage
 
@@ -149,8 +150,14 @@ def _mail(mittente: str, message_id: str, numero="0004300") -> bytes:
 @pytest.mark.django_db(transaction=True)
 @override_settings(ORDINI_IMAP=IMAP)
 def test_casella_generale_smista_per_mittente():
-    dmg = Committente.objects.get(predefinito=True)
+    from metodo.committenti.models import predefinito_id
+    from metodo.importazione.models import StatoCasella
+
+    dmg = Committente.objects.get(pk=predefinito_id())  # anche dopo lo svuotamento dei test con transazioni
     abb = Committente.objects.create(codice="ABB", nome="ABB")
+    StatoCasella.objects.create(  # casella già letta: si prendono i messaggi arrivati da ieri
+        casella=f"{IMAP['USER']}@{IMAP['HOST']}/{IMAP['FOLDER']}", letto_fino_al=timezone.now() - dt.timedelta(days=1)
+    )
     config.scrivi("casella.mittenti_ammessi", "ordini@dmg.example")
     config.scrivi_committente(abb, {"casella.mittenti_ammessi": "acquisti@abb.example"})
     config.invalida_cache()
