@@ -41,7 +41,9 @@ services:
 
   web:
     <<: *app
-    ports: ["8000:8000"]
+    # In produzione, dietro nginx/Apache: METODO_INDIRIZZO=127.0.0.1 (solo il proxy la raggiunge) e una
+    # METODO_PORTA libera sul server. Senza le variabili resta come prima: porta 8000 su tutte le interfacce.
+    ports: ["${METODO_INDIRIZZO:-0.0.0.0}:${METODO_PORTA:-8000}:8000"]
     volumes: [media:/app/media]
     healthcheck:
       # /salute/ risponde se database e cache funzionano (usato anche da MetodoConsole).
