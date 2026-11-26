@@ -7,7 +7,7 @@ QUI=$(cd "$(dirname "$0")" && pwd)
 METODO=${1:-$(dirname "$QUI")}
 command -v docker >/dev/null || { echo "Docker non è installato (https://docs.docker.com/engine/install/debian/)" >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "Manca il plugin «docker compose»: apt install docker-compose-plugin" >&2; exit 1; }
-python3 -c 'import sys; sys.exit(sys.version_info < (3, 11))' || { echo "Serve Python 3.11 o più recente" >&2; exit 1; }
+python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' || { echo "Serve Python 3.10 o più recente" >&2; exit 1; }
 command -v rsync >/dev/null || echo "Nota: rsync non è installato (serve solo per la copia remota dei backup: apt install rsync)."
 
 install -d -m 755 /etc/metodoconsole /var/lib/metodoconsole
