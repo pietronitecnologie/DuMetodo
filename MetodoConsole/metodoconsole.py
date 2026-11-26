@@ -523,6 +523,33 @@ def versione_codice(conf: Conf) -> str:
     return r.stdout.strip() if r.returncode == 0 else "sconosciuta"
 
 
+IMMAGINE = "metodo:locale"  # compose.yaml: l'immagine di web, worker, beat e migrate
+
+
+def versione_immagine() -> str | None:
+    """Versione con cui è stata costruita l'immagine di Metodo v2 (None se non c'è o non si sa)."""
+    r = esegui(
+        ["docker", "image", "inspect", IMMAGINE, "--format", "{{range .Config.Env}}{{println .}}{{end}}"],
+        controlla=False,
+        timeout=20,
+    )
+    for riga in r.stdout.splitlines() if r.returncode == 0 else []:
+        if riga.startswith("METODO_VERSIONE="):
+            v = riga.split("=", 1)[1].strip()
+            return None if v in ("", "sconosciuta") else v
+    return None
+
+
+def controlla_immagine(conf: Conf) -> None:
+    """Errore chiaro se il codice è stato aggiornato (git pull) ma l'immagine Docker no."""
+    immagine, codice = versione_immagine(), versione_codice(conf)
+    if immagine and codice != "sconosciuta" and not codice.startswith(immagine) and not immagine.startswith(codice):
+        raise Errore(
+            f"Il codice è aggiornato ({codice}) ma Metodo v2 gira ancora sulla versione {immagine}: "
+            "ricostruiscilo con «sudo metodoconsole aggiorna» (o «metodoconsole avvia --ricostruisci»)."
+        )
+
+
 def esegui_backup(conf: Conf, dc: Compose, nota: str = "", *, con_file: bool = True) -> Backup:
     servizi = dc.servizi()
     if servizi.get("db", {}).get("State") != "running":
@@ -913,9 +940,13 @@ def cmd_aggiorna(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
         passo("Controllo se c'è codice nuovo (git fetch)…")
         esegui([*git, "fetch", "--quiet"], timeout=300)
         dopo = esegui([*git, "rev-parse", "--short", "@{u}"]).stdout.strip()
+        immagine = versione_immagine()
         if dopo == prima and not a.forza:
-            info(f"Già aggiornato (versione {dopo}).")
-            return 0
+            if immagine is None or immagine == prima:
+                info(f"Già aggiornato (versione {dopo}).")
+                return 0
+            # Es. dopo un «git pull» a mano: il codice è nuovo ma i container girano sull'immagine vecchia.
+            info(f"Il codice è già alla versione {dopo}, ma Metodo v2 gira ancora sulla {immagine}: lo ricostruisco.")
         backup = None
         if not a.senza_backup:
             # Prima di toccare il codice: il backup porta la versione con cui i dati sono stati scritti.
@@ -1117,6 +1148,7 @@ def cmd_allinea(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
     st = stato_container(nome_prelievo(conf))
     if st and st.get("Running"):
         raise Errore("È in corso un prelievo completo: aspetta che finisca (metodoconsole prelievo stato).")
+    controlla_immagine(conf)
     amb = url_metodo(conf, chiedi=sys.stdin.isatty())
     with lucchetto(conf, "allinea"):
         if a.backup:
@@ -1194,6 +1226,7 @@ def cmd_prelievo(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
         ).returncode
 
     if a.azione == "avvia":
+        controlla_immagine(conf)
         if in_corso:
             raise Errore("Un prelievo è già in corso: metodoconsole prelievo stato / prelievo log -f")
         amb = url_metodo(conf)
