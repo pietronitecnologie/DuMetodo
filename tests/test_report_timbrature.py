@@ -49,11 +49,21 @@ def test_ore_lavorate_dalle_timbrature_e_correzione(timbrature, analista):
     (s,) = servizi.produttivita([LUN])
     assert (s.ore_timbrate, s.ore_lavorate, s.fonte_ore) == (Decimal("16.00"), Decimal("16.00"), "dalle timbrature")
     assert s.efficienza is not None and s.pezzi_ora == (s.pezzi_totali / 16).quantize(Decimal("0.01"))
+    assert s.resa_oraria == (s.valore / 16).quantize(Decimal("0.01"))  # €/ora reali
     servizi.salva_ore_lavorate(LUN, "20", analista)
     (s,) = servizi.produttivita([LUN])
     assert (s.ore_lavorate, s.fonte_ore) == (Decimal("20"), "corrette a mano")
     servizi.salva_ore_lavorate(LUN, "", analista)  # vuota: tornano le timbrature
     assert servizi.produttivita([LUN])[0].ore_lavorate == Decimal("16.00")
+
+
+@pytest.mark.django_db
+def test_pagina_produttivita_con_resa_oraria(client, timbrature, analista):
+    client.force_login(analista)
+    pagina = client.get(f"/report/produttivita/?fino_a={LUN}&settimane=1").content.decode()
+    assert "Resa €/ora" in pagina
+    xlsx = client.get(f"/report/produttivita/?fino_a={LUN}&settimane=1&formato=xlsx")
+    assert xlsx.status_code == 200
 
 
 @pytest.mark.django_db

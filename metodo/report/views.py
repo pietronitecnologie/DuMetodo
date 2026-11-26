@@ -72,6 +72,7 @@ def produttivita(request: HttpRequest) -> HttpResponse:
                 s.ore_manuali,
                 s.ore_lavorate,
                 s.pezzi_ora,
+                s.resa_oraria,
                 s.efficienza,
             ]
             for s in dati
@@ -88,6 +89,7 @@ def produttivita(request: HttpRequest) -> HttpResponse:
                 "Correzione a mano",
                 "Ore lavorate (usate)",
                 "Pezzi/ora",
+                "Resa oraria €/ora",
                 "Efficienza %",
             ],
             righe,
@@ -103,6 +105,7 @@ def produttivita(request: HttpRequest) -> HttpResponse:
             "n": len(settimane),
             "dettaglio": servizi.produttivita_giornaliera(calendario.lunedi(giorno)) if giorno else None,
             "dettaglio_lunedi": calendario.lunedi(giorno) if giorno else None,
+            "resa_riferimento": config.leggi("produzione.prezzo_resa_oraria"),
         },
     )
 
