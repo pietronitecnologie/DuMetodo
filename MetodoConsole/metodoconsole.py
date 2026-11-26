@@ -2,7 +2,8 @@
 """MetodoConsole: controllo del server Metodo v2 (Docker Compose su Debian).
 
 Stato dei servizi, diagnostica completa, backup / verifica / ripristino del database PostgreSQL e dei file
-caricati, aggiornamento, avvisi via email. Solo libreria standard di Python (3.11+, quella di Debian 12).
+caricati, aggiornamento, avvisi via email. Solo libreria standard di Python (3.10 o più recente: Debian 12,
+Ubuntu 22.04 e successivi).
 
     metodoconsole stato
     metodoconsole diagnostica [--json]
@@ -1059,7 +1060,8 @@ def stato_container(nome: str) -> dict[str, Any] | None:
 
 def _ora_docker(testo: str) -> str:
     try:
-        quando = dt.datetime.fromisoformat(testo[:19]).replace(tzinfo=dt.UTC).astimezone()
+        # timezone.utc e non datetime.UTC: MetodoConsole gira anche con Python 3.10 (Ubuntu 22.04)
+        quando = dt.datetime.fromisoformat(testo[:19]).replace(tzinfo=dt.timezone.utc).astimezone()  # noqa: UP017
     except ValueError:
         return testo
     return quando.strftime("%d/%m/%Y %H:%M")

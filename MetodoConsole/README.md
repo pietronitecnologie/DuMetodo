@@ -9,7 +9,7 @@ compose. Un solo comando, `metodoconsole`, per:
 - **aggiornare** Metodo v2 in sicurezza (backup prima, controllo dopo);
 - ricevere **avvisi via email** quando qualcosa non va.
 
-Usa solo Python 3.11 o più recente (quello di Debian 12) e i comandi `docker compose`, `git`, `tar` e,
+Usa solo Python 3.10 o più recente (quello di Debian 12 o Ubuntu 22.04) e i comandi `docker compose`, `git`, `tar` e,
 facoltativamente, `rsync`. Non serve installare altro.
 
 ## Installazione
