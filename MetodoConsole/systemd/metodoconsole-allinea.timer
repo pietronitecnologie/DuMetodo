@@ -1,0 +1,10 @@
+[Unit]
+Description=MetodoConsole: allineamento con Metodo ogni 30 minuti (si accende con «metodoconsole allinea --automatico on»)
+
+[Timer]
+OnCalendar=*:0/30
+RandomizedDelaySec=2min
+Persistent=false
+
+[Install]
+WantedBy=timers.target

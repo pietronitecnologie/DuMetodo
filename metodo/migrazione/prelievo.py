@@ -12,6 +12,10 @@ Pensato per milioni di righe (anni di produzione) letti da un server remoto:
 - **riconnessione automatica**: errori di rete e timeout ritentano la stessa query con attese crescenti;
 - **incrementale**: rilanciato dopo giorni legge solo i record nuovi; con ``ricomincia`` si rileggono anche
   quelli già importati e ordini, righe e consegne vengono aggiornati (le ``Corrispondenza`` evitano doppioni);
+- **allineamento** (passo ``allinea``, per la coesistenza con Metodo): a ogni prelievo si rileggono anche gli
+  ordini ancora «vivi» (aperti in Metodo, aperti in Metodo v2 o con date negli ultimi ``giorni_allinea`` giorni)
+  e tutte le loro righe, così stati, scadenze, evasioni e bolle cambiati in Metodo arrivano in Metodo v2 senza
+  rileggere milioni di record;
 - **sola lettura** su Metodo (``default_transaction_read_only``).
 
 Le regole di conversione sono quelle dell'``Importatore`` (vedi importatore.py), riusate qui blocco per blocco.
@@ -75,7 +79,10 @@ PASSI = (
     "qualita",
     "tracce",
     "timbrature",
+    "allinea",
 )
+GIORNI_ALLINEA = 60  # oltre agli ordini aperti, si ricontrollano quelli con date negli ultimi N giorni
+STATI_CHIUSI_METODO = ("CON", "ANN")
 # Passi rileggibili con --ricomincia (aggiornano ciò che è già stato importato).
 RILEGGIBILI = {"ordini", "righe", "note", "storico", "consegne"}
 # Passi eseguiti una volta sola (non sono idempotenti): rilanciandoli si creerebbero doppioni.
@@ -296,6 +303,48 @@ class SorgenteRemota(Metodo):
             risultato += self._normalizza(tabella, self.esegui(query, (valori[i : i + 5000],)))
         return risultato
 
+    def blocchi_dove(
+        self, tabella: str, condizione: sql.Composable, parametri: list[Any]
+    ) -> Iterator[list[dict[str, Any]]]:
+        """Come ``blocchi``, ma solo le righe che soddisfano ``condizione`` (con i suoi ``parametri``)."""
+        if tabella not in self.colonne:
+            return
+        query = sql.SQL("SELECT {} FROM {} WHERE ({}) AND {} > %s ORDER BY {} LIMIT %s").format(
+            sql.SQL(", ").join(map(sql.Identifier, self._colonne(tabella))),
+            sql.Identifier(tabella),
+            condizione,
+            sql.Identifier("id"),
+            sql.Identifier("id"),
+        )
+        dopo = 0
+        while True:
+            righe = self.esegui(query, (*parametri, dopo, self.blocco))
+            if not righe:
+                return
+            yield self._normalizza(tabella, righe)
+            dopo = righe[-1]["id"]
+
+    def righe_per_numero(self, tabella: str, numeri: Iterable[tuple[str, str]]) -> list[dict[str, Any]]:
+        """Righe con (rif_ordine, anno) tra ``numeri`` (testi già ripuliti), a gruppi di 1000.
+
+        Unione con una tabella di valori invece di ``= ANY``: PostgreSQL usa un hash join anche senza indici,
+        quindi la lettura resta veloce su milioni di righe."""
+        if tabella not in self.colonne or not {"rif_ordine", "anno"} <= self.colonne[tabella]:
+            return []
+        query = sql.SQL(
+            "SELECT {} FROM {} AS t JOIN unnest(%s::text[], %s::text[]) AS k(rif, anno) "
+            "ON btrim(t.rif_ordine::text) = k.rif AND btrim(t.anno::text) = k.anno"
+        ).format(
+            sql.SQL(", ").join(sql.Identifier("t", c) for c in self._colonne(tabella)),
+            sql.Identifier(tabella),
+        )
+        numeri = sorted(set(numeri))
+        risultato: list[dict[str, Any]] = []
+        for i in range(0, len(numeri), 1000):
+            gruppo = numeri[i : i + 1000]
+            risultato += self._normalizza(tabella, self.esegui(query, ([n for n, _ in gruppo], [a for _, a in gruppo])))
+        return risultato
+
     def massimo_id(self, tabella: str) -> int:
         if tabella not in self.colonne:
             return 0
@@ -329,6 +378,7 @@ class Prelievo:
         ricomincia: Iterable[str] = (),
         avanzamento: Callable[[str], None] = lambda _m: None,
         ogni_secondi: float = 30,
+        giorni_allinea: int = GIORNI_ALLINEA,
     ) -> None:
         self.m, self.r = sorgente, report
         self.imp = Importatore(sorgente)
@@ -340,6 +390,7 @@ class Prelievo:
         self._consegna: Consegna | None = None
         self._tracce: tuple[Any, dict[str, Any]] | None = None
         self._id_sistema: int | None = None
+        self.giorni_allinea = giorni_allinea
 
     # ---------------------------------------------------------------- esecuzione
     def esegui(self) -> ReportPrelievo:
@@ -1020,6 +1071,93 @@ class Prelievo:
                 )
         Timbratura.objects.bulk_create(nuove, batch_size=2000)
         self.r.conteggi["timbrature (eventi creati)"] += len(nuove)
+
+    # ---------------------------------------------------------------- allineamento (coesistenza)
+    def _passo_allinea(self) -> None:
+        """Rilegge gli ordini ancora vivi e le loro righe, e aggiorna Metodo v2 con i cambi fatti in Metodo.
+
+        Vivi: aperti in Metodo, aperti in Metodo v2 (magari chiusi nel frattempo in Metodo) o con inserimento,
+        scadenza o consegna negli ultimi ``giorni_allinea`` giorni. Gli ordini nati in Metodo v2 non si toccano
+        (come nel resto del prelievo)."""
+        if "Prod_ordine" not in self.m.colonne:
+            return
+        self.scrivi(f"allinea: ricontrollo gli ordini aperti e quelli degli ultimi {self.giorni_allinea} giorni…")
+        vero, silenzioso = self.r, ReportPrelievo(massimo=0)
+        self.r = self.imp.r = silenzioso  # type: ignore[assignment]  # gli avvisi sono già stati dati all'import
+        try:
+            ordini = self._ordini_vivi()
+            chiavi = {k for o in ordini if (k := self.imp._chiave(o, "ordini", ""))}
+            pk_ordini = {o.pk for o in self._ordini_per_chiave(chiavi).values()}
+            prima_ordini = self._foto_ordini(pk_ordini)
+            prima_righe = self._foto_righe(pk_ordini)
+            for i in range(0, len(ordini), self.m.blocco):
+                with transaction.atomic():
+                    self._blocco_ordini(ordini[i : i + self.m.blocco])
+            numeri = {(_testo(o.get("rif_ordine")), _testo(o.get("anno"))) for o in ordini}
+            righe = [
+                ln
+                for ln in self.m.righe_per_numero("Prod_linea", numeri)
+                if self.imp._chiave(ln, "righe", "") in chiavi
+            ]
+            righe.sort(key=lambda ln: ln["id"])
+            for i in range(0, len(righe), self.m.blocco):
+                with transaction.atomic():
+                    self._blocco_righe(righe[i : i + self.m.blocco])
+        finally:
+            self.r = self.imp.r = vero  # type: ignore[assignment]
+        pk_ordini = {o.pk for o in self._ordini_per_chiave(chiavi).values()}
+        dopo_ordini, dopo_righe = self._foto_ordini(pk_ordini), self._foto_righe(pk_ordini)
+        cambiati = [pk for pk, v in dopo_ordini.items() if prima_ordini.get(pk) != v]
+        stati = sum(1 for pk in cambiati if pk in prima_ordini and prima_ordini[pk][0] != dopo_ordini[pk][0])
+        righe_cambiate = sum(1 for pk, v in dopo_righe.items() if pk in prima_righe and prima_righe[pk] != v)
+        righe_nuove = sum(1 for pk in dopo_righe if pk not in prima_righe)
+        c = self.r.conteggi
+        c["allineamento: ordini ricontrollati"] += len(ordini)
+        c["allineamento: ordini modificati"] += len(cambiati)
+        c["allineamento: cambi di stato"] += stati
+        c["allineamento: righe modificate"] += righe_cambiate
+        c["allineamento: righe nuove"] += righe_nuove
+        av = self._avanzamento("allinea")
+        av.elaborati, av.completato_il = len(ordini), timezone.now()
+        av.save(update_fields=["elaborati", "completato_il", "aggiornato_il"])
+        self.scrivi(
+            f"allinea: {len(ordini):,} ordini ricontrollati, {len(cambiati):,} modificati ({stati:,} cambi di stato), "
+            f"{righe_cambiate:,} righe modificate, {righe_nuove:,} righe nuove."
+        )
+
+    def _ordini_vivi(self) -> list[dict[str, Any]]:
+        colonne = self.m.colonne["Prod_ordine"]
+        dal = timezone.localdate() - dt.timedelta(days=self.giorni_allinea)
+        condizioni = [
+            sql.SQL("btrim({}) NOT IN ({})").format(
+                sql.Identifier("stato"), sql.SQL(", ").join(map(sql.Literal, STATI_CHIUSI_METODO))
+            )
+        ]
+        parametri: list[Any] = []
+        for campo in ("data_inserimento", "data_scadenza", "data_consegna"):
+            if campo in colonne:
+                condizioni.append(sql.SQL("{} >= %s").format(sql.Identifier(campo)))
+                parametri.append(dal)
+        per_id: dict[int, dict[str, Any]] = {}
+        for blocco in self.m.blocchi_dove("Prod_ordine", sql.SQL(" OR ").join(condizioni), parametri):
+            per_id.update((o["id"], o) for o in blocco)
+        # Aperti in Metodo v2 ma forse chiusi in Metodo da tempo: si rileggono per id.
+        aperti_v2 = Ordine.objects.exclude(stato__in=[StatoOrdine.CONSEGNATO, StatoOrdine.ANNULLATO])
+        ids = set(
+            Corrispondenza.objects.filter(
+                tabella="Prod_ordine", creato=True, id_locale__in=aperti_v2.values("pk")
+            ).values_list("id_metodo", flat=True)
+        ) - set(per_id)
+        per_id.update((o["id"], o) for o in self.m.per_valori("Prod_ordine", "id", ids))
+        return [per_id[i] for i in sorted(per_id)]
+
+    @staticmethod
+    def _foto_ordini(pks: set[int]) -> dict[int, tuple[Any, ...]]:
+        return {r[0]: r[1:] for r in Ordine.objects.filter(pk__in=pks).values_list("pk", *CAMPI_ORDINE_AGGIORNABILI)}
+
+    @staticmethod
+    def _foto_righe(pks: set[int]) -> dict[int, tuple[Any, ...]]:
+        return {r[0]: r[1:] for r in RigaOrdine.objects.filter(ordine_id__in=pks).values_list("pk", *CAMPI_RIGA)}
 
     def _sistema(self) -> int:
         if self._id_sistema is None:
