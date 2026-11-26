@@ -1,0 +1,72 @@
+# Analisi di sicurezza del server di Metodo v2: SOLO LETTURA, non cambia niente.
+#   ansible-playbook analisi.yml
+# Il rapporto finisce in rapporti/<server>-<data>.txt su questo computer. Le password e le chiavi non vengono lette
+# (niente .env, niente docker inspect, niente journal completo).
+- name: Analisi di sicurezza (sola lettura)
+  hosts: metodo
+  become: true
+  gather_facts: true
+  vars:
+    comandi:
+      sistema: "lsb_release -ds; uname -r; uptime"
+      aggiornamenti_in_attesa: "apt list --upgradable 2>/dev/null | tail -n +2"
+      riavvio_richiesto: "test -f /var/run/reboot-required && cat /var/run/reboot-required.pkgs || echo no"
+      aggiornamenti_automatici: "dpkg -l unattended-upgrades 2>/dev/null | tail -1; cat /etc/apt/apt.conf.d/20auto-upgrades 2>/dev/null"
+      porte_in_ascolto: "ss -tulpnH"
+      firewall: "ufw status verbose 2>/dev/null || echo 'ufw non installato'; iptables -S 2>/dev/null | head -60"
+      ssh_configurazione: >-
+        sshd -T 2>/dev/null | grep -Ei '^(port|permitrootlogin|passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|permitemptypasswords|x11forwarding|maxauthtries|allowusers|allowgroups|clientaliveinterval)\b'
+      utenti_con_shell: "awk -F: '$7 !~ /(nologin|false)$/ {print $1\":\"$3\":\"$7}' /etc/passwd"
+      utenti_sudo_docker: "getent group sudo admin wheel docker"
+      chiavi_ssh_autorizzate: "for d in /root /home/*; do f=$d/.ssh/authorized_keys; [ -f $f ] && echo \"$f: $(wc -l < $f) chiavi\"; done"
+      ultimi_accessi: "last -n 20 -a 2>/dev/null | head -25"
+      accessi_falliti: "journalctl -u ssh -u sshd --since -7d --no-pager 2>/dev/null | grep -c 'Failed password' || true"
+      fail2ban: "fail2ban-client status 2>/dev/null || echo 'fail2ban non installato'"
+      nginx_versione_e_test: "nginx -v 2>&1; nginx -t 2>&1"
+      nginx_intestazioni_sicurezza: >-
+        nginx -T 2>/dev/null | grep -Ei 'server_tokens|ssl_protocols|ssl_ciphers|add_header|listen|server_name|client_max_body_size' | sort | uniq -c
+      certificati: "for c in /etc/letsencrypt/live/*/cert.pem; do [ -f $c ] && echo \"$c: $(openssl x509 -enddate -noout -in $c)\"; done; systemctl list-timers --all 2>/dev/null | grep -i certbot"
+      docker_versione: "docker version --format '{{ '{{' }}.Server.Version{{ '}}' }}' 2>/dev/null"
+      docker_container: "docker ps --format '{{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Image{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}\t{{ '{{' }}.Ports{{ '}}' }}'"
+      docker_daemon: "cat /etc/docker/daemon.json 2>/dev/null || echo 'nessun daemon.json'"
+      postgres_ascolto: "ss -tlnpH | grep -E ':(5432|15432)\\b' || echo 'PostgreSQL non in ascolto su porte di rete'"
+      postgres_pg_hba: "grep -Ev '^\\s*(#|$)' /etc/postgresql/*/main/pg_hba.conf 2>/dev/null"
+      ponte_socat: "systemctl is-active metodo-ponte-db 2>/dev/null || echo 'non attivo'"
+      servizi_falliti: "systemctl --failed --no-legend"
+      permessi_file_sensibili: >-
+        stat -c '%A %U:%G %n' {{ cartella_metodo }}/.env /etc/shadow /etc/sudoers 2>/dev/null; ls -l /etc/sudoers.d/
+      file_scrivibili_da_tutti: "find {{ cartella_metodo }} /etc -xdev -type f -perm -0002 2>/dev/null | head -30"
+      metodoconsole_diagnostica: "metodoconsole diagnostica 2>&1 | tail -60 || echo 'metodoconsole non installato'"
+      antivirus: "dpkg -l clamav 2>/dev/null | tail -1; systemctl is-active clamav-freshclam 2>/dev/null"
+      spazio_disco: "df -h -x tmpfs -x devtmpfs -x overlay"
+  tasks:
+    - name: Raccolta
+      ansible.builtin.shell: "{{ item.value }}"
+      args: { executable: /bin/bash }
+      loop: "{{ comandi | dict2items }}"
+      loop_control: { label: "{{ item.key }}" }
+      register: esiti
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Rapporto su questo computer
+      delegate_to: localhost
+      become: false
+      run_once: false
+      ansible.builtin.copy:
+        dest: "rapporti/{{ inventory_hostname }}-{{ ansible_date_time.date }}.txt"
+        mode: "0600"
+        content: |
+          Analisi di sicurezza di {{ inventory_hostname }} — {{ ansible_date_time.iso8601 }}
+          {% for r in esiti.results %}
+
+          ===== {{ r.item.key }} =====
+          {{ r.stdout | default('') }}{% if r.stderr | default('') %}
+
+          [stderr] {{ r.stderr }}{% endif %}
+          {% endfor %}
+
+    - name: Dove trovarlo
+      ansible.builtin.debug:
+        msg: "Rapporto: rapporti/{{ inventory_hostname }}-{{ ansible_date_time.date }}.txt"
