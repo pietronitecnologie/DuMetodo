@@ -43,8 +43,10 @@ from metodo.ordini.models import (
     StatoRiga,
     StoricoScadenza,
 )
+from metodo.timbrature.models import Lavoratore, OrigineTimbratura, Timbratura
 from metodo.tracciatura import da_qualita as dq
 
+from . import timbrature as tb
 from .importatore import (
     Chiave,
     Importatore,
@@ -72,6 +74,7 @@ PASSI = (
     "magazzino",
     "qualita",
     "tracce",
+    "timbrature",
 )
 # Passi rileggibili con --ricomincia (aggiornano ciò che è già stato importato).
 RILEGGIBILI = {"ordini", "righe", "note", "storico", "consegne"}
@@ -942,6 +945,81 @@ class Prelievo:
             if self._tracce is None:
                 self._tracce = dq.modello_tracce(MODELLI)
             self.r.conteggi["tracce"] += dq.tracce_in_blocco(MODELLI, *self._tracce, nuove)
+
+    # ---------------------------------------------------------------- lavoratori e timbrature
+    def _passo_timbrature(self) -> None:
+        if "Timbratura_timbratura" not in self.m.colonne or "Plan_resource" not in self.m.colonne:
+            self.scrivi("timbrature: tabelle non presenti in Metodo, saltate.")
+            return
+        self._lavoratori = self._importa_lavoratori()
+        self._luoghi = {loc_id: tb.luogo(r.codice, r.nome) for loc_id, r in self.imp.reparti.items()}
+        self._stati: dict[int, tb.Stato] = {}
+        self._a_blocchi("timbrature", "Timbratura_timbratura", self._blocco_timbrature)
+
+    def _importa_lavoratori(self) -> dict[int, Lavoratore]:
+        """Plan.Resource → Lavoratore (matricola = codice della risorsa). Idempotente: i lavoratori già presenti
+        non vengono modificati (in Metodo v2 hanno codici personali, badge e costi propri)."""
+        mappa: dict[int, Lavoratore] = {}
+        for r in self.m.righe("Plan_resource"):
+            matricola = (_testo(r.get("code")) or f"METODO-{r['id']}")[:30]
+            lav, creato = Lavoratore.objects.get_or_create(
+                matricola=matricola,
+                defaults={
+                    "nome": _testo(r.get("name"))[:60] or "?",
+                    "cognome": _testo(r.get("lastname"))[:60],
+                    "attivo": r.get("active") is not False,
+                },
+            )
+            mappa[r["id"]] = lav
+            if creato:
+                self.r.conteggi["lavoratori creati"] += 1
+        return mappa
+
+    def _stato(self, lav: Lavoratore) -> tb.Stato:
+        """Dove si trova il lavoratore secondo l'ultima timbratura già in Metodo v2 (ripresa del prelievo)."""
+        if lav.pk not in self._stati:
+            ultima = (
+                Timbratura.objects.filter(lavoratore=lav, annullata_il__isnull=True)
+                .order_by("-momento", "-id")
+                .values_list("tipo", "reparto_id", "momento")
+                .first()
+            )
+            self._stati[lav.pk] = tb.stato_da_evento(*ultima) if ultima else tb.Stato()
+        return self._stati[lav.pk]
+
+    def _blocco_timbrature(self, blocco: list[dict[str, Any]]) -> None:
+        minimo = dt.datetime.min.replace(tzinfo=dt.UTC)
+        righe = [(r, _aware(r.get("date")) or _aware(r.get("date_created"))) for r in blocco]
+        righe.sort(key=lambda x: (x[0]["resource_id"] or 0, x[1] or minimo, x[0]["id"]))
+        nuove: list[Timbratura] = []
+        for r, quando in righe:
+            lav = self._lavoratori.get(r["resource_id"])
+            if lav is None or quando is None:
+                self.r.avviso("timbrature", f"timbratura {r['id']}: lavoratore o ora mancanti, saltata")
+                continue
+            reparto = self.imp.reparti.get(r["location_id"])
+            arrivo = self._luoghi.get(r["location_id"], tb.INGRESSO)
+            prima = self._stato(lav)
+            if prima.quando and quando < prima.quando:
+                self.r.avviso(
+                    "timbrature",
+                    f"{lav}: timbratura {r['id']} del {timezone.localtime(quando):%d/%m/%Y %H:%M} precede "
+                    "l'ultima importata: controllala in Timbrature",
+                )
+            eventi, self._stati[lav.pk] = tb.converti(prima, arrivo, reparto.pk if reparto else None, quando)
+            for tipo, reparto_id in eventi:
+                nuove.append(
+                    Timbratura(
+                        lavoratore=lav,
+                        tipo=tipo,
+                        momento=quando,
+                        reparto_id=reparto_id,
+                        origine=OrigineTimbratura.METODO,
+                        nota=f"Metodo n. {r['id']}",
+                    )
+                )
+        Timbratura.objects.bulk_create(nuove, batch_size=2000)
+        self.r.conteggi["timbrature (eventi creati)"] += len(nuove)
 
     def _sistema(self) -> int:
         if self._id_sistema is None:
