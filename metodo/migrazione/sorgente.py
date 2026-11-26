@@ -125,8 +125,12 @@ TABELLE: dict[str, tuple[set[str], set[str]]] = {  # tabella -> (colonne obbliga
         {"ordine", "check_rif_id", "qtaInOrdine"},
     ),
     "Prod_fileordini": ({"id", "file", "rif_ordine"}, {"anno", "serie", "appendice", "data_inserimento"}),
+    # --- Timbrature (app Timbratura) e lavoratori (Plan.Resource)
+    "Plan_resource": ({"id", "name", "lastname", "code"}, {"active"}),
+    "Timbratura_timbratura": ({"id", "resource_id", "location_id"}, {"date", "date_created"}),
 }
 FACOLTATIVE = {"Prod_anagrafica", "Plan_location", "Plan_locpath", "Prod_storicoscadenza", "Prod_documentitrasporto"}
+FACOLTATIVE |= {"Plan_resource", "Timbratura_timbratura"}
 FACOLTATIVE |= {
     "Prod_codicecomponente",
     "Prod_inventario",

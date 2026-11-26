@@ -135,6 +135,7 @@ class TipoTimbratura(models.TextChoices):
 class OrigineTimbratura(models.TextChoices):
     POSTAZIONE = "POS", "Postazione"
     MANUALE = "MAN", "Inserita a mano"
+    METODO = "MET", "Importata da Metodo"
 
 
 class Timbratura(models.Model):
