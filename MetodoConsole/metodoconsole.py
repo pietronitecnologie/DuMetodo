@@ -1111,6 +1111,9 @@ def cmd_prelievo(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
             "manage.py",
             "preleva_da_metodo",
             "--verifica",
+            # Una verifica deve rispondere subito: 2 tentativi, non i molti del prelievo vero e proprio.
+            "--tentativi",
+            str(a.tentativi or 2),
             ambiente=amb,
             uscita=None,
             controlla=False,
