@@ -1,0 +1,10 @@
+[Unit]
+Description=MetodoConsole: allineamento di Metodo v2 con Metodo (coesistenza)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/metodoconsole allinea --avvisa
+Nice=10
+IOSchedulingClass=idle

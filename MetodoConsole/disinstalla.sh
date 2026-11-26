@@ -13,7 +13,7 @@ set -eu
 # Solo per i test: tutti i percorsi di sistema sotto questa cartella invece che sotto /.
 R=${METODOCONSOLE_RADICE:-}
 
-UNITA="metodoconsole-backup.timer metodoconsole-controllo.timer metodoconsole-backup.service metodoconsole-controllo.service"
+UNITA="metodoconsole-backup.timer metodoconsole-controllo.timer metodoconsole-allinea.timer metodoconsole-backup.service metodoconsole-controllo.service metodoconsole-allinea.service metodoconsole-ponte-db.service"
 COMANDO="$R/usr/local/bin/metodoconsole"
 INTERFACCIA="$R/opt/metodoconsole"
 STATO="$R/var/lib/metodoconsole"

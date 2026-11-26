@@ -10,6 +10,7 @@ Ubuntu 22.04 e successivi).
     metodoconsole backup [--nota TESTO]
     metodoconsole ripristina NOME
     metodoconsole prelievo avvia    (dati da Metodo: verifica | avvia | stato | log | ferma)
+    metodoconsole allinea           (coesistenza: dati nuovi da Metodo e ordini vivi riallineati, subito)
     metodoconsole                   (da un terminale: interfaccia a schermo intero, anche via SSH)
     metodoconsole --help            (tutti i comandi)
 
@@ -1094,7 +1095,79 @@ def opzioni_prelievo(a: argparse.Namespace) -> list[str]:
         opzioni += ["--solo", *a.solo]
     if getattr(a, "ricomincia", None):
         opzioni += ["--ricomincia", *a.ricomincia]
+    if getattr(a, "giorni", None) is not None:
+        opzioni += ["--giorni", str(a.giorni)]
     return opzioni
+
+
+TIMER_ALLINEA = "metodoconsole-allinea.timer"
+
+
+def root() -> bool:
+    return hasattr(os, "geteuid") and os.geteuid() == 0
+
+
+def cmd_allinea(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
+    """Allinea Metodo v2 con Metodo (che resta in uso): record nuovi + ordini vivi e le loro righe riletti.
+
+    Rispetto a «prelievo avvia» resta in primo piano e finisce in pochi minuti: è pensato per essere lanciato
+    spesso, anche in automatico (--automatico on: ogni 30 minuti)."""
+    if a.automatico:
+        return _allinea_automatico(a.automatico == "on")
+    st = stato_container(nome_prelievo(conf))
+    if st and st.get("Running"):
+        raise Errore("È in corso un prelievo completo: aspetta che finisca (metodoconsole prelievo stato).")
+    amb = url_metodo(conf, chiedi=sys.stdin.isatty())
+    with lucchetto(conf, "allinea"):
+        if a.backup:
+            with lucchetto(conf, "operazione"):
+                passo("Backup di sicurezza prima dell'allineamento…")
+                info(f"  backup {esegui_backup(conf, dc, 'prima-dell-allineamento', con_file=False).nome}")
+        passo(f"Allineo Metodo v2 con Metodo (dati nuovi; ordini aperti e degli ultimi {a.giorni} giorni)…")
+        opzioni = ["--log", LOG_PRELIEVO, "--giorni", str(a.giorni)]
+        for nome in ("max_kb", "pausa", "tentativi"):
+            if getattr(a, nome, None) is not None:
+                opzioni += [f"--{nome.replace('_', '-')}", str(getattr(a, nome))]
+        r = dc(
+            "run",
+            "--rm",
+            "-T",
+            *(["-e", "METODO_DB_URL"] if amb else []),
+            "web",
+            "python",
+            "manage.py",
+            "preleva_da_metodo",
+            *opzioni,
+            ambiente=amb,
+            uscita=None,
+            controlla=False,
+            timeout=a.durata_massima * 60,
+        )
+    if r.returncode != 0:
+        if a.avvisa:
+            invia_avviso(conf, dc, "Allineamento con Metodo NON riuscito", "Vedi: metodoconsole prelievo log\n")
+        raise Errore("Allineamento non riuscito: metodoconsole prelievo log (rilancialo: riprende da dov'era).")
+    info(tinta("Allineamento completato.", OK))
+    return 0
+
+
+def _allinea_automatico(acceso: bool) -> int:
+    if not root():
+        raise Errore("Serve root: sudo metodoconsole allinea --automatico on|off")
+    if acceso:
+        sorgente = Path(__file__).resolve().parent / "systemd"
+        for nome in ("metodoconsole-allinea.service", TIMER_ALLINEA):
+            if (sorgente / nome).exists():
+                shutil.copy(sorgente / nome, Path("/etc/systemd/system") / nome)
+        esegui(["systemctl", "daemon-reload"], timeout=60)
+        esegui(["systemctl", "enable", "--now", TIMER_ALLINEA], timeout=60)
+        info(tinta("Allineamento automatico acceso: ogni 30 minuti.", OK))
+        info("  Prossime esecuzioni: systemctl list-timers metodoconsole-allinea.timer")
+        info("  Esito:                journalctl -u metodoconsole-allinea --since today")
+    else:
+        esegui(["systemctl", "disable", "--now", TIMER_ALLINEA], timeout=60, controlla=False)
+        info("Allineamento automatico spento.")
+    return 0
 
 
 def cmd_prelievo(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
@@ -1258,6 +1331,20 @@ def parser() -> argparse.ArgumentParser:
     x.add_argument("--senza-backup", action="store_true", help="avvia senza il backup di sicurezza")
     x.add_argument("-f", "--segui", action="store_true", help="con «log»: segue l'avanzamento")
     x.add_argument("-n", "--righe", type=int, default=50, help="con «log»: righe da mostrare")
+    x.add_argument("--giorni", type=int, help="allineamento: ordini degli ultimi N giorni (predefinito 60)")
+    x = sub(
+        "allinea",
+        cmd_allinea,
+        "coesistenza con Metodo: porta i dati nuovi e riallinea stati, righe, note degli ordini vivi",
+    )
+    x.add_argument("--giorni", type=int, default=60, help="oltre agli aperti, ordini degli ultimi N giorni (60)")
+    x.add_argument("--backup", action="store_true", help="fa prima un backup del database")
+    x.add_argument("--max-kb", type=float, help="banda massima in KB/s (predefinito 1024, 0 = nessun limite)")
+    x.add_argument("--pausa", type=float, help="secondi di pausa tra due letture (predefinito 0.2)")
+    x.add_argument("--tentativi", type=int, help="tentativi se Metodo non risponde")
+    x.add_argument("--durata-massima", type=int, default=120, help="minuti dopo cui interrompere (120)")
+    x.add_argument("--avvisa", action="store_true", help="email agli amministratori se non riesce")
+    x.add_argument("--automatico", choices=("on", "off"), help="accende/spegne l'allineamento ogni 30 minuti")
     sub("pannello", cmd_pannello, "interfaccia a schermo intero: Docker, sicurezza, disco, backup (anche via SSH)")
     sub("versione", cmd_versione, "versione di MetodoConsole e di Metodo v2")
     return p

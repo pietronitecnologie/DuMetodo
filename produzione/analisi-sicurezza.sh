@@ -75,6 +75,7 @@ ss -tlnpH 2>/dev/null | grep -E ':(5432|15432) ' || echo "PostgreSQL non in asco
 grep -Ev '^[[:space:]]*(#|$)' /etc/postgresql/*/main/pg_hba.conf 2>/dev/null
 grep -E "^[[:space:]]*listen_addresses" /etc/postgresql/*/main/postgresql.conf 2>/dev/null
 echo "Ponte socat metodo-ponte-db: $(systemctl is-active metodo-ponte-db 2>/dev/null || true)"
+echo "Ponte socat metodoconsole-ponte-db: $(systemctl is-active metodoconsole-ponte-db 2>/dev/null || true)"
 
 titolo "Servizi falliti"
 systemctl --failed --no-legend 2>/dev/null

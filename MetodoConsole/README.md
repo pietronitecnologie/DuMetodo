@@ -53,6 +53,8 @@ Poi controlla la configurazione e, in Metodo v2, imposta chi riceve gli avvisi:
 | `metodoconsole manage COMANDO` | Comando di Django, es. `metodoconsole manage changepassword admin` |
 | `metodoconsole psql` | Console SQL del database |
 | `metodoconsole prelievo verifica` / `avvia` / `stato` / `log [-f]` / `ferma` | Preleva i dati dal Metodo in produzione (vedi sotto) |
+| `metodoconsole allinea [--giorni N] [--backup]` | Coesistenza: porta i dati nuovi e riallinea gli ordini vivi, subito (vedi sotto) |
+| `sudo metodoconsole allinea --automatico on` / `off` | Allineamento automatico ogni 30 minuti |
 
 Dove serve un `NOME` di backup basta l'inizio (`20261120`), una parte della nota (`prima-di-abc1234`) oppure
 `ultimo`.
@@ -115,6 +117,42 @@ ultimo lancio con Metodo fermo. Tutti gli avvisi del prelievo (ordini duplicati,
 finiscono nel file `prelievo-metodo.log` nella cartella dei file caricati, che è inclusa nei backup.
 `metodoconsole diagnostica` segnala se un prelievo si è interrotto. A migrazione finita togli
 `METODO_DB_URL` dal `.env`.
+
+### Metodo e Metodo v2 insieme (allineamento)
+
+Finché si lavora ancora sul Metodo in produzione, un comando porta in Metodo v2 quello che è cambiato:
+
+```bash
+metodoconsole allinea
+```
+
+- prende i record **nuovi** (ordini, righe, note, storico scadenze, consegne e DDT, tracce, timbrature);
+- **rilegge gli ordini vivi** con tutte le loro righe e ne aggiorna stato, urgenza, scadenze, consegne, evasioni,
+  blocchi, bolle, quantità e righe annullate o sostituite. Vivi = aperti in Metodo, aperti in Metodo v2
+  (anche se chiusi nel frattempo in Metodo) o con inserimento, scadenza o consegna negli ultimi 60 giorni
+  (`--giorni N` per cambiarli);
+- alla fine dice quanti ordini ha ricontrollato e quanti ne ha cambiati (con i cambi di stato) e quante righe
+  sono cambiate o nuove; il dettaglio è in `metodoconsole prelievo log`;
+- dura pochi minuti, resta in primo piano e non fa il backup (`--backup` per farlo prima).
+
+Se il vecchio Metodo è sullo **stesso server**, Metodo v2 (in Docker) raggiunge il suo database attraverso un
+ponte, che va tenuto acceso finché dura la coesistenza (al posto del `systemd-run … socat` temporaneo):
+
+```bash
+sudo apt install -y socat
+sudo systemctl enable --now metodoconsole-ponte-db.service
+```
+
+Ascolta solo sull'indirizzo della rete di Docker (172.17.0.1:15432), non da fuori; a migrazione finita:
+`sudo systemctl disable --now metodoconsole-ponte-db.service`.
+
+Per farlo da solo ogni 30 minuti: `sudo metodoconsole allinea --automatico on` (spegnere: `--automatico off`;
+esito: `journalctl -u metodoconsole-allinea`); se non riesce manda un'email agli amministratori.
+
+**Attenzione: durante la coesistenza vale Metodo.** Su un ordine arrivato da Metodo, quello che si cambia in
+Metodo v2 (stato, scadenze, righe) viene riportato al valore di Metodo dal successivo allineamento. Le cose che
+esistono solo in Metodo v2 (ordini creati in Metodo v2, note scritte in Metodo v2, ticket, tracciature) restano.
+Le note modificate o cancellate in Metodo dopo il primo prelievo non cambiano in Metodo v2.
 
 ## Diagnostica
 

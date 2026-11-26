@@ -154,6 +154,43 @@ def test_prelievo_non_parte_due_volte_e_url_mancante(tmp_path, monkeypatch):
     assert mc.url_metodo(conf) == {"METODO_DB_URL": "postgres://x"}
 
 
+def test_allinea_in_primo_piano_senza_backup(tmp_path, monkeypatch):
+    conf = _conf(tmp_path, "METODO_DB_URL='postgres://u:p@metodo/db'\n")
+    dc = _ComposeFinto()
+    monkeypatch.setattr(mc, "stato_container", lambda nome: None)
+    monkeypatch.setattr(mc, "esegui_backup", lambda *a, **k: pytest.fail("niente backup senza --backup"))
+    a = mc.parser().parse_args(["allinea", "--giorni", "30"])
+    assert a.funzione is mc.cmd_allinea and mc.cmd_allinea(conf, dc, a) == 0
+    ((argomenti, kw),) = dc.chiamate
+    assert argomenti[:3] == ("run", "--rm", "-T") and "preleva_da_metodo" in argomenti
+    assert argomenti[argomenti.index("--giorni") + 1] == "30" and kw["uscita"] is None and kw["ambiente"] == {}
+    # Con un prelievo completo in corso non parte.
+    monkeypatch.setattr(mc, "stato_container", lambda nome: {"Running": True})
+    with pytest.raises(mc.Errore, match="prelievo completo"):
+        mc.cmd_allinea(conf, dc, a)
+
+
+def test_allinea_non_riuscito_e_avvisa(tmp_path, monkeypatch):
+    conf = _conf(tmp_path, "METODO_DB_URL='postgres://u:p@metodo/db'\n")
+    avvisi = []
+    monkeypatch.setattr(mc, "stato_container", lambda nome: None)
+    monkeypatch.setattr(mc, "invia_avviso", lambda c, d, oggetto, testo: avvisi.append(oggetto) or True)
+
+    class Fallisce(_ComposeFinto):
+        def __call__(self, *argomenti, **kw):
+            return mc.subprocess.CompletedProcess(argomenti, 1, "", "")
+
+    with pytest.raises(mc.Errore, match="non riuscito"):
+        mc.cmd_allinea(conf, Fallisce(), mc.parser().parse_args(["allinea", "--avvisa"]))
+    assert avvisi == ["Allineamento con Metodo NON riuscito"]
+
+
+def test_allinea_automatico_serve_root(monkeypatch):
+    monkeypatch.setattr(mc, "root", lambda: False)
+    with pytest.raises(mc.Errore, match="Serve root"):
+        mc.cmd_allinea(None, None, mc.parser().parse_args(["allinea", "--automatico", "on"]))
+
+
 def test_prelievo_nella_diagnostica():
     assert mc.descrivi_prelievo(None) is None
     assert mc.descrivi_prelievo({"Running": True, "StartedAt": "2026-11-22T20:00:00.1Z"}).esito == mc.OK

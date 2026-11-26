@@ -1,6 +1,7 @@
 # ruff: noqa: F811, E501  (fixture importata; dati SQL di prova)
 """Prelievo a blocchi da Metodo: stesso risultato dell'importatore, ma riprendibile e incrementale."""
 
+from decimal import Decimal
 from io import StringIO
 
 import psycopg
@@ -214,13 +215,48 @@ def test_incrementale_e_ricomincia(metodo_db):
     assert nuovo.cliente == "00009" and nuovo.righe.get().qta == 7
     assert "ordini: 1" in out and "righe: 1" in out
     o4302 = Ordine.objects.get(numero="0004302")
-    assert o4302.stato == StatoOrdine.IN_LAVORAZIONE  # senza --ricomincia i record già presi non si rileggono
+    # Era aperto in Metodo v2: l'allineamento lo rilegge anche senza --ricomincia.
+    assert o4302.stato == StatoOrdine.CONSEGNATO and "allinea:" in out
 
     out = _preleva(metodo_db, "--blocco", "2", "--ricomincia", "ordini", "righe")
     o4302.refresh_from_db()
     assert o4302.stato == StatoOrdine.CONSEGNATO
     assert Ordine.objects.count() == 5 and RigaOrdine.objects.count() == 6
     assert "ordini aggiornati" in out
+
+
+@pytest.mark.django_db
+def test_allineamento_porta_i_cambi_degli_ordini_vivi(metodo_db):
+    """Coesistenza: rilanciato, il prelievo porta in Metodo v2 i cambi fatti in Metodo sugli ordini vivi."""
+    _preleva(metodo_db)
+    riga_102 = RigaOrdine.objects.get(ordine__numero="0004300", articolo="ART-B")
+    assert not riga_102.bolla_emessa
+    with psycopg.connect(metodo_db, autocommit=True) as c:
+        c.execute(
+            """UPDATE "Prod_linea" SET emessa_bolla = true, data_consegna = current_date WHERE id = 102;
+               UPDATE "Prod_ordine" SET stato = 'CON', data_consegna = current_date WHERE id = 11;
+               UPDATE "Prod_ordine" SET stato = 'CON' WHERE id = 13;
+               UPDATE "Prod_linea" SET qta = 9 WHERE id = 103;
+               INSERT INTO "Prod_linea" VALUES (106,'2024-04-02',now(),null,'0004300','2024','0','ART-N',5,'1',
+                 null,null,'',null,'00001636','00040','0000009',false,false,false,false,false,false);"""
+        )
+    out = _preleva(metodo_db)
+    riga_102.refresh_from_db()
+    assert riga_102.bolla_emessa  # riga di un ordine aperto: aggiornata
+    assert Ordine.objects.get(numero="0004300", stato=StatoOrdine.CONSEGNATO)  # aperto in Metodo v2: aggiornato
+    assert Ordine.objects.get(numero="0004302").stato == StatoOrdine.CONSEGNATO  # chiuso in Metodo da tempo
+    assert RigaOrdine.objects.get(ordine__numero="0004300", articolo="ART-N").qta == 5  # riga nuova
+    riga_103 = RigaOrdine.objects.get(ordine__numero="0004301")
+    assert riga_103.qta == Decimal("4.5")  # ordine chiuso da anni, fuori dalla finestra: non riletto
+    assert "allineamento: cambi di stato: 2" in out and "allineamento: righe modificate" in out
+    assert RigaOrdine.objects.count() == 6 and Ordine.objects.count() == 4  # nessun doppione
+
+    out = _preleva(metodo_db, "--giorni", "5000")  # finestra larga: anche gli ordini vecchi
+    riga_103.refresh_from_db()
+    assert riga_103.qta == 9
+    out = _preleva(metodo_db)  # niente di nuovo: niente da modificare
+    assert "0 modificati (0 cambi di stato), 0 righe modificate, 0 righe nuove" in out
+    assert RigaOrdine.objects.count() == 6
 
 
 @pytest.mark.django_db

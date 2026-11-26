@@ -6,9 +6,12 @@
     python manage.py preleva_da_metodo --max-kb 512 --pausa 1   # più leggero per la rete di Metodo
     python manage.py preleva_da_metodo --stato             # a che punto è (senza collegarsi a Metodo)
     python manage.py preleva_da_metodo --ricomincia ordini righe consegne   # rilegge e aggiorna
+    python manage.py preleva_da_metodo --giorni 30         # allineamento: ordini aperti + ultimi 30 giorni
 
 Può essere interrotto in qualsiasi momento (Ctrl+C, rete, riavvio): rilanciandolo riparte dall'ultimo
-blocco salvato. Rilanciato in seguito importa solo i record nuovi. Metodo viene letto in sola lettura.
+blocco salvato. Rilanciato in seguito importa i record nuovi e ALLINEA quelli già importati ancora vivi
+(ordini aperti e degli ultimi giorni, con le loro righe): così Metodo e Metodo v2 possono coesistere.
+Metodo viene letto in sola lettura.
 """
 
 import os
@@ -21,6 +24,7 @@ from django.utils import timezone
 from psycopg.conninfo import conninfo_to_dict
 
 from metodo.migrazione.prelievo import (
+    GIORNI_ALLINEA,
     PASSI,
     RILEGGIBILI,
     ConnessionePersa,
@@ -75,6 +79,12 @@ class Command(BaseCommand):
             default=[],
             help="Rilegge dall'inizio questi passi aggiornando i dati già importati",
         )
+        parser.add_argument(
+            "--giorni",
+            type=int,
+            default=GIORNI_ALLINEA,
+            help=f"Allineamento: oltre agli ordini aperti, quelli degli ultimi N giorni (default {GIORNI_ALLINEA})",
+        )
         parser.add_argument("--log", help="File in cui scrivere tutti gli avvisi")
         parser.add_argument("--max-avvisi", type=int, default=20, help="Avvisi mostrati per categoria")
         parser.add_argument("--verifica", action="store_true", help="Controlla schema e volumi, non importa")
@@ -111,6 +121,7 @@ class Command(BaseCommand):
             solo=opts["solo"],
             ricomincia=opts["ricomincia"],
             avanzamento=lambda m: self.stdout.write(f"[{timezone.localtime():%H:%M:%S}] {m}"),
+            giorni_allinea=max(opts["giorni"], 0),
         )
         try:
             prelievo.esegui()

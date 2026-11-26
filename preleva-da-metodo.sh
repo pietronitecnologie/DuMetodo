@@ -4,6 +4,10 @@
 #   ./preleva-da-metodo.sh                          chiede i dati, verifica e avvia (o riprende) il prelievo
 #   ./preleva-da-metodo.sh --max-kb 256 --pausa 1   le opzioni vengono passate a preleva_da_metodo
 #   ./preleva-da-metodo.sh --ricomincia ordini righe consegne
+#   ./preleva-da-metodo.sh --giorni 30                ordini vivi da riallineare: aperti + ultimi 30 giorni
+#
+# Ogni lancio prende i record nuovi e riallinea gli ordini ancora vivi (stati, righe, bolle…), così Metodo e
+# Metodo v2 possono restare in uso insieme: basta rilanciarlo quando serve.
 #
 # Le risposte (tranne le password) vengono ricordate per la volta successiva in
 # ~/.config/metodo/prelievo-metodo.conf. La password del database non finisce mai sulla riga di comando
