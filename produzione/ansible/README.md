@@ -1,6 +1,17 @@
-# Ansible per il server di Metodo v2
+# Analisi di sicurezza del server di Metodo v2
 
-Si lancia da un computer che raggiunge il server in SSH (Linux, macOS o Windows con WSL), non dal server.
+Due modi, con gli stessi controlli e lo stesso accesso senza root (sotto):
+
+- **Senza Ansible** (anche da Windows, senza WSL: `ssh` e `scp` sono già inclusi):
+
+  ```bash
+  scp produzione/analisi-sicurezza.sh claude@SERVER:
+  ssh -t claude@SERVER "sudo sh analisi-sicurezza.sh /opt/metodo"
+  scp claude@SERVER:analisi-sicurezza-*.txt .
+  ```
+
+  `-t` serve perché `sudo` chieda la password; l'ultimo argomento è la cartella di Metodo v2 sul server.
+- **Con Ansible** (Linux, macOS o Windows con WSL): `analisi.yml`, vedi «Uso» più sotto.
 
 ## Accesso senza root
 
