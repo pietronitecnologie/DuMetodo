@@ -4,9 +4,13 @@ Strategia: Metodo v2 si installa **accanto** al Metodo attuale, sullo stesso ser
 (es. `metodo2.esempio.it`). Si portano i dati, gli utenti provano, e solo alla fine il dominio principale passa a
 Metodo v2. Il Metodo attuale resta acceso e intatto fino al passaggio, e si può tornare indietro.
 
-Regola d'oro: **un solo sistema alla volta** legge la casella degli ordini e invia email (file tecnico, note) al
-Cliente. Durante la prova Metodo v2 non ha né la casella né i destinatari delle email: non può importare ordini
-doppi né mandare niente a nessuno.
+Regole:
+
+- **Casella degli ordini**: Metodo v2 la può leggere insieme al Metodo attuale. Legge in sola lettura, per **data
+  di arrivo** (non per la marca «non letto», che il Metodo attuale toglie), e non tocca né segna i messaggi. La
+  prima volta parte dai messaggi che arrivano da quel momento: gli ordini vecchi non vengono reimportati.
+- **Email in uscita** (file tecnico, note, report): **un solo sistema alla volta**. Durante la prova Metodo v2
+  non ha i destinatari delle email: non manda niente a nessuno.
 
 | Fase | Cosa | Fermo per gli utenti |
 |---|---|---|
@@ -88,9 +92,17 @@ sudo metodoconsole diagnostica
 sudo metodoconsole backup --nota installazione
 ```
 
-Durante la prova **non** impostare in Metodo v2: casella degli ordini, indirizzi email del Cliente, destinatari
-del file tecnico. Il file tecnico e la bolla si scaricano dalle pagine per confrontarli con quelli del Metodo
-attuale.
+Durante la prova **non** impostare in Metodo v2 gli indirizzi email del Cliente, i destinatari del file tecnico e
+quelli del report di pianificazione: il file tecnico e la bolla si scaricano dalle pagine per confrontarli con
+quelli del Metodo attuale. La **casella degli ordini** invece si può impostare subito (Configurazione → Casella
+ordini): Metodo v2 riceve gli stessi ordini del Metodo attuale, senza disturbarlo. Stato e punto di partenza:
+
+```bash
+sudo docker compose exec web python manage.py casella_ordini
+```
+
+`--da-ora` riparte dai messaggi in arrivo da adesso; `--dal AAAA-MM-GG` recupera i messaggi da quel giorno
+(quelli già elaborati si saltano).
 
 ## Fase 2 — Dati dal Metodo attuale
 
@@ -146,8 +158,8 @@ Da controllare prima del passaggio:
 ## Fase 4 — Passaggio (fuori orario, circa un'ora)
 
 1. Avvisa gli utenti dell'orario di fermo.
-2. **Metodo attuale:** ferma la lettura della casella ordini e gli invii di email (il servizio o il cron che
-   lo fanno: la verifica della fase 0 li elenca), poi ferma l'applicazione. Il database resta acceso.
+2. **Metodo attuale:** ferma l'applicazione (con lei si fermano la lettura della casella e gli invii di
+   email). Il database resta acceso per l'ultimo prelievo.
 3. Backup di entrambi:
 
    ```bash
@@ -165,7 +177,8 @@ Da controllare prima del passaggio:
    ```
 
 5. In Metodo v2:
-   - Configurazione → casella degli ordini e indirizzi email (Cliente, file tecnico, avvisi);
+   - Configurazione → indirizzi email (Cliente, file tecnico, avvisi) e, se non l'hai già fatto, casella degli
+     ordini;
    - Gestionale → controlla il prossimo numero dei DDT.
 6. **Dominio principale a Metodo v2:**
    - nel web server, sposta `server_name` (nginx) o `ServerName` (Apache) del dominio principale dal sito del
