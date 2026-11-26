@@ -13,6 +13,9 @@ L'analisi funzionale del codice originale, che fa da specifica per la riscrittur
 > tecnico `metodo`. Le installazioni precedenti vanno spostate una volta: vedi
 > [docs/aggiornamento-a-metodo-v2.md](docs/aggiornamento-a-metodo-v2.md).
 
+> **Messa in produzione** accanto al Metodo attuale (dominio di prova, prelievo dei dati, passaggio):
+> [docs/messa-in-produzione.md](docs/messa-in-produzione.md). Script in [`produzione/`](produzione/).
+
 ## Stato dei lavori
 
 Tutte le funzioni dell'app `Prod` di Metodo sono state riscritte.
