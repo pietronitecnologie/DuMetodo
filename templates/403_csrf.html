@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Richiesta non accettata · Metodo v2</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #eef1f5; color: #1d2733; margin: 0; padding: 2rem 1rem; }
+    main { max-width: 40rem; margin: 0 auto; background: #fff; border-radius: 10px; padding: 1.5rem 1.75rem; }
+    h1 { font-size: 1.25rem; margin-top: 0; }
+    code { background: #eef1f5; padding: 0 .3em; border-radius: 4px; }
+    .motivo { color: #5b6573; font-size: .9rem; border-top: 1px solid #e3e7ed; padding-top: .75rem; margin-top: 1.25rem; }
+    a { color: #2f74f0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>La richiesta non è stata accettata (controllo di sicurezza)</h1>
+  <p>Di solito basta <a href="/accesso/">ricaricare la pagina di accesso</a> e riprovare. Se succede di nuovo:</p>
+  <ul>
+    <li>apri Metodo v2 sempre con lo stesso indirizzo, in <code>https://</code>;</li>
+    <li>prova in una finestra anonima o cancella i cookie di questo sito;</li>
+    <li>non tenere aperto il modulo per molte ore prima di inviarlo.</li>
+  </ul>
+  {% if no_cookie %}<p>Il browser non ha inviato il cookie di sicurezza: controlla che i cookie non siano bloccati per questo sito e che l'indirizzo inizi con <code>https://</code>.</p>{% endif %}
+  <p class="motivo">Per l'amministratore: {{ reason }}<br>
+    Se il motivo parla di «trusted origins», l'indirizzo usato nel browser deve comparire in
+    <code>DJANGO_CSRF_TRUSTED_ORIGINS</code> nel file <code>.env</code>; se parla di «Referer», il proxy deve
+    inviare <code>X-Forwarded-Proto</code> (vedi <code>produzione/nginx-metodo.conf</code>).</p>
+</main>
+</body>
+</html>
