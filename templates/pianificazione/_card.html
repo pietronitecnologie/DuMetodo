@@ -1,5 +1,5 @@
-<a href="{{ o.get_absolute_url }}" data-dm-menu="ordine" data-dm-id="{{ o.pk }}" data-dm-codice="{{ o.codice_breve }}" class="card card-agenda {{ o.stato }} mb-1 p-1 small text-decoration-none text-body" data-cerca="{{ o.codice|lower }} {{ o.codice_breve|lower }}">
-  <div class="d-flex"><strong class="me-auto">{{ o.codice_breve }}</strong><span>{{ o.data_scadenza|date:"d/m" }}</span></div>
+<a href="{{ o.get_absolute_url }}" data-dm-menu="ordine" data-dm-id="{{ o.pk }}" data-dm-codice="{{ o.codice_breve }}" class="card card-agenda {{ o.stato }}{% if o.pk in ordini_marcati %} dm-marcata{% endif %} mb-1 p-1 small text-decoration-none text-body" data-cerca="{{ o.codice|lower }} {{ o.codice_breve|lower }}">
+  <div class="d-flex"><span role="button" tabindex="0" class="dm-marca me-1" data-url="{% url 'ordini:marca' o.pk %}" title="Segna questo ordine (clic di nuovo per togliere)" aria-label="Segna l'ordine {{ o.codice_breve }}">🔖</span><strong class="me-auto">{{ o.codice_breve }}</strong><span>{{ o.data_scadenza|date:"d/m" }}</span></div>
   <div><span class="badge text-bg-light border">{{ o.pezzi|floatformat:"-3" }} pz</span>
     {% if o.n_note %}<span class="badge text-bg-info">{{ o.n_note }} note</span>{% endif %}
     <span class="dm-stato dm-stato-{{ o.stato }}">{{ o.get_stato_display }}</span></div>

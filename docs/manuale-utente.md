@@ -150,10 +150,12 @@ premi **Cerca** (o Invio).
 - **Azzera** pulisce i filtri.
 - Ogni riga mostra stato, scadenza, righe, pezzi, reparto e un segnale se ci sono **note non lette**.
 - Clicca un ordine per aprirne il dettaglio.
-- **Segnalibro 🔖**: clicca il 🔖 a inizio riga per segnare dove sei arrivato a controllare. La riga resta
-  evidenziata in giallo (anche cambiando pagina o filtri, e la lista ci si porta da sola) finché non esci da
-  Metodo v2; un altro clic sullo stesso 🔖 la toglie, un clic su un'altra riga la sposta. Se l'ordine segnato è in
-  un'altra pagina della lista, in alto compare il link per andarci.
+- **Segnalibro 🔖**: clicca il 🔖 di un ordine (a inizio riga nell'elenco ordini, accanto al numero nelle schede
+  dell'**Agenda ordini** e dell'**Agenda pulsanti**) per segnare dove sei arrivato a controllare. L'ordine resta
+  evidenziato in giallo, in elenco e in agenda, anche cambiando pagina o filtri (la pagina ci si porta da sola).
+  Puoi segnarne quanti vuoi: segnarne un altro non toglie i precedenti. Un segnalibro si toglie solo con un altro
+  clic sullo stesso 🔖, oppure tutti insieme uscendo da Metodo v2. Se un ordine segnato è in un'altra pagina
+  dell'elenco, in alto compare il link per andarci.
 
 Il pulsante **←** in alto nelle pagine (ordine, DDT, fattura, anagrafiche…) torna alla **pagina da cui sei
 arrivato**, con i filtri com'erano, qualunque fosse: elenco ordini, agenda, report, un altro ordine. Se apri la

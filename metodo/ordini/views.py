@@ -36,7 +36,7 @@ def lista(request: HttpRequest) -> HttpResponse:
     pagina = Paginator(qs, 50).get_page(request.GET.get("pagina"))
     template = "ordini/_tabella.html" if request.htmx else "ordini/lista.html"
     filtri_attivi = form.is_valid() and form.ha_filtri()
-    marcato = request.session.get(CHIAVE_MARCATO)
+    segnati = marcati(request)
     return render(
         request,
         template,
@@ -44,40 +44,46 @@ def lista(request: HttpRequest) -> HttpResponse:
             "form": form,
             "pagina": pagina,
             "filtri_attivi": filtri_attivi,
-            "marcato": marcato,
-            "marcato_altrove": _marcato_altrove(qs, pagina, marcato) if filtri_attivi else None,
+            "marcati_altrove": _marcati_altrove(qs, pagina, segnati) if filtri_attivi else [],
         },
     )
 
 
-# L'ordine «segnalibro» della lista: dove l'operatore è arrivato a controllare. Resta finché è collegato
-# (è nella sessione: l'uscita lo cancella).
-CHIAVE_MARCATO = "ordine_marcato"
+# Gli ordini «segnalibro» (lista ordini e agenda): dove l'operatore è arrivato a controllare. Restano finché è
+# collegato (sono nella sessione: l'uscita li cancella); un clic sullo stesso segnalibro lo toglie.
+CHIAVE_MARCATI = "ordini_marcati"
 
 
-def _marcato_altrove(qs, pagina, marcato: int | None) -> dict[str, object] | None:  # type: ignore[no-untyped-def]
-    """Se l'ordine marcato è nella lista ma non in questa pagina: {ordine, pagina} per andarci."""
-    if not marcato or any(o.pk == marcato for o in pagina):
-        return None
-    pks = list(qs.values_list("pk", flat=True))
-    if marcato not in pks:
-        return None
-    return {
-        "ordine": Ordine.objects.filter(pk=marcato).first(),
-        "pagina": pks.index(marcato) // pagina.paginator.per_page + 1,
-    }
+def marcati(request: HttpRequest) -> list[int]:
+    return list(request.session.get(CHIAVE_MARCATI) or [])
+
+
+def _marcati_altrove(qs, pagina, segnati: list[int]) -> list[dict[str, object]]:  # type: ignore[no-untyped-def]
+    """Gli ordini segnati che sono nella lista ma non in questa pagina: [{ordine, pagina}] per andarci."""
+    in_pagina = {o.pk for o in pagina}
+    altrove = [pk for pk in segnati if pk not in in_pagina]
+    if not altrove:
+        return []
+    posizione = {pk: i for i, pk in enumerate(qs.values_list("pk", flat=True))}
+    ordini = Ordine.objects.in_bulk([pk for pk in altrove if pk in posizione])
+    return [
+        {"ordine": ordini[pk], "pagina": posizione[pk] // pagina.paginator.per_page + 1}
+        for pk in sorted(ordini, key=posizione.__getitem__)
+    ]
 
 
 @require_POST
-@richiede_permesso(F.ORDINI_VEDERE)
+@richiede_permesso(F.ORDINI_VEDERE, F.AGENDA)
 def marca(request: HttpRequest, pk: int) -> HttpResponse:
-    """Marca (o smarca, se lo è già) l'ordine come punto a cui l'operatore è arrivato nella lista."""
+    """Mette il segnalibro sull'ordine, o lo toglie se c'è già; gli altri segnalibri restano."""
     get_object_or_404(Ordine, pk=pk)
-    if request.session.get(CHIAVE_MARCATO) == pk:
-        request.session.pop(CHIAVE_MARCATO)
-        return JsonResponse({"marcato": None})
-    request.session[CHIAVE_MARCATO] = pk
-    return JsonResponse({"marcato": pk})
+    segnati = marcati(request)
+    if pk in segnati:
+        segnati.remove(pk)
+    else:
+        segnati.append(pk)
+    request.session[CHIAVE_MARCATI] = segnati[-200:]
+    return JsonResponse({"marcato": pk in segnati})
 
 
 @require_GET

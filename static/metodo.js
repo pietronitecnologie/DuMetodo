@@ -242,23 +242,26 @@
   });
 })();
 
-// Lista ordini: clic sul segnalibro di una riga = «sono arrivato qui» (resta finché si è collegati).
-document.addEventListener("click", function (ev) {
+// Lista ordini e agenda: clic sul 🔖 di un ordine = «segnato» (un altro clic lo toglie; gli altri restano,
+// finché si è collegati).
+function dmMarca(ev) {
   const btn = ev.target.closest(".dm-marca");
   if (!btn) return;
+  if (ev.type === "keydown" && ev.key !== "Enter" && ev.key !== " ") return;
   ev.preventDefault();
+  ev.stopPropagation();
   const token = (document.body.getAttribute("hx-headers") || "").match(/"X-CSRFToken":\s*"([^"]+)"/);
   fetch(btn.dataset.url, { method: "POST", headers: { "X-CSRFToken": token ? token[1] : "" }, credentials: "same-origin" })
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (dati) {
-      if (!dati) return;
-      document.querySelectorAll("tr.dm-marcata").forEach(function (tr) { tr.classList.remove("dm-marcata"); });
-      if (dati.marcato) btn.closest("tr").classList.add("dm-marcata");
+      if (dati) btn.closest("tr, .card-agenda").classList.toggle("dm-marcata", dati.marcato);
     });
-});
+}
+document.addEventListener("click", dmMarca, true);
+document.addEventListener("keydown", dmMarca, true);
 // All'apertura (e dopo i filtri HTMX) porta in vista la riga marcata.
 function dmVaiAllaMarcata() {
-  const tr = document.querySelector("tr.dm-marcata");
+  const tr = document.querySelector("tr.dm-marcata, .card-agenda.dm-marcata");
   if (tr) tr.scrollIntoView({ block: "center" });
 }
 document.addEventListener("DOMContentLoaded", dmVaiAllaMarcata);

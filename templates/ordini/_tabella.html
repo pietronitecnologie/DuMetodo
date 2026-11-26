@@ -1,12 +1,12 @@
-{% if marcato_altrove %}<div class="alert alert-warning py-1 px-2 small mb-2">🔖 Eri arrivato all'ordine <strong>{{ marcato_altrove.ordine.codice_breve }}</strong>:
-  <a href="?{% for k, v in request.GET.lists %}{% if k != 'pagina' %}{% for x in v %}{{ k }}={{ x|urlencode }}&{% endfor %}{% endif %}{% endfor %}pagina={{ marcato_altrove.pagina }}" hx-boost="false">vai a pagina {{ marcato_altrove.pagina }}</a></div>{% endif %}
+{% if marcati_altrove %}<div class="alert alert-warning py-1 px-2 small mb-2">🔖 Segnati in altre pagine:
+  {% for m in marcati_altrove %}<a href="?{% for k, v in request.GET.lists %}{% if k != 'pagina' %}{% for x in v %}{{ k }}={{ x|urlencode }}&{% endfor %}{% endif %}{% endfor %}pagina={{ m.pagina }}"><strong>{{ m.ordine.codice_breve }}</strong> (pag. {{ m.pagina }})</a>{% if not forloop.last %} · {% endif %}{% endfor %}</div>{% endif %}
 <div class="table-responsive">
 <table class="table table-hover align-middle">
   <thead><tr><th class="dm-col-marca" title="Segna dove sei arrivato a controllare">🔖</th><th>Ordine</th><th>Stato</th><th>Scadenza</th><th class="text-end">Righe</th><th class="text-end">Pezzi</th><th>Reparto</th><th>Note</th></tr></thead>
   <tbody>
   {% for o in pagina %}
-  <tr data-dm-menu="ordine" data-dm-id="{{ o.pk }}" data-dm-codice="{{ o.codice_breve }}"{% if o.pk == marcato %} class="dm-marcata"{% endif %}>
-    <td class="dm-col-marca"><button type="button" class="dm-marca" data-url="{% url 'ordini:marca' o.pk %}" title="Segna qui dove sei arrivato (clic di nuovo per togliere)" aria-label="Segna l'ordine {{ o.codice_breve }}">🔖</button></td>
+  <tr data-dm-menu="ordine" data-dm-id="{{ o.pk }}" data-dm-codice="{{ o.codice_breve }}"{% if o.pk in ordini_marcati %} class="dm-marcata"{% endif %}>
+    <td class="dm-col-marca"><button type="button" class="dm-marca" data-url="{% url 'ordini:marca' o.pk %}" title="Segna questo ordine (clic di nuovo per togliere)" aria-label="Segna l'ordine {{ o.codice_breve }}">🔖</button></td>
     <td><a href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a></td>
     <td><span class="dm-stato dm-stato-{{ o.stato }}">{{ o.get_stato_display }}</span></td>
     <td class="{% if o.data_scadenza and o.data_scadenza < oggi and o.stato != 'CON' and o.stato != 'ANN' %}dm-scaduto{% endif %}">{{ o.data_scadenza|date:"d/m/Y"|default:"—" }}</td>

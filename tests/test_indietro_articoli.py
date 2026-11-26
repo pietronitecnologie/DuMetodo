@@ -77,17 +77,19 @@ def test_ricerca_articoli(client, analista, dati):
     assert xlsx["Content-Type"].startswith("application/vnd.openxmlformats")
 
 
-def test_marcatura_riga_lista_ordini(client, analista, dati):
-    ordine = dati["aperto"]
+def test_segnalibri_lista_ordini_e_agenda(client, analista, dati):
+    aperto, consegnato = dati["aperto"], dati["consegnato"]
     client.force_login(analista)
-    url = f"/ordini/{ordine.pk}/marca/"
+    url = f"/ordini/{aperto.pk}/marca/"
     assert client.get(url).status_code == 405
-    assert client.post(url).json() == {"marcato": ordine.pk}
+    assert client.post(url).json() == {"marcato": True}
+    assert client.post(f"/ordini/{consegnato.pk}/marca/").json() == {"marcato": True}
     pagina = client.get("/ordini/", {"anno": 2026}).content.decode()
-    assert 'class="dm-marcata"' in pagina and pagina.count("dm-marcata") == 1
-    assert client.post(url).json() == {"marcato": None}  # secondo clic: tolta
-    assert "dm-marcata" not in client.get("/ordini/", {"anno": 2026}).content.decode()
-    client.post(url)
-    client.logout()  # uscendo si perde
+    assert pagina.count('class="dm-marcata"') == 2  # segnarne un altro non toglie il primo
+    agenda = client.get("/pianificazione/agenda/").content.decode()
+    assert "dm-marcata" in agenda and f"/ordini/{aperto.pk}/marca/" in agenda
+    assert client.post(url).json() == {"marcato": False}  # secondo clic: tolto solo quello
+    assert client.get("/ordini/", {"anno": 2026}).content.decode().count('class="dm-marcata"') == 1
+    client.logout()  # uscendo si perdono
     client.force_login(analista)
     assert "dm-marcata" not in client.get("/ordini/", {"anno": 2026}).content.decode()
