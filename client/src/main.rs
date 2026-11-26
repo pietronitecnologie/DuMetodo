@@ -277,6 +277,9 @@ fn main() {
     let mut menu_aperto: Option<(Menu, u32)> = None;
     let chiosco = conf.schermo_intero;
 
+    // Appunti del sistema tenuti aperti per tutta la vita del client: su Linux il testo copiato resta
+    // disponibile solo finché l'oggetto che l'ha scritto esiste (chiuderlo subito svuotava gli appunti).
+    let mut appunti: Option<arboard::Clipboard> = None;
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
         // Azioni sulle schede decise dentro il match e applicate dopo (servono `schede` mutabile).
@@ -438,7 +441,17 @@ fn main() {
                         let esito = if testo.len() > ponte::MASSIMO_APPUNTI {
                             Err("testo troppo lungo".to_string())
                         } else {
-                            arboard::Clipboard::new().and_then(|mut c| c.set_text(testo)).map_err(|e| e.to_string())
+                            if appunti.is_none() {
+                                appunti = arboard::Clipboard::new().ok();
+                            }
+                            let scritto = match appunti.as_mut() {
+                                Some(c) => c.set_text(testo).map_err(|e| e.to_string()),
+                                None => Err("appunti non disponibili".to_string()),
+                            };
+                            if scritto.is_err() {
+                                appunti = None; // al prossimo tentativo si riaprono
+                            }
+                            scritto
                         };
                         let avviso = match esito {
                             Ok(()) => "Copiato negli appunti".to_string(),
@@ -450,7 +463,14 @@ fn main() {
                         avvisa(webview, &avviso);
                     }
                     Some(Messaggio::Incolla) if dal_server => {
-                        match arboard::Clipboard::new().and_then(|mut c| c.get_text()) {
+                        if appunti.is_none() {
+                            appunti = arboard::Clipboard::new().ok();
+                        }
+                        let letto = match appunti.as_mut() {
+                            Some(c) => c.get_text(),
+                            None => Err(arboard::Error::ClipboardNotSupported),
+                        };
+                        match letto {
                             Ok(testo) if testo.len() <= ponte::MASSIMO_APPUNTI => {
                                 let _ = webview.evaluate_script(&format!(
                                     "window.MetodoClient && window.MetodoClient.incolla({})",

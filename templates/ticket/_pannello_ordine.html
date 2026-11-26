@@ -1,0 +1,12 @@
+<div class="card mb-3" id="ticket-ordine">
+  <div class="card-header d-flex align-items-center"><strong class="me-auto">Ticket</strong>
+    {% if perms.core.ticket_aprire or perms.core.ticket_gestire %}<a class="btn btn-sm btn-outline-primary py-0" href="{% url 'ticket:nuovo' %}?ordine={{ ordine.pk }}">+ Apri ticket</a>{% endif %}</div>
+  {% if elenco %}<ul class="list-group list-group-flush small">
+    {% for t in elenco %}<li class="list-group-item d-flex flex-wrap gap-2 align-items-center">
+      <a href="{{ t.get_absolute_url }}" class="me-auto">#{{ t.pk }} {{ t.titolo }}</a>{% if t.riga %}<span class="text-muted">riga {{ t.riga.n_riga }}</span>{% endif %}
+      <span class="dm-ticket-prio dm-ticket-prio-{{ t.priorita }}">{{ t.get_priorita_display }}</span>
+      <span class="dm-ticket-stato dm-ticket-stato-{{ t.stato }}">{{ t.get_stato_display }}</span>
+      {% include "ticket/_ore.html" with o=t.ore %}
+    </li>{% endfor %}</ul>
+  {% else %}<div class="card-body small text-muted py-2">Nessun ticket su questo ordine.</div>{% endif %}
+</div>

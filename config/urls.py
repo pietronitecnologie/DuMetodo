@@ -42,5 +42,6 @@ urlpatterns = [
     path("gestionale/", include("metodo.gestionale.urls")),
     path("timbrature/", include("metodo.timbrature.urls")),
     path("tracciatura/", include("metodo.tracciatura.urls")),
+    path("ticket/", include("metodo.ticket.urls")),
     path("admin/", admin.site.urls),
 ]

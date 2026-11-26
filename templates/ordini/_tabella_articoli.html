@@ -16,5 +16,5 @@
     <td class="small">{% if r.bolla_emessa %}<span class="badge text-bg-success">consegnata</span>{% elif r.bloccata %}<span class="badge text-bg-warning">bloccata</span>{% elif r.in_evasione %}<span class="badge text-bg-info">in evasione</span>{% else %}{{ r.ordine.get_stato_display }}{% endif %}</td>
   </tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Nessun articolo trovato.</td></tr>{% endfor %}</tbody>
 </table></div>
-{% include "_paginazione.html" %}
+{% include "_paginazione_filtri.html" %}
 {% endif %}

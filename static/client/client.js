@@ -62,8 +62,10 @@
     return null;
   };
   const tsv = (righe) => righe.map((r) => r.join("\t")).join("\r\n");
-  // Copia negli appunti: prima dalla pagina (funziona con qualunque versione del client), poi tramite il
-  // client (che riesce anche dove il browser non dà accesso agli appunti, es. server in http).
+  // Copia negli appunti. Le voci del menu del tasto destro partono dopo che il menu nativo si è chiuso, quindi
+  // senza un «gesto» dell'utente sulla pagina: lì il browser può dire di aver copiato senza scrivere nulla.
+  // Per questo il testo va SEMPRE al client, che lo scrive negli appunti del sistema e mostra l'avviso; la copia
+  // dalla pagina resta solo come riserva per i client vecchi.
   const copiaNellaPagina = (t) => {
     const area = document.createElement("textarea");
     area.value = t;
@@ -71,21 +73,13 @@
     area.style.cssText = "position:fixed;top:-1000px;left:-1000px;opacity:0";
     document.body.appendChild(area);
     area.select();
-    let ok = false;
-    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    try { document.execCommand("copy"); } catch (e) { /* ci pensa il client */ }
     area.remove();
-    return ok;
   };
   const avviso = (testo) => { if (window.__metodoAvviso) window.__metodoAvviso(testo); };
   const copiaTesto = (t) => {
     if (!t) { avviso("Niente da copiare"); return; }
-    const righe = t.split("\r\n").length;
-    const fatto = () => avviso(righe > 1 ? `Copiate ${righe} righe` : "Copiato");
-    if (copiaNellaPagina(t)) { fatto(); return; }
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(t).then(fatto, () => invia({ tipo: "copia", testo: t }));
-      return;
-    }
+    copiaNellaPagina(t);
     invia({ tipo: "copia", testo: t });
   };
 

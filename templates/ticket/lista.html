@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titolo %}Ticket{% endblock %}
+{% block contenuto %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <h1 class="h4 me-auto mb-0">Ticket</h1>
+  {% if perms.core.ticket_aprire or perms.core.ticket_gestire %}<a class="btn btn-sm btn-primary" href="{% url 'ticket:nuovo' %}">+ Nuovo ticket</a>{% endif %}
+</div>
+<div class="row g-2 mb-3 small">
+  <div class="col-6 col-md-3"><div class="card card-body py-2"><div class="text-muted">Non chiusi</div><div class="fs-5 fw-semibold">{{ stat.aperti }}</div>
+    <div class="text-muted">{% for nome, n in stat.per_stato.items %}{{ nome }} {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}</div></div></div>
+  <div class="col-6 col-md-3"><a class="card card-body py-2 text-decoration-none {% if stat.in_ritardo %}border-danger{% endif %}" href="?stato=ritardo"><div class="text-muted">In ritardo</div>
+    <div class="fs-5 fw-semibold {% if stat.in_ritardo %}text-danger{% endif %}">{{ stat.in_ritardo }}</div><div class="text-muted">oltre le ore massime</div></a></div>
+  <div class="col-6 col-md-3"><div class="card card-body py-2"><div class="text-muted">Chiusi negli ultimi {{ stat.giorni }} giorni</div><div class="fs-5 fw-semibold">{{ stat.chiusi }}</div>
+    <div class="text-muted">in media {{ stat.media_effettive }} effettive ({{ stat.media_totali }} totali)</div></div></div>
+  <div class="col-6 col-md-3"><div class="card card-body py-2"><div class="text-muted">Presa in carico</div><div class="fs-5 fw-semibold">{{ stat.media_risposta }}</div>
+    <div class="text-muted">in media dall'apertura</div></div></div>
+</div>
+{% if stat.per_categoria %}<div class="small text-muted mb-2">Ore medie per chiudere (ultimi {{ stat.giorni }} giorni):
+  {% for nome, n, media in stat.per_categoria %}<span class="me-2"><strong>{{ nome }}</strong> {{ media }} ({{ n }})</span>{% endfor %}</div>{% endif %}
+<form class="card card-body mb-3 py-2" method="get" hx-get="{% url 'ticket:lista' %}" hx-target="#tabella-ticket" hx-push-url="true">
+  <div class="row g-2 align-items-end">
+    {% for campo in form %}<div class="col-6 col-md-2"><label class="form-label small mb-0" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}</div>{% endfor %}
+  </div>
+  <div class="d-flex align-items-center gap-2 mt-2">
+    <button class="btn btn-sm btn-primary px-3">Cerca</button>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'ticket:lista' %}">Azzera</a>
+  </div>
+</form>
+<div id="tabella-ticket">{% include "ticket/_tabella.html" %}</div>
+{% endblock %}

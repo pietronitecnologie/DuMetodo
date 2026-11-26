@@ -38,6 +38,7 @@ MENU: tuple[Sezione, ...] = (
             Voce("Ricerca articoli", "ordini:articoli", (F.ORDINI_VEDERE,)),
             Voce("Agenda ordini", "pianificazione:agenda", (F.AGENDA,)),
             Voce("Agenda pulsanti", "pianificazione:agenda_pulsanti", (F.AGENDA,)),
+            Voce("Ticket", "ticket:lista", (F.TICKET_VEDERE, F.TICKET_GESTIRE)),
             Voce("Pianificazione", "pianificazione:pagina", (F.PIANIFICAZIONE,)),
             Voce("Tabulato settimanale", "pianificazione:tabulato_settimanale", (F.PIANIFICAZIONE,)),
         ),

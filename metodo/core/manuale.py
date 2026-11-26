@@ -23,6 +23,7 @@ CAPITOLI: tuple[tuple[str, str], ...] = (
     ("committenti:", "clienti-committenti"),
     ("chat:", "chat"),
     ("ordini:", "ordini"),
+    ("ticket:", "ticket"),
     ("comunicazioni:", "note-e-comunicazione-con-il-cliente"),
     ("pianificazione:agenda", "agenda"),
     ("pianificazione:tabulato", "tabulati"),

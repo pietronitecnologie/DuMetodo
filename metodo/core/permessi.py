@@ -99,6 +99,9 @@ class F:
     REPARTI = "reparti"
     COMMITTENTI = "committenti"
     CHAT = "chat"
+    TICKET_VEDERE = "ticket_vedere"
+    TICKET_APRIRE = "ticket_aprire"
+    TICKET_GESTIRE = "ticket_gestire"
     TRACCIATURA_VEDERE = "tracciatura_vedere"
     TRACCIATURA_REGISTRA = "tracciatura_registra"
     TRACCIATURA_CONFIGURA = "tracciatura_configura"
@@ -113,6 +116,19 @@ class F:
 
 FUNZIONI: list[Funzione] = [
     Funzione(F.ORDINI_VEDERE, Sezione.PRODUZIONE, "Vedere gli ordini", "Elenco e dettaglio ordini, storico scadenze."),
+    Funzione(F.TICKET_VEDERE, Sezione.PRODUZIONE, "Vedere i ticket", "Elenco e dettaglio dei ticket, con le ore."),
+    Funzione(
+        F.TICKET_APRIRE,
+        Sezione.PRODUZIONE,
+        "Aprire e seguire i ticket",
+        "Apre ticket (anche dall'ordine), li commenta; chiude quelli aperti da sé o assegnati a sé.",
+    ),
+    Funzione(
+        F.TICKET_GESTIRE,
+        Sezione.PRODUZIONE,
+        "Gestire tutti i ticket",
+        "Assegna, cambia priorità e stato, chiude e riapre qualunque ticket.",
+    ),
     Funzione(F.ORDINI_PREZZI, Sezione.PRODUZIONE, "Vedere i prezzi delle righe"),
     Funzione(
         F.ORDINI_STATO, Sezione.PRODUZIONE, "Cambiare lo stato degli ordini", "Lavorato, Spedisci, Rimuovi da consegna."
@@ -280,8 +296,16 @@ _OPERATORE = {
     F.CHAT,
     F.TRACCIATURA_VEDERE,
     F.TRACCIATURA_REGISTRA,
+    F.TICKET_VEDERE,
+    F.TICKET_APRIRE,
 }
-_CAPOREPARTO = _OPERATORE | {F.ORDINI_DIVIDI, F.PIANIFICAZIONE_CAPACITA, F.UTENTI_VEDERE, F.TIMBRATURE_VEDERE}
+_CAPOREPARTO = _OPERATORE | {
+    F.ORDINI_DIVIDI,
+    F.PIANIFICAZIONE_CAPACITA,
+    F.UTENTI_VEDERE,
+    F.TIMBRATURE_VEDERE,
+    F.TICKET_GESTIRE,
+}
 PROFILI: dict[str, set[str]] = {
     "Operatore": _OPERATORE,
     "Caporeparto": _CAPOREPARTO,
@@ -450,6 +474,12 @@ def sincronizza_permessi(**kwargs: Any) -> None:
     if nuovi:
         for u in amministratori:
             u.user_permissions.add(*nuovi)
+    # Funzioni nuove date a chi ha già una funzione vicina (es. i ticket a chi vede gli ordini), tranne i Clienti.
+    for p in nuovi:
+        origine = EREDITATI.get(p.codename)
+        if origine:
+            for u in esistenti_utenti(ct, origine).exclude(groups__name=GRUPPO_CLIENTE):
+                u.user_permissions.add(p)
     _converti_gruppi_ruolo()
 
 
@@ -459,6 +489,14 @@ RINOMINATI: dict[str, tuple[str, ...]] = {
     # Tracce, controlli qualità e foto ora si registrano con il modulo Tracciatura.
     "tracciabilita_registra": (F.TRACCIATURA_VEDERE, F.TRACCIATURA_REGISTRA),
     "qualita_test": (F.TRACCIATURA_CONFIGURA,),
+}
+
+
+# Funzione nuova -> funzione esistente i cui titolari la ricevono quando viene creata.
+EREDITATI: dict[str, str] = {
+    F.TICKET_VEDERE: F.ORDINI_VEDERE,
+    F.TICKET_APRIRE: F.ORDINI_VEDERE,
+    F.TICKET_GESTIRE: F.ORDINI_DIVIDI,
 }
 
 
