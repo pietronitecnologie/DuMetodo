@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Count, OuterRef, Subquery, Sum
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
@@ -37,7 +37,117 @@ def lista(request: HttpRequest) -> HttpResponse:
     pagina = Paginator(qs, 50).get_page(request.GET.get("pagina"))
     template = "ordini/_tabella.html" if request.htmx else "ordini/lista.html"
     filtri_attivi = form.is_valid() and form.ha_filtri()
-    return render(request, template, {"form": form, "pagina": pagina, "filtri_attivi": filtri_attivi})
+    marcato = request.session.get(CHIAVE_MARCATO)
+    return render(
+        request,
+        template,
+        {
+            "form": form,
+            "pagina": pagina,
+            "filtri_attivi": filtri_attivi,
+            "marcato": marcato,
+            "marcato_altrove": _marcato_altrove(qs, pagina, marcato) if filtri_attivi else None,
+        },
+    )
+
+
+# L'ordine «segnalibro» della lista: dove l'operatore è arrivato a controllare. Resta finché è collegato
+# (è nella sessione: l'uscita lo cancella).
+CHIAVE_MARCATO = "ordine_marcato"
+
+
+def _marcato_altrove(qs, pagina, marcato: int | None) -> dict[str, object] | None:  # type: ignore[no-untyped-def]
+    """Se l'ordine marcato è nella lista ma non in questa pagina: {ordine, pagina} per andarci."""
+    if not marcato or any(o.pk == marcato for o in pagina):
+        return None
+    pks = list(qs.values_list("pk", flat=True))
+    if marcato not in pks:
+        return None
+    return {
+        "ordine": Ordine.objects.filter(pk=marcato).first(),
+        "pagina": pks.index(marcato) // pagina.paginator.per_page + 1,
+    }
+
+
+@require_POST
+@richiede_permesso(F.ORDINI_VEDERE)
+def marca(request: HttpRequest, pk: int) -> HttpResponse:
+    """Marca (o smarca, se lo è già) l'ordine come punto a cui l'operatore è arrivato nella lista."""
+    committenti.ordine_o_404(request, pk, Ordine.objects.all())
+    if request.session.get(CHIAVE_MARCATO) == pk:
+        request.session.pop(CHIAVE_MARCATO)
+        return JsonResponse({"marcato": None})
+    request.session[CHIAVE_MARCATO] = pk
+    return JsonResponse({"marcato": pk})
+
+
+@require_GET
+@richiede_permesso(F.ORDINI_VEDERE)
+def articoli(request: HttpRequest) -> HttpResponse:
+    """Ricerca articoli: gli stessi filtri dell'elenco ordini, ma una riga per articolo d'ordine (articolo, ordine,
+    numero di riga, quantità). Con il filtro Articolo restano solo le righe di quell'articolo."""
+    form = FiltriOrdiniForm(request.GET)
+    filtri_attivi = form.is_valid() and form.ha_filtri()
+    righe = RigaOrdine.objects.none()
+    if filtri_attivi:
+        ordini = committenti.filtra(form.filtra(Ordine.objects.all()), request)
+        righe = RigaOrdine.objects.filter(stato=StatoRiga.ATTIVA, ordine__in=ordini.values("pk"))
+        if form.cleaned_data.get("articolo"):
+            righe = righe.filter(articolo__icontains=form.cleaned_data["articolo"].strip())
+    righe = (
+        righe.select_related("ordine")
+        .annotate(descrizione=descrizione_subquery())
+        .order_by("articolo", "variante", "data_scadenza", "ordine__numero", "n_riga")
+    )
+    if request.GET.get("formato") == "xlsx":
+        return _excel_articoli(righe[:50000])
+    totali = righe.aggregate(pezzi=Sum("qta"), articoli=Count("articolo", distinct=True))
+    template = "ordini/_tabella_articoli.html" if request.htmx else "ordini/articoli.html"
+    return render(
+        request,
+        template,
+        {
+            "form": form,
+            "filtri_attivi": filtri_attivi,
+            "pagina": Paginator(righe, 100).get_page(request.GET.get("pagina")),
+            "totale_pezzi": totali["pezzi"] or 0,
+            "n_articoli": totali["articoli"],
+        },
+    )
+
+
+def _excel_articoli(righe) -> HttpResponse:  # type: ignore[no-untyped-def]
+    import io
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Articoli"
+    ws.append(["Articolo", "Variante", "Descrizione", "Ordine", "Riga", "Quantità", "Scadenza", "Stato ordine"])
+    for c in ws[1]:
+        c.font = Font(bold=True)
+    for r in righe:
+        ws.append(
+            [
+                r.articolo,
+                r.variante,
+                r.descrizione or "",
+                r.ordine.codice,
+                r.n_riga,
+                float(r.qta),
+                r.data_scadenza,
+                r.ordine.get_stato_display(),
+            ]
+        )
+    buf = io.BytesIO()
+    wb.save(buf)
+    risposta = HttpResponse(
+        buf.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    risposta["Content-Disposition"] = 'attachment; filename="RicercaArticoli.xlsx"'
+    return risposta
 
 
 @require_GET

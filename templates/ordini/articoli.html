@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titolo %}Ricerca articoli{% endblock %}
+{% block contenuto %}
+<div class="d-flex align-items-center mb-2"><h1 class="h4 me-auto mb-0">Ricerca articoli</h1></div>
+<p class="small text-muted mb-2">Gli articoli degli ordini trovati con i filtri, uno per riga d'ordine: in quale ordine sono e quanti.
+Con il filtro <strong>Articolo</strong> compaiono solo le righe di quell'articolo (anche una parte del codice).</p>
+{% url 'ordini:articoli' as azione %}{% include "ordini/_filtri.html" with azione=azione bersaglio="tabella-articoli" %}
+<div id="tabella-articoli">{% include "ordini/_tabella_articoli.html" %}</div>
+{% endblock %}

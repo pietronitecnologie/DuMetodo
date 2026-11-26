@@ -35,6 +35,7 @@ MENU: tuple[Sezione, ...] = (
         "produzione",
         (
             Voce("Elenco ordini", "ordini:lista", (F.ORDINI_VEDERE,)),
+            Voce("Ricerca articoli", "ordini:articoli", (F.ORDINI_VEDERE,)),
             Voce("Agenda ordini", "pianificazione:agenda", (F.AGENDA,)),
             Voce("Agenda pulsanti", "pianificazione:agenda_pulsanti", (F.AGENDA,)),
             Voce("Pianificazione", "pianificazione:pagina", (F.PIANIFICAZIONE,)),

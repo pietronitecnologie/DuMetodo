@@ -16,11 +16,13 @@
   <div class="col-6 col-md-3"><a class="card card-body py-2 text-decoration-none text-body" href="{% url 'importazione:problemi' %}"><div class="small text-muted">Problemi di importazione / email in errore</div><div class="fs-5 fw-semibold {% if problemi_importazione or email_in_errore %}text-danger{% endif %}">{{ problemi_importazione }} / {{ email_in_errore }}</div></a></div>
 </div>
 <div class="row g-3">
-  <div class="col-lg-6"><div class="card"><div class="card-header"><strong>Pezzi consegnati per settimana</strong> <span class="small text-muted">ultime 12 settimane</span></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header"><strong>Pezzi consegnati, ore lavorate ed efficienza</strong> <span class="small text-muted">ultime 12 settimane</span></div>
     <table class="table table-sm mb-0 align-middle"><tbody>{% for s in settimane %}<tr>
       <td class="small text-nowrap" style="width:6rem">{{ s.lunedi|date:"d/m/y" }}</td>
       <td><div class="bg-primary rounded" style="height:12px;width:{{ s.percentuale }}%" title="{{ s.pezzi|floatformat:'-3' }} pezzi, {{ s.valore }} €"></div></td>
-      <td class="small text-end text-nowrap" style="width:5rem">{{ s.pezzi|floatformat:0 }}</td></tr>{% endfor %}</tbody></table></div></div>
+      <td class="small text-end text-nowrap" style="width:5rem">{{ s.pezzi|floatformat:0 }}</td>
+      <td class="small text-end text-nowrap text-muted" style="width:5rem" title="Ore lavorate (timbrature)">{% if s.ore %}{{ s.ore|floatformat:0 }} h{% endif %}</td>
+      <td class="small text-end text-nowrap" style="width:4rem" title="Efficienza: ore prodotte / ore lavorate">{% if s.efficienza is not None %}{{ s.efficienza }}%{% endif %}</td></tr>{% endfor %}</tbody></table></div></div>
   <div class="col-lg-3"><div class="card h-100"><div class="card-header"><strong>In ritardo</strong></div><ul class="list-group list-group-flush small">
     {% for o in ritardi %}<li class="list-group-item d-flex"><a class="me-auto" href="{{ o.get_absolute_url }}">{{ o.codice_breve }}</a><span class="text-danger">{{ o.data_scadenza|date:"d/m" }}</span></li>{% empty %}<li class="list-group-item text-muted">Nessuno.</li>{% endfor %}</ul></div></div>
   <div class="col-lg-3"><div class="card h-100"><div class="card-header"><strong>Prossime scadenze</strong></div><ul class="list-group list-group-flush small">

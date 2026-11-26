@@ -2,7 +2,7 @@
 {% load static metodo %}
 {% block titolo %}{{ m.nome }}{% endblock %}
 {% block contenuto %}
-<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciatura:nuova' %}{% if coll.ordine %}?ordine={{ coll.ordine }}{% endif %}">← Modelli</a>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">{% url 'tracciatura:nuova' as url_indietro %}{% if coll.ordine %}{% with coll.ordine|stringformat:"s" as n_ordine %}{% with url_indietro|add:"?ordine="|add:n_ordine as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Modelli" %}{% endwith %}{% endwith %}{% else %}{% include "_indietro.html" with url=url_indietro etichetta="Modelli" %}{% endif %}
   <h1 class="h4 mb-0 me-auto">{{ m.nome }}</h1><span class="badge text-bg-light border">{{ m.get_categoria_display }}</span></div>
 {% if m.descrizione %}<div class="alert alert-info py-2 small">{{ m.descrizione|linebreaksbr }}</div>{% endif %}
 <form method="post" enctype="multipart/form-data" data-tracciatura class="row g-3" style="max-width:60rem">{% csrf_token %}

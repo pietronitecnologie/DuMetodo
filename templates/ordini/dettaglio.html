@@ -2,7 +2,7 @@
 {% block titolo %}Ordine {{ ordine.codice_breve }}{% endblock %}
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-  <a href="{% url 'ordini:lista' %}" class="btn btn-sm dm-az dm-az-testata dm-az-annulla">← Ordini</a>
+  {% url 'ordini:lista' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Ordini" classi="dm-az dm-az-testata dm-az-annulla" %}
   <h1 class="h4 mb-0 me-auto" data-dm-menu="ordine" data-dm-id="{{ ordine.pk }}" data-dm-codice="{{ ordine.codice_breve }}">Ordine {{ ordine.codice_breve }}
     <span class="align-middle dm-stato dm-stato-{{ ordine.stato }}">{{ ordine.get_stato_display }}</span></h1>
   {% for t in transizioni %}

@@ -14,8 +14,11 @@ class FaviconView(RedirectView):
         return static("img/favicon.ico")  # calcolato alla richiesta: il manifest dei file statici esiste già
 
 
+from metodo.core import cronologia  # noqa: E402
+
 urlpatterns = [
     path("", core_views.home, name="home"),
+    path("indietro/", cronologia.indietro, name="indietro"),
     # I browser chiedono /favicon.ico anche senza <link>: si rimanda all'icona statica.
     path("favicon.ico", FaviconView.as_view()),
     path("manuale/", core_views.manuale, name="manuale"),

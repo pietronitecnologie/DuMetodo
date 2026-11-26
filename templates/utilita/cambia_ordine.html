@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titolo %}Cambia ordine {{ ordine.codice_breve }}{% endblock %}
 {% block contenuto %}
-<a href="{% url 'utilita:cambia_ordine_cerca' %}" class="btn btn-sm btn-outline-secondary mb-2">← Cerca</a>
+{% url 'utilita:cambia_ordine_cerca' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Cerca" classi="btn-outline-secondary mb-2" %}
 <h1 class="h4">Cambia ordine <a href="{{ ordine.get_absolute_url }}">{{ ordine.codice }}</a></h1>
 <div class="row g-3">
 <div class="col-lg-6"><form method="post" class="card card-body" onsubmit="return confirm('Confermi la modifica dell\'ordine? Righe, note, consegne e DDT restano collegati.')">{% csrf_token %}

@@ -2,7 +2,7 @@
 {% block titolo %}{{ f }}{% endblock %}
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-  <a href="{% url 'gestionale:fatture' %}" class="btn btn-sm btn-outline-secondary">← Fatture</a>
+  {% url 'gestionale:fatture' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Fatture" classi="btn-outline-secondary" %}
   <h1 class="h4 me-auto mb-0">{{ f.get_tipo_display }} {% if f.numero %}n. {{ f.numero }}{% else %}<span class="badge text-bg-warning align-middle">bozza</span>{% endif %} del {{ f.data|date:"d/m/Y" }}</h1>
   <a class="btn btn-sm btn-outline-secondary" href="{% url 'gestionale:fattura_stampa' f.pk %}" target="_blank">{% if f.is_bozza %}Anteprima{% else %}Copia di cortesia{% endif %}</a>
   {% if not f.is_bozza %}<a class="btn btn-sm btn-primary" href="{% url 'gestionale:fattura_xml' f.pk %}">Scarica XML</a>{% endif %}

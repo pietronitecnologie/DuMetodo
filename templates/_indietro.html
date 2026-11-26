@@ -1,0 +1,2 @@
+{# Pulsante «indietro»: la pagina aperta prima (con i suoi filtri); se non c'è, «url» con «etichetta». #}
+<a href="{% if pagina_precedente %}{% url 'indietro' %}?a={{ pagina_precedente.url|urlencode:'' }}{% else %}{{ url }}{% endif %}" class="btn btn-sm {{ classi|default:'btn-outline-secondary' }}">← {% if pagina_precedente %}{{ pagina_precedente.titolo|default:"Indietro" }}{% else %}{{ etichetta }}{% endif %}</a>

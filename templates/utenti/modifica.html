@@ -2,7 +2,7 @@
 {% block titolo %}{% if utente %}{{ utente.username }}{% else %}Nuovo utente{% endif %}{% endblock %}
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-  <a href="{% url 'utenti:lista' %}" class="btn btn-sm btn-outline-secondary">← Utenti</a>
+  {% url 'utenti:lista' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Utenti" classi="btn-outline-secondary" %}
   <h1 class="h4 mb-0 me-auto">{% if utente %}Utente {{ utente.username }}{% else %}Nuovo utente{% endif %}
     {% if utente and not utente.is_active %}<span class="badge text-bg-secondary align-middle">disattivato</span>{% endif %}
     {% if utente.is_superuser %}<span class="badge text-bg-dark align-middle">superuser</span>{% endif %}

@@ -56,6 +56,9 @@ def navigazione(request: HttpRequest) -> dict[str, object]:
         if len(elenco) > 1:  # con un solo committente il selettore non serve
             contesto["committenti_utente"] = elenco
             contesto["committente_corrente"] = committenti.corrente(request)
+        from .cronologia import precedente
+
+        contesto["pagina_precedente"] = precedente(request)
         from .manuale import capitolo_per
 
         vista = getattr(getattr(request, "resolver_match", None), "view_name", None)

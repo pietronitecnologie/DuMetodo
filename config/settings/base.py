@@ -69,6 +69,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    # Il pulsante «indietro» delle pagine: ricorda le pagine aperte (metodo/core/cronologia.py).
+    "metodo.core.cronologia.CronologiaMiddleware",
     # Registra l'utente che ha fatto ogni modifica nello storico (audit trail).
     "simple_history.middleware.HistoryRequestMiddleware",
 ]

@@ -2,7 +2,7 @@
 {% block titolo %}{{ titolo }}{% endblock %}
 {% block contenuto %}
 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-  <a href="{{ indietro }}" class="btn btn-sm btn-outline-secondary">← {{ etichetta_indietro }}</a>
+  {% include "_indietro.html" with url=indietro etichetta=etichetta_indietro %}
   <h1 class="h4 mb-0 me-auto">{{ titolo }}</h1>
 </div>
 <form method="post" class="card" style="max-width: 48rem">{% csrf_token %}

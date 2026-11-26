@@ -71,7 +71,7 @@ def settimane_indietro(n: int, fino_a: dt.date | None = None) -> list[dt.date]:
 
 
 # ----------------------------------------------------------------------------------------- dashboard
-def dashboard(oggi: dt.date | None = None, committenti: Committenti = None) -> dict[str, Any]:
+def dashboard(oggi: dt.date | None = None, committenti: Committenti = None, parziale: bool = False) -> dict[str, Any]:
     oggi = oggi or timezone.localdate()
     ordini = _ordini(committenti)
     per_stato = dict(ordini.filter(stato__in=APERTI).values_list("stato").annotate(n=Count("pk")))
@@ -90,6 +90,10 @@ def dashboard(oggi: dt.date | None = None, committenti: Committenti = None) -> d
         pezzi[lun] += qta
         valore[lun] += qta * (prezzo or 0)
     massimo = max(pezzi.values(), default=ZERO) or Decimal(1)
+    # Ore lavorate della settimana: dalle timbrature, o la correzione a mano dell'Analisi produttività.
+    # Sono di tutta l'azienda: con un solo committente l'efficienza non sarebbe confrontabile.
+    ore = {lunedi: v["totale"] for lunedi, v in ore_timbrate(settimane).items()}
+    ore.update(OreLavorate.objects.filter(settimana__in=settimane).values_list("settimana", "ore"))
     p = piano.calcola(committenti=committenti)
     carico = sum((r.settimane[0].ore for r in p.righe), ZERO) if p.righe else ZERO
     capacita = sum((r.settimane[0].capacita or ZERO for r in p.righe), ZERO)
@@ -108,6 +112,8 @@ def dashboard(oggi: dt.date | None = None, committenti: Committenti = None) -> d
                 "pezzi": pezzi[s],
                 "valore": valore[s].quantize(Decimal("0.01")),
                 "percentuale": int(pezzi[s] / massimo * 100),
+                "ore": ore.get(s),
+                "efficienza": _percentuale(_ore(valore[s]), ore.get(s)) if ore.get(s) and not parziale else None,
             }
             for s in settimane
         ],
@@ -123,9 +129,24 @@ class SettimanaProduttivita:
     lunedi: dt.date
     pezzi: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: ZERO))
     valore: Decimal = ZERO
-    ore_lavorate: Decimal | None = None
     # Con un solo committente le ore lavorate (di tutta l'azienda) non sono confrontabili con i suoi pezzi.
     parziale: bool = False
+    ore_timbrate: Decimal | None = None  # dalle timbrature (presenza meno mensa e pausa), in automatico
+    ore_manuali: Decimal | None = None  # correzione scritta a mano: se c'è, vale questa
+
+    @property
+    def ore_lavorate(self) -> Decimal | None:
+        return self.ore_manuali if self.ore_manuali is not None else self.ore_timbrate
+
+    @ore_lavorate.setter
+    def ore_lavorate(self, valore: Decimal | None) -> None:
+        self.ore_manuali = valore
+
+    @property
+    def fonte_ore(self) -> str:
+        if self.ore_manuali is not None:
+            return "corrette a mano"
+        return "dalle timbrature" if self.ore_timbrate is not None else ""
 
     @property
     def per_categoria(self) -> list[Decimal]:
@@ -175,8 +196,10 @@ def produttivita(
         s = risultato[calendario.lunedi(data)]
         s.pezzi[categoria(appendice)] += qta
         s.valore += qta * (prezzo or 0)
+    for lunedi, ore in ore_timbrate(settimane).items():
+        risultato[lunedi].ore_timbrate = ore["totale"]
     for ol in OreLavorate.objects.filter(settimana__in=settimane):
-        risultato[ol.settimana].ore_lavorate = ol.ore
+        risultato[ol.settimana].ore_manuali = ol.ore
     return list(risultato.values())
 
 
@@ -224,6 +247,10 @@ def materiale_per_reparto(
     dati: dict[str, dict[dt.date, dict[str, Decimal]]] = defaultdict(
         lambda: {s: {"scadenza": ZERO, "consegnato": ZERO} for s in settimane}
     )
+    timbrate = ore_timbrate(settimane)
+    for ore in timbrate.values():  # anche i reparti dove si è timbrato senza materiale nel periodo
+        for nome in ore["per_reparto"]:
+            _ = dati[nome]  # crea la riga del reparto
     righe = _righe(committenti).filter(stato=StatoRiga.ATTIVA).exclude(prezzo_unitario=None)
     for art, qta, prezzo, data in righe.filter(data_scadenza__range=(dal, al)).values_list(
         "articolo", "qta", "prezzo_unitario", "data_scadenza"
@@ -235,11 +262,19 @@ def materiale_per_reparto(
         dati[reparto_di.get(art) or "Senza reparto"][calendario.lunedi(data)]["consegnato"] += qta * prezzo
     righe_out = []
     for nome in sorted(dati, key=lambda n: (n == "Senza reparto", n)):
-        celle = [{"scadenza": _ore(v["scadenza"]), "consegnato": _ore(v["consegnato"])} for v in dati[nome].values()]
+        celle = [
+            {
+                "scadenza": _ore(v["scadenza"]),
+                "consegnato": _ore(v["consegnato"]),
+                "timbrate": timbrate[lunedi]["per_reparto"].get(nome),
+            }
+            for lunedi, v in dati[nome].items()
+        ]
         righe_out.append(
             {
                 "reparto": nome,
                 "celle": celle,
+                "tot_timbrate": _somma(c["timbrate"] for c in celle),
                 "tot_scadenza": _ore(sum((v["scadenza"] for v in dati[nome].values()), ZERO)),
                 "tot_consegnato": _ore(sum((v["consegnato"] for v in dati[nome].values()), ZERO)),
             }
@@ -263,15 +298,20 @@ def evaso_consegnato_per_settimana(settimane: list[dt.date], committenti: Commit
                 "celle": celle,
                 "tot_scadenza": _somma(c["scadenza"] for c in celle),
                 "tot_consegnato": _somma(c["consegnato"] for c in celle),
+                "tot_timbrate": _somma(c["timbrate"] for c in celle),
             }
         )
-    totali = [{"scadenza": r["tot_scadenza"], "consegnato": r["tot_consegnato"]} for r in per_reparto]
+    totali = [
+        {"scadenza": r["tot_scadenza"], "consegnato": r["tot_consegnato"], "timbrate": r["tot_timbrate"]}
+        for r in per_reparto
+    ]
     return {
         "reparti": reparti,
         "righe": righe,
         "totali": totali,
         "totale_scadenza": _somma(t["scadenza"] for t in totali),
         "totale_consegnato": _somma(t["consegnato"] for t in totali),
+        "totale_timbrate": _somma(t["timbrate"] for t in totali),
         "resa_configurata": bool(config.leggi("produzione.prezzo_resa_oraria")),
     }
 
@@ -363,6 +403,37 @@ def _turni_per_settimana(settimane: list[dt.date]) -> tuple[list[Any], dict[int,
 
 def _ore_da_secondi(secondi: float) -> Decimal:
     return (Decimal(str(secondi)) / 3600).quantize(Decimal("0.01"))
+
+
+def ore_timbrate(settimane: list[dt.date]) -> dict[dt.date, dict[str, Any]]:
+    """Per settimana, dalle timbrature: ore lavorate (presenza meno mensa e pausa) in totale e per reparto.
+
+    {lunedì: {"totale": ore | None, "per_reparto": {nome reparto: ore}, "fuori_reparto": ore | None}}. È lo stesso
+    calcolo dei turni della sezione Timbrature, usato da tutti i report che confrontano ore timbrate e prodotte."""
+    from metodo.core.models import Reparto
+
+    nomi = dict(Reparto.objects.values_list("pk", "nome"))
+    sec: dict[dt.date, dict[str, Any]] = {
+        s: {"totale": 0.0, "per_reparto": defaultdict(float), "fuori_reparto": 0.0} for s in settimane
+    }
+    _, per_lav = _turni_per_settimana(settimane)
+    for settimane_lav in per_lav.values():
+        for lunedi, turni in settimane_lav.items():
+            if lunedi not in sec:
+                continue
+            for t in turni:
+                sec[lunedi]["totale"] += t.lavorato
+                sec[lunedi]["fuori_reparto"] += t.non_assegnato
+                for rep_id, secondi in t.per_reparto.items():
+                    sec[lunedi]["per_reparto"][nomi.get(rep_id, "?")] += secondi
+    return {
+        lunedi: {
+            "totale": _ore_da_secondi(v["totale"]) or None,
+            "per_reparto": {n: _ore_da_secondi(x) for n, x in v["per_reparto"].items() if x},
+            "fuori_reparto": _ore_da_secondi(v["fuori_reparto"]) or None,
+        }
+        for lunedi, v in sec.items()
+    }
 
 
 def efficienza_reparti(settimane: list[dt.date], con_costi: bool = False) -> dict[str, Any]:

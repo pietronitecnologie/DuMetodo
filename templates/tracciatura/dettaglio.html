@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titolo %}{{ t.modello }}{% endblock %}
 {% block contenuto %}
-<div class="d-flex flex-wrap align-items-center gap-2 mb-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'tracciatura:elenco' %}">← Tracciature</a>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">{% url 'tracciatura:elenco' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Tracciature" classi="btn-outline-secondary" %}
   <h1 class="h4 mb-0 me-auto">{{ t.modello }} {% include "tracciatura/_esito.html" %}</h1>
   {% if puo_registrare %}<a class="btn btn-sm btn-outline-primary" href="{% url 'tracciatura:nuova' %}?modello={{ t.modello_id }}{% if t.ordine_id %}&ordine={{ t.ordine_id }}{% endif %}">Nuova uguale</a>{% endif %}</div>
 {% if t.annullata %}<div class="alert alert-secondary py-2 small">Annullata il {{ t.annullata_il|date:"d/m/Y H:i" }} da {{ t.annullata_da }}: {{ t.motivo_annullamento }}</div>{% endif %}

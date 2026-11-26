@@ -1,0 +1,20 @@
+{% if not filtri_attivi %}<div class="text-muted small py-3">Imposta almeno un filtro (es. l'articolo o «Solo aperti») e premi Cerca.</div>
+{% else %}
+<div class="d-flex align-items-center gap-2 mb-1 small">
+  <span class="me-auto">{{ pagina.paginator.count }} righe · {{ totale_pezzi|floatformat:"-3" }} pezzi{% if n_articoli %} · {{ n_articoli }} articoli{% endif %}</span>
+  <a class="btn btn-sm btn-outline-secondary" href="?{{ request.GET.urlencode }}&formato=xlsx">Excel</a>
+</div>
+<div class="table-responsive"><table class="table table-sm table-hover bg-white align-middle">
+  <thead><tr><th>Articolo</th><th>Descrizione</th><th>Ordine</th><th class="text-end">Riga</th><th class="text-end">Quantità</th><th>Scadenza</th><th>Stato</th></tr></thead>
+  <tbody>{% for r in pagina %}<tr>
+    <td class="fw-semibold text-nowrap">{{ r.articolo }}{% if r.variante %} <span class="text-muted">{{ r.variante }}</span>{% endif %}</td>
+    <td class="small">{{ r.descrizione|default:"" }}</td>
+    <td class="text-nowrap"><a href="{{ r.ordine.get_absolute_url }}">{{ r.ordine.codice_breve }}</a></td>
+    <td class="text-end">{{ r.n_riga|stringformat:"s"|slice:"-4:" }}</td>
+    <td class="text-end fw-semibold">{{ r.qta|floatformat:"-3" }}</td>
+    <td class="text-nowrap">{{ r.data_scadenza|date:"d/m/Y"|default:"—" }}</td>
+    <td class="small">{% if r.bolla_emessa %}<span class="badge text-bg-success">consegnata</span>{% elif r.bloccata %}<span class="badge text-bg-warning">bloccata</span>{% elif r.in_evasione %}<span class="badge text-bg-info">in evasione</span>{% else %}{{ r.ordine.get_stato_display }}{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Nessun articolo trovato.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% include "_paginazione.html" %}
+{% endif %}

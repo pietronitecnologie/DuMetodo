@@ -3,13 +3,13 @@
 {% block contenuto %}
 <h1 class="h4">Materiale per reparto e settimana</h1>
 {% include "committenti/_avviso_report.html" %}
-<p class="small text-muted">Ore (valore / resa oraria) delle righe <strong>a scadenza</strong> nella settimana e delle righe <strong>consegnate</strong> nella settimana, per reparto dell'articolo.</p>
+<p class="small text-muted">Ore (valore / resa oraria) delle righe <strong>a scadenza</strong> nella settimana e delle righe <strong>consegnate</strong> nella settimana, per reparto dell'articolo, e ore <strong>timbrate</strong> nel reparto (dalle timbrature).</p>
 {% include "report/_periodo.html" %}
 <div class="table-responsive"><table class="table table-sm table-bordered bg-white align-middle text-end small">
-  <thead><tr><th rowspan="2" class="text-start align-middle">Reparto</th>{% for s in settimane %}<th colspan="2" class="text-center">{{ s|date:"d/m" }}</th>{% endfor %}<th colspan="2" class="text-center">Totale</th></tr>
-    <tr>{% for s in settimane %}<th class="fw-normal">scad.</th><th class="fw-normal">cons.</th>{% endfor %}<th class="fw-normal">scad.</th><th class="fw-normal">cons.</th></tr></thead>
+  <thead><tr><th rowspan="2" class="text-start align-middle">Reparto</th>{% for s in settimane %}<th colspan="3" class="text-center">{{ s|date:"d/m" }}</th>{% endfor %}<th colspan="3" class="text-center">Totale</th></tr>
+    <tr>{% for s in settimane %}<th class="fw-normal">scad.</th><th class="fw-normal">cons.</th><th class="fw-normal">timbr.</th>{% endfor %}<th class="fw-normal">scad.</th><th class="fw-normal">cons.</th><th class="fw-normal">timbr.</th></tr></thead>
   <tbody>{% for r in righe %}<tr><td class="text-start">{{ r.reparto }}</td>
-    {% for c in r.celle %}<td>{{ c.scadenza|default_if_none:"—" }}</td><td class="{% if c.consegnato and c.scadenza and c.consegnato < c.scadenza %}text-danger{% endif %}">{{ c.consegnato|default_if_none:"—" }}</td>{% endfor %}
-    <td><strong>{{ r.tot_scadenza|default_if_none:"—" }}</strong></td><td><strong>{{ r.tot_consegnato|default_if_none:"—" }}</strong></td></tr>
+    {% for c in r.celle %}<td>{{ c.scadenza|default_if_none:"—" }}</td><td class="{% if c.consegnato and c.scadenza and c.consegnato < c.scadenza %}text-danger{% endif %}">{{ c.consegnato|default_if_none:"—" }}</td><td class="text-muted">{{ c.timbrate|default_if_none:"—" }}</td>{% endfor %}
+    <td><strong>{{ r.tot_scadenza|default_if_none:"—" }}</strong></td><td><strong>{{ r.tot_consegnato|default_if_none:"—" }}</strong></td><td><strong>{{ r.tot_timbrate|default_if_none:"—" }}</strong></td></tr>
   {% empty %}<tr><td colspan="99" class="text-muted text-center">Nessun dato nel periodo.</td></tr>{% endfor %}</tbody></table></div>
 {% endblock %}

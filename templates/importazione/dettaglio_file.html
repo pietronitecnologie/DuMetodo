@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titolo %}{{ file.nome }}{% endblock %}
 {% block contenuto %}
-<a href="{% url 'importazione:pagina' %}" class="btn btn-sm btn-outline-secondary mb-2">← Importazione</a>
+{% url 'importazione:pagina' as url_indietro %}{% include "_indietro.html" with url=url_indietro etichetta="Importazione" classi="btn-outline-secondary mb-2" %}
 <h1 class="h5">{{ file.nome }} {% with f=file %}{% include "importazione/_stato.html" %}{% endwith %}</h1>
 <div class="card card-body small mb-3"><div class="row">
   <div class="col-md-3">Origine: {{ file.get_origine_display }}{% if file.caricato_da %} ({{ file.caricato_da }}){% endif %}</div>
