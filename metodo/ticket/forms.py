@@ -26,8 +26,9 @@ class NuovoTicketForm(forms.ModelForm):
         fields = ["titolo", "categoria", "priorita", "ordine", "riga", "descrizione", "assegnato_a"]
         widgets = {"descrizione": forms.Textarea(attrs={"rows": 5})}
 
-    def __init__(self, *args: Any, ordine: Ordine | None = None, **kw: Any) -> None:
+    def __init__(self, *args: Any, ordine: Ordine | None = None, ordini: Any = None, **kw: Any) -> None:
         super().__init__(*args, **kw)
+        self.fields["ordine"].base = ordini  # v3: solo gli ordini dei committenti visibili
         self.fields["assegnato_a"].queryset = servizi.incaricabili()
         ordine = ordine or self._ordine_scritto()
         righe: QuerySet[RigaOrdine] = RigaOrdine.objects.none()
