@@ -1,5 +1,5 @@
 [Unit]
-Description=MetodoConsole: controllo di Metodo v2
+Description=MetodoConsole: diagnostica del server (e di Metodo v2, se installato)
 After=docker.service
 
 [Service]

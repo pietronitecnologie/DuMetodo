@@ -1,12 +1,19 @@
 #!/bin/sh
-# Installa MetodoConsole su Debian: comando «metodoconsole», configurazione e controlli automatici.
+# Installa MetodoConsole su Debian/Ubuntu: comando «metodoconsole», configurazione e controlli automatici.
 #   sudo ./MetodoConsole/installa.sh [cartella di Metodo v2]      (predefinita: la cartella di questo repository)
+# Anche su un server SENZA Metodo v2: in quel caso installa solo la diagnostica (senza backup di Metodo v2).
 set -eu
 [ "$(id -u)" = 0 ] || { echo "Serve root: sudo $0" >&2; exit 1; }
 QUI=$(cd "$(dirname "$0")" && pwd)
 METODO=${1:-$(dirname "$QUI")}
-command -v docker >/dev/null || { echo "Docker non è installato (https://docs.docker.com/engine/install/debian/)" >&2; exit 1; }
-docker compose version >/dev/null 2>&1 || { echo "Manca il plugin «docker compose»: apt install docker-compose-plugin" >&2; exit 1; }
+if [ -f "$METODO/compose.yaml" ]; then
+    CON_METODO=1
+    command -v docker >/dev/null || { echo "Docker non è installato (https://docs.docker.com/engine/install/debian/)" >&2; exit 1; }
+    docker compose version >/dev/null 2>&1 || { echo "Manca il plugin «docker compose»: apt install docker-compose-plugin" >&2; exit 1; }
+else
+    CON_METODO=0
+    echo "Metodo v2 non trovato in $METODO: installo solo la diagnostica del server."
+fi
 python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' || { echo "Serve Python 3.10 o più recente" >&2; exit 1; }
 command -v rsync >/dev/null || echo "Nota: rsync non è installato (serve solo per la copia remota dei backup: apt install rsync)."
 
@@ -36,7 +43,13 @@ fi
 
 for u in "$QUI"/systemd/*; do install -m 644 "$u" /etc/systemd/system/; done
 systemctl daemon-reload
-systemctl enable --now metodoconsole-backup.timer metodoconsole-controllo.timer
+if [ "$CON_METODO" = 1 ]; then
+    systemctl enable --now metodoconsole-backup.timer metodoconsole-controllo.timer
+else
+    systemctl enable --now metodoconsole-controllo.timer
+    echo "Avvisi email senza Metodo v2: metti [avvisi] destinatari in /etc/metodoconsole/metodoconsole.conf"
+    echo "(servono Postfix o Exim sul server, con il comando sendmail)."
+fi
 echo
-echo "MetodoConsole installato. Prova:  metodoconsole   (interfaccia)  oppure  metodoconsole diagnostica"
+echo "MetodoConsole installato. Prova:  metodoconsole diagnostica --elenco   poi   metodoconsole diagnostica"
 systemctl list-timers 'metodoconsole-*' --no-pager
