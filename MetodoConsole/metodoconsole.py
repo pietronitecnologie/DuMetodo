@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""MetodoConsole: controllo del server Metodo v2 (Docker Compose su Debian).
+"""MetodoConsole: diagnostica del server e gestione di Metodo v2 (Docker Compose su Debian/Ubuntu).
 
-Stato dei servizi, diagnostica completa, backup / verifica / ripristino del database PostgreSQL e dei file
-caricati, aggiornamento, avvisi via email. Solo libreria standard di Python (3.10 o più recente: Debian 12,
-Ubuntu 22.04 e successivi).
+Diagnostica a tutto tondo di qualunque server, per aree che si attivano da sole (vedi controlli/): sistema,
+sicurezza, web (nginx/Apache e certificati), posta, database installati sul server, applicazioni Django senza
+container, Docker; in più, se c'è, Metodo v2: stato dei servizi, backup / verifica / ripristino del database
+PostgreSQL e dei file caricati, aggiornamento, prelievo e allineamento dal vecchio Metodo, avvisi via email.
+Solo libreria standard di Python (3.10 o più recente: Debian 12, Ubuntu 22.04 e successivi).
 
     metodoconsole stato
-    metodoconsole diagnostica [--json]
+    metodoconsole diagnostica [--area posta web …] [--json]   (--elenco: aree trovate sul server)
     metodoconsole backup [--nota TESTO]
     metodoconsole ripristina NOME
     metodoconsole prelievo avvia    (dati da Metodo: verifica | avvia | stato | log | ferma)
@@ -39,10 +41,13 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-VERSIONE = "1.1.0"
+# Il pacchetto dei controlli sta accanto a questo file (anche quando lo si lancia dal collegamento in /usr/local/bin).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from controlli import AREE, NOMI_GRUPPI, Contesto, esegui_aree, rilevate
+from controlli.base import ATTENZIONE, ERRORE, GRAVITA, OK, Esito
+
+VERSIONE = "1.2.0"
 CONF_PREDEFINITA = "/etc/metodoconsole/metodoconsole.conf"
-OK, ATTENZIONE, ERRORE = "ok", "attenzione", "errore"
-GRAVITA = {OK: 0, ATTENZIONE: 1, ERRORE: 2}
 SERVIZI = ("db", "redis", "web", "worker", "beat")
 FORMATO_NOME = "%Y%m%d-%H%M%S"
 
@@ -75,25 +80,13 @@ def avviso(testo: str) -> None:
 ETICHETTA = {OK: "OK ", ATTENZIONE: "!! ", ERRORE: "ERR"}
 
 
-@dataclass
-class Esito:
-    nome: str
-    esito: str
-    dettaglio: str = ""
-    gruppo: str = "server"
-
-
 def stampa_esiti(esiti: list[Esito]) -> None:
     gruppo = None
     for e in esiti:
         if e.gruppo != gruppo:
             gruppo = e.gruppo
-            info(
-                tinta(
-                    "\n" + {"server": "Server e Docker", "app": "Applicazione Metodo v2"}.get(gruppo, gruppo), "titolo"
-                )
-            )
-        info(f"  {tinta(ETICHETTA[e.esito], e.esito)}  {e.nome:<28} {e.dettaglio}")
+            info(tinta("\n" + NOMI_GRUPPI.get(gruppo, gruppo), "titolo"))
+        info(f"  {tinta(ETICHETTA[e.esito], e.esito)}  {e.nome:<34} {e.dettaglio}")
 
 
 def peggiore(esiti: list[Esito]) -> str:
@@ -135,6 +128,10 @@ class Conf:
     avvisi_email: bool = True
     avvisi_ripeti_ore: int = 6
     cartella_stato: Path = Path("/var/lib/metodoconsole")
+    avvisi_destinatari: list[str] = field(default_factory=list)
+    avvisi_livello: str = ATTENZIONE  # da che livello parte l'email
+    # Tutto il file: le aree di diagnostica leggono le loro sezioni ([diagnostica], [posta], [web], [app:…]).
+    ini: configparser.ConfigParser = field(default_factory=configparser.ConfigParser)
 
 
 def leggi_conf(percorso: str | None) -> Conf:
@@ -146,6 +143,7 @@ def leggi_conf(percorso: str | None) -> Conf:
         return c
     ini = configparser.ConfigParser()
     ini.read(p, encoding="utf-8")
+    c.ini = ini
     # [dumetodo]: nome della sezione prima della rinomina in Metodo v2 (ancora accettato).
     sezione = "metodo" if ini.has_section("metodo") or not ini.has_section("dumetodo") else "dumetodo"
     d, b, a = (ini[x] if ini.has_section(x) else {} for x in (sezione, "backup", "avvisi"))
@@ -165,6 +163,8 @@ def leggi_conf(percorso: str | None) -> Conf:
     c.avvisi_email = a.get("email", "si").strip().lower() in ("si", "sì", "yes", "true", "1")
     c.avvisi_ripeti_ore = int(a.get("ripeti_ore", c.avvisi_ripeti_ore))
     c.cartella_stato = Path(a.get("cartella_stato", str(c.cartella_stato)))
+    c.avvisi_destinatari = [x for x in re.split(r"[\s,;]+", a.get("destinatari", "")) if x]
+    c.avvisi_livello = ERRORE if a.get("livello", "").strip().lower() == ERRORE else ATTENZIONE
     return c
 
 
@@ -312,8 +312,7 @@ def controlli_server(conf: Conf, dc: Compose) -> list[Esito]:
     if conf.url_pubblico:
         agg(_url_pubblico(conf.url_pubblico))
 
-    for etichetta, percorso in (
-        ("Disco sistema", "/"),
+    for etichetta, percorso in (  # il disco di sistema e gli altri sono nell'area «sistema»
         ("Disco Docker", radice_docker),
         ("Disco backup", str(conf.backup_cartella)),
     ):
@@ -332,7 +331,6 @@ def controlli_server(conf: Conf, dc: Compose) -> list[Esito]:
         agg(Esito(etichetta, esito, f"{misura(u.free)} liberi su {misura(u.total)} ({libero:.0%}) — {p}"))
 
     agg(_ultimo_backup(conf))
-    agg(_orologio())
     prelievo = descrivi_prelievo(stato_container(nome_prelievo(conf)))
     if prelievo is not None:
         agg(prelievo)
@@ -422,21 +420,6 @@ def _ultimo_backup(conf: Conf) -> Esito:
     return Esito("Ultimo backup", esito, f"{ultimo.nome}, {eta(ore * 3600)} fa, {misura(ultimo.dimensione)}")
 
 
-def _orologio() -> Esito:
-    r = (
-        esegui(["timedatectl", "show", "-p", "NTPSynchronized", "--value"], controlla=False, timeout=10)
-        if shutil.which("timedatectl")
-        else None
-    )
-    if r is None or r.returncode != 0:
-        return Esito("Orologio", OK, "sincronizzazione non verificabile")
-    return (
-        Esito("Orologio", OK, "sincronizzato (NTP)")
-        if r.stdout.strip() == "yes"
-        else Esito("Orologio", ATTENZIONE, "non sincronizzato: date di consegne e DDT potrebbero essere sbagliate")
-    )
-
-
 def controlli_app(dc: Compose) -> list[Esito]:
     r = dc.manage("diagnostica", "--json", controlla=False, timeout=120)
     try:
@@ -446,12 +429,28 @@ def controlli_app(dc: Compose) -> list[Esito]:
     return [Esito(c["nome"], c["esito"], c["dettaglio"], "app") for c in dati["controlli"]]
 
 
-def diagnostica_completa(conf: Conf, dc: Compose) -> list[Esito]:
-    esiti = controlli_server(conf, dc)
-    if any(e.nome == "Servizio web" and e.esito != ERRORE for e in esiti) or any(
-        e.nome == "Risposta web (/salute/)" and e.esito == OK for e in esiti
-    ):
-        esiti += controlli_app(dc)
+def metodo_installato(conf: Conf) -> bool:
+    return (conf.cartella / conf.file_compose[0]).exists()
+
+
+def aree_disponibili(conf: Conf) -> list[str]:
+    """Le aree che la diagnostica controlla su questo server (Metodo v2 compreso, se c'è)."""
+    return (["metodo"] if metodo_installato(conf) else []) + rilevate(Contesto(conf.ini))
+
+
+def diagnostica_completa(conf: Conf, dc: Compose, aree: list[str] | None = None) -> list[Esito]:
+    """Metodo v2 (se installato) e tutte le aree trovate sul server; con ``aree`` solo quelle."""
+    scelte = list(aree or [])
+    esiti: list[Esito] = []
+    if (not scelte or "metodo" in scelte) and metodo_installato(conf):
+        esiti += controlli_server(conf, dc)
+        if any(e.nome == "Servizio web" and e.esito != ERRORE for e in esiti) or any(
+            e.nome == "Risposta web (/salute/)" and e.esito == OK for e in esiti
+        ):
+            esiti += controlli_app(dc)
+    altre = [a for a in scelte if a != "metodo"]
+    if not scelte or altre:
+        esiti += esegui_aree(Contesto(conf.ini), altre or None)
     return esiti
 
 
@@ -687,8 +686,30 @@ def copia_remota(conf: Conf) -> None:
 
 
 # ================================================================================================= avvisi
+def invia_con_sendmail(destinatari: list[str], oggetto: str, testo: str) -> bool:
+    """Avviso tramite il server di posta locale (sendmail di Postfix/Exim): per i server senza Metodo v2."""
+    sendmail = shutil.which("sendmail") or ("/usr/sbin/sendmail" if Path("/usr/sbin/sendmail").exists() else None)
+    if not sendmail or not destinatari:
+        return False
+    mittente = f"metodoconsole@{socket.getfqdn()}"
+    messaggio = (
+        f"From: MetodoConsole <{mittente}>\nTo: {', '.join(destinatari)}\n"
+        f"Subject: [{socket.gethostname()}] {oggetto}\nContent-Type: text/plain; charset=utf-8\n\n{testo}"
+    )
+    try:
+        r = subprocess.run([sendmail, "-t", "-oi"], input=messaggio, text=True, capture_output=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return r.returncode == 0
+
+
 def invia_avviso(conf: Conf, dc: Compose, oggetto: str, testo: str) -> bool:
     if not conf.avvisi_email:
+        return False
+    if not metodo_installato(conf):
+        if invia_con_sendmail(conf.avvisi_destinatari, oggetto, testo):
+            return True
+        avviso("Avviso email non inviato: senza Metodo v2 servono [avvisi] destinatari e un sendmail locale")
         return False
     try:
         p = subprocess.run(
@@ -701,6 +722,8 @@ def invia_avviso(conf: Conf, dc: Compose, oggetto: str, testo: str) -> bool:
     except (OSError, subprocess.TimeoutExpired):
         p = None
     if p is None or p.returncode != 0:
+        if invia_con_sendmail(conf.avvisi_destinatari, oggetto, testo):
+            return True
         avviso("Avviso email non inviato" + (f": {p.stderr.strip()[-300:]}" if p else ""))
         return False
     return True
@@ -757,7 +780,18 @@ def cmd_stato(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
 
 
 def cmd_diagnostica(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
-    esiti = diagnostica_completa(conf, dc)
+    if getattr(a, "elenco", False):
+        trovate = set(aree_disponibili(conf))
+        info(tinta("Aree di diagnostica (✔ = trovata su questo server e controllata di base)", "titolo"))
+        tutte = {
+            "metodo": "Metodo v2: servizi Docker, backup, applicazione",
+            **{n: x.descrizione for n, x in AREE.items()},
+        }
+        for nome, descrizione in tutte.items():
+            info(f"  {'✔' if nome in trovate else ' '} {nome:<10} {descrizione}")
+        info("\nSolo alcune: metodoconsole diagnostica --area posta web · sempre le stesse: [diagnostica] aree")
+        return 0
+    esiti = diagnostica_completa(conf, dc, getattr(a, "area", None))
     esito = peggiore(esiti)
     if a.json:
         print(json.dumps({"esito": esito, "controlli": [asdict(e) for e in esiti]}, ensure_ascii=False, indent=2))
@@ -765,16 +799,18 @@ def cmd_diagnostica(conf: Conf, dc: Compose, a: argparse.Namespace) -> int:
         stampa_esiti(esiti)
         info(f"\nEsito: {tinta(esito.upper(), esito)}")
     if getattr(a, "avvisa", False):
-        problemi = [e for e in esiti if e.esito != OK]
+        soglia = GRAVITA[conf.avvisi_livello]
+        problemi = [e for e in esiti if GRAVITA[e.esito] >= soglia]
+        livello = peggiore(problemi) if problemi else OK
         firma = "|".join(sorted(f"{e.nome}:{e.esito}" for e in problemi))
         prec = stato_avvisi(conf)
-        decisione = decidi_avviso(prec, esito, firma, time.time(), conf.avvisi_ripeti_ore)
-        nuovo = {"esito": esito, "firma": firma, "avvisato_il": prec.get("avvisato_il", 0)}
+        decisione = decidi_avviso(prec, livello, firma, time.time(), conf.avvisi_ripeti_ore)
+        nuovo = {"esito": livello, "firma": firma, "avvisato_il": prec.get("avvisato_il", 0)}
         if decisione:
             if decisione == "risolto":
                 oggetto, testo = "Problemi risolti", "Tutti i controlli di MetodoConsole sono tornati OK.\n"
             else:
-                oggetto = f"{esito.upper()}: " + ", ".join(e.nome for e in problemi if e.esito == esito)[:120]
+                oggetto = f"{livello.upper()}: " + ", ".join(e.nome for e in problemi if e.esito == livello)[:120]
                 testo = (
                     "MetodoConsole ha trovato questi problemi:\n\n"
                     + "\n".join(f"[{e.esito.upper()}] {e.nome}: {e.dettaglio}" for e in problemi)
@@ -1355,8 +1391,14 @@ def parser() -> argparse.ArgumentParser:
         return x
 
     sub("stato", cmd_stato, "servizi in esecuzione e ultimo backup")
-    x = sub("diagnostica", cmd_diagnostica, "controllo completo di server, Docker e applicazione (uscita 0/1/2)")
+    x = sub(
+        "diagnostica",
+        cmd_diagnostica,
+        "controllo del server per aree: sistema, sicurezza, web, posta, database, django, docker, metodo (0/1/2)",
+    )
     x.add_argument("--json", action="store_true")
+    x.add_argument("--area", nargs="+", choices=["metodo", *AREE], metavar="AREA", help="solo queste aree")
+    x.add_argument("--elenco", action="store_true", help="mostra le aree e quali sono state trovate sul server")
     x.add_argument("--avvisa", action="store_true", help="invia un'email se ci sono problemi (o quando si risolvono)")
     x.add_argument("--silenzioso", action="store_true", help="stampa solo se qualcosa non va")
     x = sub("backup", cmd_backup, "backup di database, file caricati e .env, con verifica e rotazione")

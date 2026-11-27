@@ -1,10 +1,12 @@
 # MetodoConsole
 
-Console di controllo del server di produzione di Metodo v2: Docker Compose su Debian, con PostgreSQL nello stesso
-compose. Un solo comando, `metodoconsole`, per:
+Console di controllo del server: una **diagnostica a tutto tondo** di qualunque server Debian/Ubuntu (sistema,
+sicurezza, siti web, posta, database, applicazioni Django, Docker) e la gestione di Metodo v2 (Docker Compose
+con PostgreSQL nello stesso compose). Un solo comando, `metodoconsole`, per:
 
-- vedere lo **stato** dei servizi;
-- fare una **diagnostica** completa del server, di Docker e dell'applicazione;
+- fare una **diagnostica** del server per aree, che si attivano da sole secondo quello che trovano installato
+  (anche senza Metodo v2, vedi «Diagnostica»);
+- vedere lo **stato** dei servizi di Metodo v2;
 - fare **backup**, verificarli e **ripristinarli** (database PostgreSQL, file caricati, `.env`);
 - **aggiornare** Metodo v2 in sicurezza (backup prima, controllo dopo);
 - ricevere **avvisi via email** quando qualcosa non va.
@@ -160,6 +162,55 @@ Le note modificate o cancellate in Metodo dopo il primo prelievo non cambiano in
 
 ## Diagnostica
 
+```bash
+metodoconsole diagnostica                 # tutte le aree trovate sul server (uscita 0 = ok, 1 = attenzione, 2 = errore)
+metodoconsole diagnostica --elenco        # le aree e quali sono state trovate
+metodoconsole diagnostica --area posta web
+metodoconsole diagnostica --json          # per altri strumenti di monitoraggio
+```
+
+Va lanciata con `sudo`: senza, molti controlli dicono «non verificato: serve sudo». Nessun controllo cambia
+qualcosa sul server. Lo stesso controllo gira da solo ogni 15 minuti (`metodoconsole-controllo.timer`) e manda
+gli avvisi (per riceverli solo per gli errori: `[avvisi] livello = errore`); nell'interfaccia è la scheda
+«7 Diagnostica».
+
+**Sistema** — versione del sistema e fine del supporto (Ubuntu, Debian), riavvio richiesto, aggiornamenti di
+sicurezza in attesa, carico della CPU, memoria e swap, processi chiusi per mancanza di memoria, spazio e inode di
+ogni disco, servizi systemd falliti, orologio sincronizzato, dimensione dei log.
+
+**Sicurezza** — firewall (ufw o nftables) attivo; porte in ascolto su tutti gli indirizzi, con le porte dei
+database (PostgreSQL, MySQL, Redis, MongoDB, API di Docker…) segnalate come **errore se il firewall le lascia
+aperte a Internet**; accesso SSH di root e con password; fail2ban; tentativi di accesso falliti; utenti con
+poteri di root o senza password; regole sudo senza password; aggiornamenti automatici di sicurezza.
+
+**Web** (nginx o Apache) — servizio attivo, configurazione valida (`nginx -t`), versione nascosta, protocolli
+TLS insicuri, errori 5xx dell'ultima ora nell'access log; certificati di Let's Encrypt e rinnovo automatico;
+per ogni sito (quelli in `[web] url`, altrimenti quelli in ascolto su 443): risposta e tempo, certificato
+presentato, redirect da http a https, intestazioni di sicurezza (HSTS, X-Content-Type-Options).
+
+**Posta** (Postfix, Exim, Dovecot) — servizi (anche DKIM e antispam), **relay aperto**, coda (messaggi, rinviati,
+il più vecchio), consegne e rimbalzi di oggi e ieri, accessi falliti, certificati TLS sulle porte 25, 465, 587 e
+993; per i domini (`[posta] domini`): MX, SPF (uno solo, senza `+all`), DMARC, DKIM; nome inverso (PTR)
+dell'indirizzo del server e liste nere (Spamhaus, SpamCop, Barracuda).
+
+**Database** installati sul server, non in container — PostgreSQL (ogni cluster: versione, dimensioni, indirizzi
+di ascolto, connessioni, query lente e transazioni ferme, rischio di wraparound, regole `trust` in pg_hba.conf),
+MySQL/MariaDB (ascolto, connessioni, utenti anonimi, root da remoto, query lente), Redis (protezione, memoria).
+
+**Applicazioni Django** senza container — trovate da sole tra i servizi systemd con gunicorn, uwsgi, daphne o
+uvicorn (o dichiarate con `[app:nome]`): servizio e riavvii, socket, risposta del sito, `manage.py check
+--deploy` (DEBUG attivo, SECRET_KEY debole, cookie e HSTS), migrazioni non applicate, versione di Django e di
+Python con la fine del supporto, file con le password leggibili da tutti. `manage.py` gira con l'utente e
+l'ambiente del servizio.
+
+**Docker** (qualunque progetto) — demone, container non sani o in riavvio continuo, container fermati con errore,
+spazio recuperabile.
+
+**Senza Metodo v2** `installa.sh` mette solo la diagnostica e il suo controllo orario; per ricevere gli avvisi
+indica `[avvisi] destinatari` (partono con il `sendmail` di Postfix o Exim del server).
+
+### Metodo v2
+
 **Server e Docker**
 
 - Docker attivo.
@@ -169,9 +220,8 @@ Le note modificate o cancellate in Metodo dopo il primo prelievo non cambiano in
 - Risposta di `/salute/`, cioè database e cache raggiungibili dall'applicazione.
 - Errori nei log dell'ultima ora.
 - Indirizzo pubblico raggiungibile e giorni di validità del certificato https, se indicato nella configurazione.
-- Spazio libero sul disco di sistema, su quello di Docker e su quello dei backup.
+- Spazio libero sul disco di Docker e su quello dei backup (gli altri dischi e l'orologio sono nell'area Sistema).
 - Età dell'ultimo backup.
-- Sincronizzazione dell'orologio.
 
 **Applicazione** (comando `manage.py diagnostica` dentro il container)
 

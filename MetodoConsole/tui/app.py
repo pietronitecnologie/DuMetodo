@@ -1324,7 +1324,7 @@ class MetodoConsole(App[None]):
         mappa = {"ok": s.OK, "attenzione": s.ATTENZIONE, "errore": s.ERRORE}
         t = self.query_one("#tabella-diagnostica", DataTable)
         t.clear()
-        gruppi = {"server": "Server e Docker", "app": "Applicazione"}
+        gruppi = self.mc.NOMI_GRUPPI
         for e in esiti:
             liv = mappa.get(e.esito, e.esito)
             t.add_row(gruppi.get(e.gruppo, e.gruppo), livello(ETICHETTA.get(liv, liv), liv), e.nome, e.dettaglio)

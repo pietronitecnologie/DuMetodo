@@ -31,4 +31,44 @@ spazio_minimo_gb = 5
 email = si
 # Finché un problema dura, l'avviso si ripete ogni N ore.
 ripeti_ore = 6
+# Da che livello mandare l'email: attenzione (anche gli avvisi, es. aggiornamenti in attesa) o errore.
+livello = attenzione
+# Server senza Metodo v2 (o se Metodo v2 non riesce a spedire): a chi mandare gli avvisi, tramite il sendmail
+# locale (Postfix o Exim). Separati da virgole.
+destinatari =
 cartella_stato = /var/lib/metodoconsole
+
+# ============================================================================== diagnostica per aree
+# «metodoconsole diagnostica --elenco» mostra le aree e quali ha trovato sul server. Tutte le sezioni qui sotto
+# sono facoltative: senza, ogni area si attiva da sola se trova ciò che controlla.
+
+[diagnostica]
+# auto = tutte quelle trovate; oppure un elenco, es.: sistema sicurezza web posta database django docker
+aree = auto
+# Porte che è normale vedere aperte a Internet (le altre vengono segnalate). Quelle dei database (5432, 3306,
+# 6379…) sono sempre segnalate.
+porte_attese = 22,25,53,80,110,143,443,465,587,993,995
+
+[web]
+# Siti da controllare (risposta, redirect https, intestazioni, certificato). Vuoto = quelli in ascolto su 443
+# nella configurazione di nginx.
+url =
+
+[posta]
+# Domini di cui controllare MX, SPF, DMARC e DKIM (vuoto = mydomain di Postfix).
+domini =
+# Selettori DKIM da cercare (nome._domainkey.dominio).
+dkim_selettori = default dkim mail
+# Nome del server di posta nei certificati (vuoto = myhostname di Postfix).
+host =
+# Indirizzo pubblico da controllare nelle liste nere, se il server è dietro NAT.
+ip =
+
+# Applicazioni Django senza container. Quelle avviate da systemd con gunicorn/uwsgi/daphne/uvicorn si trovano
+# da sole; qui si aggiungono o si completano (una sezione per applicazione):
+# [app:metodo1]
+# cartella = /root/Metodo
+# python = /root/Metodo/venv/bin/python
+# servizio = gunicorn_metodo
+# url = https://metodo.esempio.it/
+# utente = root

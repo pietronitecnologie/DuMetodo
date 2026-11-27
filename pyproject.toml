@@ -62,6 +62,8 @@ ignore = ["RUF012", "S101", "RUF001", "RUF002", "RUF003"]
 "config/settings/*" = ["F405", "F403"]
 # Strumento da riga di comando dell'amministratore: lancia docker/git/tar per mestiere.
 "MetodoConsole/*" = ["S603", "S607", "RUF005"]
+# Diagnostica: confronta indirizzi («0.0.0.0» = in ascolto ovunque) e nomi di opzioni («password»), non li usa.
+"MetodoConsole/controlli/*" = ["S603", "S607", "RUF005", "S104", "S105", "S110"]
 
 [tool.mypy]
 python_version = "3.12"
